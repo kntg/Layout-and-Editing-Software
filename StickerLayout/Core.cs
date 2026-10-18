@@ -583,9 +583,48 @@ public static class Paper
 
 public static class Nest
 {
-    // mm per sel grid nesting. Diukur di SelfCheck (130 stiker, A4): 1 mm ±5× lebih lambat, jumlah lembar sama.
-    public static double Cell = 2;
+    // mm per sel grid nesting. 1 mm: jarak nyata antar stiker lebih dekat ke jarak yang diminta (median ±3,2 mm untuk
+    // jarak 2 mm, sel 2 mm ±4,1 mm), susun ±2× lebih lama. Diukur 2026-10-17.
+    public static double Cell = 1;
     static readonly int[] Rots = [0, 90, 180, 270];
+
+    // Jejak garis potong terluar di grid: sel terisi, sel tepi, dan batasnya. Bleed (dalam sel) menjaga warna tidak
+    // masuk margin (ruang reg mark). Margin dicek terhadap jejak ini, bukan kotak stiker.
+    sealed record Foot(List<(int X, int Y)> Cells, List<(int X, int Y)> Edge, int MinX, int MinY, int MaxX, int MaxY, int Bleed);
+
+    static Foot FootOf(Sticker s, int rot)
+    {
+        var g = Rotate(s.Grid, rot);
+        int w = g.GetLength(0), h = g.GetLength(1), x0 = int.MaxValue, y0 = int.MaxValue, x1 = 0, y1 = 0;
+        List<(int, int)> inner = [], edge = [];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                if (!g[x, y]) continue;
+                bool e = x == 0 || y == 0 || x == w - 1 || y == h - 1 || !g[x - 1, y] || !g[x + 1, y] || !g[x, y - 1] || !g[x, y + 1];
+                (e ? edge : inner).Add((x, y));
+                x0 = Math.Min(x0, x); y0 = Math.Min(y0, y); x1 = Math.Max(x1, x); y1 = Math.Max(y1, y);
+            }
+        int bleed = s.BleedPng == null ? 0 : (int)Math.Ceiling(s.LoadedBleed / Cell - 1e-9);
+        // Sel tepi dicek dulu: tabrakan hampir selalu terjadi di tepi, jadi posisi yang salah cepat ditolak.
+        return new([.. edge, .. inner], edge, x0, y0, x1, y1, bleed);
+    }
+
+    // Tandai sel stiker sebagai terisi, ditambah jarak antar stiker (gc sel) di sekeliling tepinya.
+    // Jejak selalu padat (lubang diisi), jadi cukup tepinya yang diperlebar.
+    static void Stamp(bool[,] occ, Foot f, int ox, int oy, int gc)
+    {
+        int cols = occ.GetLength(0), rows = occ.GetLength(1);
+        foreach (var (cx, cy) in f.Cells)
+            if (ox + cx >= 0 && oy + cy >= 0 && ox + cx < cols && oy + cy < rows) occ[ox + cx, oy + cy] = true;
+        foreach (var (cx, cy) in f.Edge)
+            for (int dy = -gc; dy <= gc; dy++)
+                for (int dx = -gc; dx <= gc; dx++)
+                {
+                    int x = ox + cx + dx, y = oy + cy + dy;
+                    if (x >= 0 && y >= 0 && x < cols && y < rows) occ[x, y] = true;
+                }
+    }
 
     public static bool[,] Rotate(bool[,] g, int rot)
     {
@@ -631,7 +670,7 @@ public static class Nest
         int cols = Math.Max(0, (int)((cw - 2 * margin) / Cell)), rows = Math.Max(0, (int)((ch - 2 * margin) / Cell));
         int gc = (int)Math.Ceiling(gap / Cell - 1e-9);
         var sheets = new List<(bool[,] occ, List<Placed> ps, HashSet<Sticker> full)>();
-        var cache = new Dictionary<(Sticker, int), (int gw, int gh, List<(int, int)> cells)>();
+        var cache = new Dictionary<(Sticker, int), Foot>();
         tooBig = 0;
         foreach (var s in items)
         {
@@ -651,35 +690,24 @@ public static class Nest
         return sheets.Select(x => x.ps).ToList();
     }
 
-    static bool TryPlace(bool[,] occ, Sticker s, Dictionary<(Sticker, int), (int gw, int gh, List<(int, int)> cells)> cache, int gc, double margin, List<Placed> ps)
+    static bool TryPlace(bool[,] occ, Sticker s, Dictionary<(Sticker, int), Foot> cache, int gc, double margin, List<Placed> ps)
     {
         int cols = occ.GetLength(0), rows = occ.GetLength(1);
-        (int x, int y, int rot, int score)? best = null;
+        (int x, int y, int rot, int bottom)? best = null;
         foreach (int rot in Rots)
         {
-            if (!cache.TryGetValue((s, rot), out var e))
+            if (!cache.TryGetValue((s, rot), out var f)) cache[(s, rot)] = f = FootOf(s, rot);
+            // Posisi dibatasi jejak garis potong (bukan kotak stiker) di dalam area cetak.
+            for (int y = f.Bleed - f.MinY; y + f.MaxY < rows - f.Bleed; y++)
             {
-                var g = Rotate(s.Grid, rot);
-                var cells = new List<(int, int)>();
-                for (int y = 0; y < g.GetLength(1); y++) for (int x = 0; x < g.GetLength(0); x++) if (g[x, y]) cells.Add((x, y));
-                cache[(s, rot)] = e = (g.GetLength(0), g.GetLength(1), cells);
-            }
-            for (int y = 0; y + e.gh <= rows; y++)
-            {
-                if (best is { } b && y + e.gh >= b.score) break;
-                for (int x = 0; x + e.gw <= cols; x++)
-                    if (Fits(occ, e.cells, x, y)) { best = (x, y, rot, y + e.gh); goto next; }
+                if (best is { } b && y + f.MaxY >= b.bottom) break;
+                for (int x = f.Bleed - f.MinX; x + f.MaxX < cols - f.Bleed; x++)
+                    if (Fits(occ, f.Cells, x, y)) { best = (x, y, rot, y + f.MaxY); goto next; }
             }
         next:;
         }
         if (best is not { } p) return false;
-        foreach (var (cx, cy) in cache[(s, p.rot)].cells)
-            for (int dy = -gc; dy <= gc; dy++)
-                for (int dx = -gc; dx <= gc; dx++)
-                {
-                    int x = p.x + cx + dx, y = p.y + cy + dy;
-                    if (x >= 0 && y >= 0 && x < cols && y < rows) occ[x, y] = true;
-                }
+        Stamp(occ, cache[(s, p.rot)], p.x, p.y, gc);
         ps.Add(new Placed { S = s, Rot = p.rot, X = margin + p.x * Cell, Y = margin + p.y * Cell });
         return true;
     }
@@ -692,31 +720,15 @@ public static class Nest
         int gc = (int)Math.Ceiling(gap / Cell - 1e-9);
         var occ = new bool[cols, rows];
         foreach (var q in ps)
-        {
-            if (q == p) continue;
-            var g = Rotate(q.S.Grid, q.Rot);
-            int ox = (int)Math.Round((q.X - margin) / Cell), oy = (int)Math.Round((q.Y - margin) / Cell);
-            for (int x = 0; x < g.GetLength(0); x++)
-                for (int y = 0; y < g.GetLength(1); y++)
-                    if (g[x, y])
-                        for (int dy = -gc; dy <= gc; dy++)
-                            for (int dx = -gc; dx <= gc; dx++)
-                            {
-                                int u = ox + x + dx, v = oy + y + dy;
-                                if (u >= 0 && v >= 0 && u < cols && v < rows) occ[u, v] = true;
-                            }
-        }
-        var mine = Rotate(p.S.Grid, p.Rot);
-        int gw = mine.GetLength(0), gh = mine.GetLength(1);
-        var cells = new List<(int, int)>();
-        for (int y = 0; y < gh; y++) for (int x = 0; x < gw; x++) if (mine[x, y]) cells.Add((x, y));
+            if (q != p) Stamp(occ, FootOf(q.S, q.Rot), (int)Math.Round((q.X - margin) / Cell), (int)Math.Round((q.Y - margin) / Cell), gc);
+        var f = FootOf(p.S, p.Rot);
         double px = (p.X - margin) / Cell, py = (p.Y - margin) / Cell, best = double.MaxValue;
         (int x, int y)? at = null;
-        for (int y = 0; y + gh <= rows; y++)
-            for (int x = 0; x + gw <= cols; x++)
+        for (int y = f.Bleed - f.MinY; y + f.MaxY < rows - f.Bleed; y++)
+            for (int x = f.Bleed - f.MinX; x + f.MaxX < cols - f.Bleed; x++)
             {
                 double d = (x - px) * (x - px) + (y - py) * (y - py);
-                if (d < best && Fits(occ, cells, x, y)) { best = d; at = (x, y); }
+                if (d < best && Fits(occ, f.Cells, x, y)) { best = d; at = (x, y); }
             }
         if (at is not { } a) return false;
         p.X = margin + a.x * Cell;
@@ -724,29 +736,33 @@ public static class Nest
         return true;
     }
 
-    static bool Fits(bool[,] occ, List<(int, int)> cells, int x, int y)
+    static bool Fits(bool[,] occ, List<(int X, int Y)> cells, int x, int y)
     {
         foreach (var (cx, cy) in cells) if (occ[x + cx, y + cy]) return false;
         return true;
     }
 
-    // Tandai stiker yang tumpang tindih (jejak garis terluar) atau keluar margin. Kembalikan jumlahnya.
+    // Tandai stiker yang tumpang tindih (jejak garis terluar) atau yang jejaknya (ditambah bleed) keluar margin.
+    // Kembalikan jumlahnya.
     public static int Check(List<Placed> ps, double cw, double ch, double margin)
     {
-        var owner = new Dictionary<(int, int), Placed>();
-        foreach (var p in ps)
-            p.Bad = p.X < margin - 0.01 || p.Y < margin - 0.01 || p.X + p.BW > cw - margin + 0.01 || p.Y + p.BH > ch - margin + 0.01;
-        foreach (var p in ps)
+        var feet = ps.Select(p => FootOf(p.S, p.Rot)).ToList();
+        for (int i = 0; i < ps.Count; i++)
         {
-            var g = Rotate(p.S.Grid, p.Rot);
+            var (p, f) = (ps[i], feet[i]);
+            double m = margin + f.Bleed * Cell - 0.01;
+            p.Bad = p.X + f.MinX * Cell < m || p.Y + f.MinY * Cell < m || p.X + (f.MaxX + 1) * Cell > cw - m || p.Y + (f.MaxY + 1) * Cell > ch - m;
+        }
+        var owner = new Dictionary<(int, int), Placed>();
+        for (int i = 0; i < ps.Count; i++)
+        {
+            var p = ps[i];
             int ox = (int)Math.Round(p.X / Cell), oy = (int)Math.Round(p.Y / Cell);
-            for (int x = 0; x < g.GetLength(0); x++)
-                for (int y = 0; y < g.GetLength(1); y++)
-                    if (g[x, y])
-                    {
-                        if (owner.TryGetValue((ox + x, oy + y), out var o) && o != p) o.Bad = p.Bad = true;
-                        else owner[(ox + x, oy + y)] = p;
-                    }
+            foreach (var (x, y) in feet[i].Cells)
+            {
+                if (owner.TryGetValue((ox + x, oy + y), out var o) && o != p) o.Bad = p.Bad = true;
+                else owner[(ox + x, oy + y)] = p;
+            }
         }
         return ps.Count(p => p.Bad);
     }

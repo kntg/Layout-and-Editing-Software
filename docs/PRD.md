@@ -62,8 +62,16 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - **Batas aplikasi** (keputusan leader proyek, 2026-10-14): aplikasi hanya membuat layout. Pengaturan dan urusan mesin tetap dikerjakan operator; profil mesin dihapus dari aplikasi.
 - **Cutting Master 5:** bisa mengatur kondisi potong, urutan, dan potong/tidak per warna atau per layer.
 - **Export:** PDF menggantikan SVG dari v1. Alasannya: vektor dan CMYK tetap terjaga, dan satu file bisa berisi banyak halaman.
-- **Nesting:** greedy first-fit di grid 2 mm. Pada uji 130 stiker, grid 1 mm 5× lebih lambat dengan jumlah lembar yang sama.
-- **Ringan:** render tampilan lewat CPU, bukan GPU. Diukur: RAM 118–134 MB (lewat GPU 467 MB, sebagian besar driver grafis), CPU saat diam 0%, jendela muncul ±2 detik. Ganti zoom 0,1–0,4 detik CPU. Layar memakai salinan gambar maksimal 1600 px (export tetap resolusi asli): dengan satu gambar 4000×3000 px RAM 186 MB, jendela Rapikan 310 MB, kembali ke 267 MB setelah ditutup. Hapus latar 4000×3000 px: 0,5 detik.
+- **Nesting:** greedy first-fit di grid 1 mm. Margin dicek terhadap garis potong terluar, bukan kotak stiker. Diukur 2026-10-17, dibanding grid 2 mm dan margin per kotak:
+  - job 130 stiker A4: 7 lembar (sebelumnya 8), pemakaian bahan 51,6% (sebelumnya 45,2%), susun ±85 ms (Release);
+  - jarak nyata ke stiker terdekat (diminta 2 mm): median 3,2 mm, maksimal 4,4 mm (sebelumnya 4,1 dan 5,5 mm), tetap 0 tabrakan;
+  - jarak garis die ke tepi kertas (margin 10 mm): minimal 10,5 mm (sebelumnya 12,5 mm).
+- **Ringan:** render tampilan lewat CPU, bukan GPU. Diukur 2026-10-17:
+  - RAM menurut Task Manager (private working set): 35 MB tanpa file, 52–57 MB dengan 4 desain. Target spesifikasi ±120 MB tercapai.
+  - Total working set 104–153 MB. Angka ini ikut menghitung DLL Windows yang dipakai bersama, termasuk driver grafis Intel ±70 MB yang tetap dimuat WPF walau render lewat CPU. Laporan sebelumnya (136–153 MB, "di atas target") memakai angka total ini.
+  - CPU saat diam 0%.
+  - Build operator dikompilasi ReadyToRun, sehingga waktu CPU saat start ±setengahnya.
+  - Ganti zoom 0,1–0,4 detik CPU. Layar memakai salinan gambar maksimal 1600 px (export tetap resolusi asli): dengan satu gambar 4000×3000 px RAM 186 MB, jendela Rapikan 310 MB, kembali ke 267 MB setelah ditutup. Hapus latar 4000×3000 px: 0,5 detik.
 - **Aman:** tanpa koneksi jaringan. File asli customer hanya dibaca. Yang ditulis hanya PDF export (lokasi dipilih operator) dan folder temp milik aplikasi, yang dihapus saat aplikasi ditutup. Error tak terduga tampil sebagai pesan, aplikasi tetap jalan. PDFium versi terbaru (build 8100, 2026) dipakai untuk membaca PDF customer.
 - **Kertas default A3+ 320×480 mm** (kertas stiker Develop di AP 55). F4/folio tidak ditambahkan karena cakupan hanya stiker.
 - **Ambang resolusi 150 dpi** masih tebakan awal (target riset 300 ppi); disesuaikan setelah melihat hasil cetak Develop.
@@ -77,7 +85,8 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - **Stabilitas dan performa** (2026-10-17, spesifikasi leader bagian 2):
   - CorelDRAW COM berjalan di proses worker (exe yang sama dengan argumen `--cdr2pdf`), bukan di proses utama. Selama menunggu, UI tetap jalan. Lewat 30 detik, worker dihentikan dan operator mendapat pesan; Printech tetap jalan. CorelDRAW sendiri tidak dimatikan supaya pekerjaan operator yang belum disimpan aman.
   - 3 percobaan nesting dan hapus latar dihitung paralel dengan `Parallel.For`. Spesifikasi menyebut `Parallel.ForEachAsync`, tetapi API itu untuk kerja async (I/O), sedangkan kerja ini murni CPU. Hasilnya identik bit per bit dengan versi berurutan.
-  - Hasil ukur (Release, CPU 12 thread): nesting 130 stiker 57 → 43 ms. Gambar 4000×3000: hapus latar 119 → 97 ms (flood fill tetap berurutan), kikis tepi 103 → 31 ms, tampilan 62 → 20 ms. RAM saat diam tidak berubah (versi lama 148–152 MB, versi baru 148–153 MB, 4 kali ukur).
+  - Hasil ukur (Release, CPU 12 thread): nesting 130 stiker 57 → 43 ms. Gambar 4000×3000: hapus latar 119 → 97 ms (flood fill tetap berurutan), kikis tepi 103 → 31 ms, tampilan 62 → 20 ms. RAM saat diam tidak berubah (total working set versi lama 148–152 MB, versi baru 148–153 MB, 4 kali ukur).
+  - Hapus latar dan penghapus klik di jendela Rapikan dihitung di background, jadi jendela tetap merespons. Hanya pembaruan tampilan (±20–70 ms) yang jalan di UI thread.
   - Skenario uji P1–P10: [UJI-STABILITAS.md](UJI-STABILITAS.md).
 - **Prepress** (2026-10-17, spesifikasi leader bagian 3):
   - Garis potong ditulis DeviceCMYK murni lewat operator `K`: kiss `0 1 0 0`, die `1 0 0 0`. Tidak ada operator RGB, ruang warna ICC, atau OutputIntent, jadi tidak ada konversi ke sRGB. Operator lain yang ada hanya `0 g`/`0 G` (DeviceGray), yang ditulis PDFsharp sebelum artwork vektor ditempel; itu bukan warna garis potong.
@@ -109,7 +118,8 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - Rapikan gambar: latar foto yang ramai (bukan warna polos) belum bisa dihapus otomatis; gambar di atas 4000 px diperkecil ke 4000 px saat dirapikan.
 - Reduksi node: target 60-80% tercapai pada logo kasar dan bentuk bulat. Teks dan bintang turun 33-59% karena sudutnya adalah detail asli. Di area cekung garis bisa bergeser keluar sampai ±0,5 mm (kiss) atau ±0,7 mm (die): border sedikit lebih lebar. Halus 0 mematikan penghalusan bentuk.
 - CDR: batas 30 detik belum dikalibrasi di PC operator. Bila CorelDRAW menggantung karena dialog yang tidak terlihat, tutup CorelDRAW lalu tambahkan file lagi.
-- Muat ulang desain dan nesting masih berjalan di UI thread (nesting 130 stiker ±43 ms; desain sangat besar bisa ±1 detik). RAM saat diam 136–153 MB, di atas target ±120 MB.
+- Muat ulang desain dan nesting masih berjalan di UI thread (nesting 130 stiker ±85 ms; desain sangat besar bisa ±1 detik).
+- Jarak nyata antar stiker masih lebih lebar dari yang diminta (median +1,2 mm), karena jejak stiker dibulatkan ke grid 1 mm.
 - Bleed: tepi JPG yang sangat kasar (kompresi tinggi) bisa menyisakan garis pucat tipis di area bleed; rapikan gambarnya dulu untuk hasil terbaik. Stiker raster sangat besar (±300 mm) dengan bleed dimuat ±1–2 detik lebih lama.
 
 ## 9. Pertanyaan terbuka

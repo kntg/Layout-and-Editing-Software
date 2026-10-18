@@ -8,6 +8,9 @@
     <UseWPF>true</UseWPF>
     <!-- build operator: tanpa terjemahan pesan .NET ke 13 bahasa lain (hemat ±8 MB) -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- build operator: kode dikompilasi saat publish, bukan saat aplikasi dibuka. Waktu CPU saat start ±setengahnya
+         (median 3,3 -> 1,7 detik, diukur 2026-10-17); folder +4 MB. Tidak berpengaruh pada dotnet build/run. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>

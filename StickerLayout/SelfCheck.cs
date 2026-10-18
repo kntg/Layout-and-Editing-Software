@@ -248,7 +248,7 @@ public static class SelfCheck
                 bigClean.ComposeView(1, view, 1600, 1200);
                 cleanMs = Math.Min(cleanMs, rsw.ElapsedMilliseconds);
             }
-            P(5, "UI thread: susun 130 stiker < 500 ms, satu langkah Rapikan 4000x3000 < 2000 ms", nestMs < 500 && cleanMs < 2000,
+            P(5, "UI thread: susun 130 stiker < 1000 ms, satu langkah Rapikan 4000x3000 < 2000 ms", nestMs < 1000 && cleanMs < 2000,
                 $"susun {nestMs} ms, rapikan {cleanMs} ms ({bigClean.ErasedFraction:P0} dihapus)");
 
             // Auto-bleed raster: warna tepi meluas sampai bleed di luar garis kiss (dicek di render PDF), vektor tidak berubah.

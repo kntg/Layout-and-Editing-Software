@@ -43,20 +43,28 @@ public partial class CleanupWindow : Window
         EdgeText.Text = EdgeValue.ToString();
     }
 
-    void Run(Func<int> op)
+    bool busy;
+
+    // Hitungan berat jalan di background supaya jendela tetap merespons; isi jendela dikunci selama proses.
+    async void Run(Func<int> op)
     {
+        if (busy) return;
+        busy = true;
+        var content = (UIElement)Content;
+        content.IsEnabled = false;
         Mouse.OverrideCursor = Cursors.Wait;
-        try { if (op() > 0) Refresh(); }
-        finally { Mouse.OverrideCursor = null; }
+        try { if (await Task.Run(op) > 0) Refresh(); }
+        finally { content.IsEnabled = true; Mouse.OverrideCursor = null; busy = false; }
     }
 
-    void Background_Click(object s, RoutedEventArgs e) => Run(() => img.EraseFromBorder(TolValue));
+    // Nilai slider dibaca di UI thread; hitungannya sendiri jalan di background.
+    void Background_Click(object s, RoutedEventArgs e) { int tol = TolValue; Run(() => img.EraseFromBorder(tol)); }
 
     void View_Down(object s, MouseButtonEventArgs e)
     {
         var p = e.GetPosition(View);
-        int x = (int)(p.X / View.ActualWidth * img.W), y = (int)(p.Y / View.ActualHeight * img.H);
-        Run(() => img.EraseAt(x, y, TolValue));
+        int x = (int)(p.X / View.ActualWidth * img.W), y = (int)(p.Y / View.ActualHeight * img.H), tol = TolValue;
+        Run(() => img.EraseAt(x, y, tol));
     }
 
     void Undo_Click(object s, RoutedEventArgs e) { if (img.Undo()) Refresh(); }
@@ -72,7 +80,7 @@ public partial class CleanupWindow : Window
 
     void Window_KeyDown(object s, KeyEventArgs e)
     {
-        if (Keyboard.Modifiers != ModifierKeys.Control || e.Key != Key.Z) return;
+        if (busy || Keyboard.Modifiers != ModifierKeys.Control || e.Key != Key.Z) return;
         if (img.Undo()) Refresh();
         e.Handled = true;
     }

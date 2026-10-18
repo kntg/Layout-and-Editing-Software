@@ -17,10 +17,10 @@ Cara menjalankan:
 |---|---|---|---|---|
 | P1 | Tambah file CDR di PC tanpa CorelDRAW | Muncul pesan "CorelDRAW tidak terpasang"; aplikasi tidak crash | Otomatis + UI | Lulus. Selfcheck: pesan dalam 0,3 detik. Lewat UI: pesan muncul 1,1 detik setelah file ditambahkan, aplikasi tetap responsif |
 | P2 | Worker melewati batas waktu | Worker dihentikan, muncul pesan batas waktu, tidak ada worker yang tersisa | Otomatis (batas diset 1 ms) | Lulus: dihentikan dalam 20–36 ms, 0 worker tersisa |
-| P3 | Nesting paralel dijalankan 5 kali | Hasilnya identik setiap kali | Otomatis | Lulus: 5 kali, 1 hasil. Jumlah lembar dan pemakaian bahan (8 lembar A4 / 45,2%; 2 lembar / 36,1%) sama dengan versi sebelum paralel |
+| P3 | Nesting paralel dijalankan 5 kali | Hasilnya identik setiap kali | Otomatis | Lulus: 5 kali, 1 hasil. Saat paralel diterapkan (grid 2 mm), jumlah lembar dan pemakaian bahan sama persis dengan versi berurutan |
 | P4 | Hapus latar paralel dibandingkan dengan versi berurutan | Kikis tepi 1–3 px dan gambar tampilan identik bit per bit | Otomatis | Lulus |
-| P5 | Lama kerja di UI thread | Susun 130 stiker < 500 ms; satu langkah Rapikan pada gambar 4000×3000 < 2000 ms (waktu terbaik dari 3 kali) | Otomatis | Lulus. Release: 36–39 ms dan 292–350 ms. Debug: 86–289 ms dan 680–819 ms. Angka naik bila aplikasi lain sedang memakai CPU |
-| P6 | RAM saat diam, dengan 4 file contoh | Target spesifikasi ±120 MB | Pengembang | Belum tercapai: 148–153 MB. Versi sebelum perubahan juga 148–152 MB, jadi tidak naik |
+| P5 | Lama kerja di UI thread | Susun 130 stiker < 1000 ms; satu langkah Rapikan pada gambar 4000×3000 < 2000 ms (waktu terbaik dari 3 kali) | Otomatis | Lulus. Release (grid 1 mm): 84–93 ms dan 173–194 ms. Debug: 581–799 ms dan 452 ms. Angka naik bila aplikasi lain sedang memakai CPU |
+| P6 | RAM saat diam, dengan 4 file contoh | Target spesifikasi ±120 MB, diukur seperti Task Manager (private working set) | Pengembang | Lulus: 52–57 MB (tanpa file 35 MB). Total working set 131–153 MB ikut menghitung DLL Windows yang dipakai bersama, termasuk driver grafis Intel ±70 MB |
 | P7 | CDR asli, saat CorelDRAW tertutup dan saat terbuka | Desain masuk; lama proses dicatat untuk mengkalibrasi batas 30 detik | Operator | Belum diuji |
 | P8 | CorelDRAW sedang dipakai dan ada dokumen yang belum disimpan | Dokumen operator tetap utuh dan CorelDRAW tidak tertutup | Operator | Belum diuji |
 | P9 | CorelDRAW sedang menampilkan dialog | Printech tetap bisa dipakai selama menunggu; bila CorelDRAW tidak merespons, pesan muncul setelah 30 detik; setelah dialog ditutup, tambah ulang berhasil | Operator | Belum diuji |
@@ -41,8 +41,8 @@ Cara menjalankan:
 
 ## Catatan
 1. **"60 FPS" tidak diukur langsung.** Yang diukur adalah lama kerja di UI thread (P5):
-   - susun 130 stiker sekitar 40 ms, atau 2–3 frame;
-   - satu langkah Rapikan pada gambar 4000×3000 sekitar 0,3 detik, jadi tampilan sempat diam sebentar;
+   - susun 130 stiker sekitar 85 ms (grid 1 mm), atau ±5 frame;
+   - langkah Rapikan dihitung di background, jadi jendela tetap merespons; hanya pembaruan tampilan (±20–70 ms) di UI thread;
    - konversi CDR tidak memblok UI.
 2. **`Parallel.For`, bukan `Parallel.ForEachAsync`.** Spesifikasi menyebut `Parallel.ForEachAsync`, tetapi kerja di sini murni CPU (lihat PRD).
 3. **Pembanding P4.** Hapus latar paralel dibandingkan dengan salinan algoritma lama di `SelfCheck.ErodeRef`.
