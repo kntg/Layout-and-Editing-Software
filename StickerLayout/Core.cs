@@ -28,6 +28,8 @@ public class Sticker
     public byte[] Raster = [];                   // gambar yang ditempel saat export bila bukan vektor
     public byte[]? Edited;                       // PNG hasil "Rapikan gambar"; dipakai menggantikan file asli
     public bool CanClean => Pdf == null;         // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh
+    // PDF/AI/CDR yang tidak bisa ditempel vektor (halaman diputar, tidak terbaca PDFsharp): ditempel sebagai gambar RGB.
+    public bool PdfAsImage => Pdf == null && Path.GetExtension(Source).ToLowerInvariant() is ".pdf" or ".ai" or ".cdr";
     public double LoadedW, LoadedBleed;
     public Cut LoadedKiss = null!, LoadedDie = null!;
     public double W, H;                          // kotak (mm), kelipatan Nest.Cell
@@ -97,17 +99,38 @@ public static class Loader
 
     static string? PdfOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
-        ".pdf" or ".ai" => path,
+        ".pdf" or ".ai" => Snapshot(path),
         ".cdr" => Corel.ToPdf(path),
         _ => null,
     };
 
+    // Versi file = waktu ubah + ukuran. File yang diedit lalu ditambah ulang dimuat dari isi barunya, bukan dari cache.
+    public static (DateTime, long) Stamp(string path) { var f = new FileInfo(path); return f.Exists ? (f.LastWriteTimeUtc, f.Length) : default; }
+
+    // PDF/AI disalin ke folder temp saat dimuat. Export memakai salinan itu, jadi artwork tetap sama dengan dasar garis
+    // potong walau file asli diubah, dipindah, atau dihapus sesudahnya.
+    static readonly ConcurrentDictionary<string, (string Copy, (DateTime, long) Stamp)> snaps = new();
+
+    static string Snapshot(string path)
+    {
+        var v = Stamp(path);
+        if (snaps.TryGetValue(path, out var s) && s.Stamp == v && File.Exists(s.Copy)) return s.Copy;
+        Directory.CreateDirectory(App.Temp);
+        var copy = Path.Combine(App.Temp, Guid.NewGuid() + Path.GetExtension(path));
+        File.Copy(path, copy);
+        snaps[path] = (copy, v);
+        return copy;
+    }
+
     // Semua input -> bitmap penuh -> crop ke konten -> mask -> garis kiss/die (dilasi + closing) -> Potrace.
-    public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0)
+    // loadedPdf: PDF yang dipakai saat desain pertama dimuat (muat ulang saat Susun): isi desain tidak berubah diam-diam
+    // dan CorelDRAW tidak dibuka lagi.
+    public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
+        string? loadedPdf = null)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
-        var pdf = edited == null ? PdfOf(path) : null;
+        var pdf = edited == null ? loadedPdf ?? PdfOf(path) : null;
         BitmapSource full;
         double nat = double.NaN;                 // mm per px pada ukuran asli (hanya PDF)
         Rect media;                              // area yang digambar saat export, px relatif terhadap bitmap
@@ -159,7 +182,8 @@ public static class Loader
         if (die.On)
         {
             outer = Smooth(Close(m, die), m, die);
-            if (kissMask != null) foreach (var (x, y) in Cells(outer)) outer[x, y] |= kissMask[x, y]; // die selalu membungkus kiss
+            // Die selalu membungkus kiss, minimal 1 px di luarnya: bila sama persis, kurva Potrace keduanya bisa bersilangan.
+            if (kissMask != null) { var near = Dilate(kissMask, 1); foreach (var (x, y) in Cells(outer)) outer[x, y] |= near[x, y]; }
             outer = Solid(outer);
             s.Die = Trace(outer);
         }
@@ -379,6 +403,7 @@ public static class Loader
 
     // Haluskan kontur: blur Gaussian (sigma = Halus) lalu threshold 0,5. Lekukan kecil hilang, node berkurang,
     // pisau bergerak mulus. Hasil di-OR dengan artwork + (offset - 0,3 mm) supaya garis tidak mendekati artwork.
+    // Jari-jari penjaga dibulatkan ke atas: dibulatkan ke bawah, penjaga 0,03 mm lebih dekat dari aturan.
     static bool[,] Smooth(bool[,] m, bool[,] art, Cut c)
     {
         double s = c.Smooth * PxMm;
@@ -394,7 +419,7 @@ public static class Loader
             Box(a, b, W, H, r, H, 1);   // sepanjang y
             Box(b, a, H, W, r, 1, H);   // sepanjang x
         }
-        var res = Dilate(art, (int)Math.Floor((c.Off - MaxInward) * PxMm));
+        var res = Dilate(art, (int)Math.Ceiling((c.Off - MaxInward) * PxMm - 1e-9));
         for (int x = 0; x < W; x++) for (int y = 0; y < H; y++) if (a[x * H + y] >= 0.5) res[x, y] = true;
         return res;
     }
@@ -486,11 +511,12 @@ public static class Loader
 public static class Corel
 {
     public const int TimeoutMs = 30_000;
-    static readonly ConcurrentDictionary<string, string> cache = new();
+    static readonly ConcurrentDictionary<string, (string Pdf, (DateTime, long) Stamp)> cache = new();
 
     public static string ToPdf(string cdr, int timeoutMs = TimeoutMs)
     {
-        if (cache.TryGetValue(cdr, out var done) && File.Exists(done)) return done;
+        var v = Loader.Stamp(cdr); // CDR yang diedit lalu ditambah ulang dikonversi lagi
+        if (cache.TryGetValue(cdr, out var done) && done.Stamp == v && File.Exists(done.Pdf)) return done.Pdf;
         var pdf = Path.Combine(App.Temp, Guid.NewGuid() + ".pdf");
         Directory.CreateDirectory(App.Temp);
         var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
@@ -505,7 +531,7 @@ public static class Corel
         }
         return p.ExitCode switch
         {
-            0 when File.Exists(pdf) => cache[cdr] = pdf,
+            0 when File.Exists(pdf) => (cache[cdr] = (pdf, v)).Pdf,
             2 => throw new InvalidOperationException(Lang.T("NoCorel")),
             _ => throw new InvalidOperationException(Lang.T("CorelFail", err.Result.Trim())),
         };
@@ -735,6 +761,11 @@ public static class Nest
         p.Y = margin + a.y * Cell;
         return true;
     }
+
+    // Tinggi lembar setelah dipadatkan: jejak garis potong terbawah (bleed ikut) + margin, tidak pernah lebih
+    // tinggi dari lembar sekarang. Memakai jejak, bukan kotak: kotak boleh masuk margin sejak margin dicek per jejak.
+    public static double Compact(List<Placed> ps, double ch, double margin) =>
+        ps.Count == 0 ? ch : Math.Min(ch, Math.Ceiling(ps.Max(p => { var f = FootOf(p.S, p.Rot); return p.Y + (f.MaxY + 1 + f.Bleed) * Cell; }) + margin));
 
     static bool Fits(bool[,] occ, List<(int X, int Y)> cells, int x, int y)
     {

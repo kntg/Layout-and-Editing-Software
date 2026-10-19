@@ -18,12 +18,13 @@ public static class SelfCheck
 {
     const double A4W = 210, A4H = 297, Margin = 10, Gap = 2;
 
+    // Kegagalan apa pun (termasuk folder yang tidak bisa dibuat) = exit code 1.
     public static int Run(string dir)
     {
-        Directory.CreateDirectory(dir);
         var log = new List<string>();
         try
         {
+            Directory.CreateDirectory(dir);
             Samples(dir);
             Cut kiss = new(true, 2, 1), die = new(true, 4, 2);
             var files = new[] { ("circle.png", 6), ("star.jpg", 6), ("badge.svg", 4), ("logo.pdf", 6), ("logo.ai", 4) };
@@ -356,6 +357,60 @@ public static class SelfCheck
             var jf = BitmapDecoder.Create(new Uri(jpgs[0]), BitmapCreateOptions.None, BitmapCacheOption.OnLoad).Frames[0];
             Check(Math.Abs(Math.Max(jf.PixelWidth, jf.PixelHeight) - 2000) <= 2, $"ukuran preview salah: {jf.PixelWidth}x{jf.PixelHeight}");
             log.Add($"preview: {jpgs.Count} JPG, {jf.PixelWidth}x{jf.PixelHeight} px, {new FileInfo(jpgs[0]).Length / 1024} KB");
+
+            // PDF multi-halaman: satu desain per halaman, ukuran asli per halaman, export menempel halaman yang benar.
+            var multi = Loader.LoadAll(Path.Combine(dir, "multi.pdf"), 40, kiss, die);
+            var msh = Nest.Run(multi, A4W, A4H, Margin, Gap, out _);
+            var mpdf = Path.Combine(dir, "multi-export.pdf");
+            Export.Pdf(mpdf, msh, A4W, [A4H]);
+            var mr = RenderPage(mpdf, 0, 4);
+            Color Mid(Sticker st) => At(mr, msh[0].First(q => q.S == st), st.ArtW / 2 * 72 / 25.4, st.ArtH / 2 * 72 / 25.4, 4);
+            Color m1 = Mid(multi[0]), m2 = Mid(multi[1]);
+            Check(multi.Count == 2 && multi[0].Name == "multi.pdf p1" && multi[1].Name == "multi.pdf p2" && multi.All(m => m.Pdf != null)
+                && Math.Abs(multi[0].ArtW - 28.2) < 0.6 && Math.Abs(multi[1].ArtW - 63.5) < 0.6 && Math.Abs(multi[1].ArtH - 14.1) < 0.6
+                && m1.R > 200 && m1.B < 100 && m2.B > 150 && m2.R < 100,
+                $"PDF multi-halaman salah: {string.Join(" / ", multi.Select(m => $"{m.Name} {m.ArtW:F1}x{m.ArtH:F1} mm"))}, warna tengah {m1} / {m2}");
+            log.Add($"multi-halaman: {string.Join(", ", multi.Select(m => $"{m.Name} {m.ArtW:F1}x{m.ArtH:F1} mm"))}; export menempel halaman yang benar");
+
+            // File PDF diganti lalu dihapus setelah dimuat: muat ulang (Susun) dan export tetap memakai isi saat dimuat;
+            // tambah ulang file yang berubah memakai isi barunya.
+            var src = Path.Combine(dir, "sumber-uji.pdf");
+            File.Copy(Path.Combine(dir, "logo.pdf"), src, true);
+            var first = Loader.LoadAll(src, 40, kiss, die)[0];
+            File.Copy(Path.Combine(dir, "multi.pdf"), src, true);
+            File.SetLastWriteTimeUtc(src, DateTime.UtcNow.AddMinutes(1));
+            var reload = Loader.Load(src, 0, 0, kiss, die, loadedPdf: first.Pdf);
+            var readd = Loader.LoadAll(src, 40, kiss, die)[0];
+            File.Delete(src);
+            var swarn = Export.Pdf(Path.Combine(dir, "sumber-export.pdf"), [[new Placed { S = first }]], A4W, [A4H]);
+            Check(first.Pdf != src && File.Exists(first.Pdf) && swarn.Count == 0 && Math.Abs(reload.ArtW - first.ArtW) < 0.01
+                && Math.Abs(readd.ArtW - first.ArtW) > 1,
+                $"salinan PDF salah: dimuat {first.ArtW:F1} mm, muat ulang {reload.ArtW:F1} mm, tambah ulang {readd.ArtW:F1} mm, peringatan export {swarn.Count}");
+            log.Add($"PDF diganti lalu dihapus setelah dimuat: muat ulang {reload.ArtW:F1} mm dan export tetap dari salinan ({first.ArtW:F1} mm); "
+                + $"tambah ulang memakai isi baru ({readd.ArtW:F1} mm)");
+
+            // Compact lembar terakhir: tinggi turun, lembar penuh tidak melebihi kertas, stiker tetap di dalam margin,
+            // halaman PDF ikut tinggi baru.
+            double hLast = Nest.Compact(sheets[^1], A4H, Margin), hFull = Nest.Compact(sheets[0], A4H, Margin);
+            var cpdf = Path.Combine(dir, "compact.pdf");
+            Export.Pdf(cpdf, sheets, A4W, sheets.Select((_, i) => i == sheets.Count - 1 ? hLast : A4H).ToList());
+            double pageH;
+            using (var cdoc = PdfReader.Open(cpdf, PdfDocumentOpenMode.Import)) pageH = cdoc.Pages[cdoc.PageCount - 1].Height.Millimeter;
+            Check(hLast < A4H && hFull <= A4H && Nest.Check(sheets[^1], A4W, hLast, Margin) == 0 && Math.Abs(pageH - hLast) < 0.5,
+                $"compact salah: lembar terakhir {hLast} mm (kertas {A4H}), lembar penuh {hFull} mm, halaman PDF {pageH:F1} mm");
+            Nest.Check(sheets[^1], A4W, A4H, Margin);
+            log.Add($"compact: lembar terakhir {A4H} -> {hLast} mm, halaman PDF {pageH:F1} mm; lembar penuh tetap {hFull} mm");
+
+            // Isi Print Ticket: total lembar, total pcs, efisiensi bahan, baris per lembar dan per desain, pengaturan.
+            var tl = Export.TicketLines("A4", sheets, A4W, heights, Margin, ["uji pengaturan"]).Select(l => l.Text).ToList();
+            double tUse = sheets.Sum(x => x.Sum(p => p.S.AreaMm2)) / (sheets.Count * Yield.Fillable(A4W, A4H, Margin));
+            int pcs = sheets.Sum(x => x.Count);
+            Check(tl.Contains(Lang.T("TicketSheets", sheets.Count)) && tl.Contains(Lang.T("TicketPcs", pcs)) && tl.Contains(Lang.T("TicketUse", tUse, 1 - tUse))
+                && sheets.Select((sh, i) => Lang.T("TicketSheetLine", i + 1, sh.Count, Yield.Use(sh, A4W, A4H, Margin))).All(tl.Contains)
+                && sheets.SelectMany(x => x).GroupBy(p => p.S).All(gp => tl.Any(t => t.StartsWith(gp.Key.Name + " — ") && t.EndsWith($" — {gp.Count()} pcs")))
+                && tl[^1] == "uji pengaturan",
+                "isi Print Ticket salah: " + string.Join(" | ", tl));
+            log.Add($"print ticket: {tl.Count(t => t.Length > 0)} baris; {Lang.T("TicketSheets", sheets.Count)}; {Lang.T("TicketPcs", pcs)}; {Lang.T("TicketUse", tUse, 1 - tUse)}");
             log.Add("OK");
             File.WriteAllLines(Path.Combine(dir, "selfcheck.txt"), log);
             return 0;
@@ -363,7 +418,8 @@ public static class SelfCheck
         catch (Exception ex)
         {
             log.Add("GAGAL: " + ex);
-            File.WriteAllLines(Path.Combine(dir, "selfcheck.txt"), log);
+            try { File.WriteAllLines(Path.Combine(dir, "selfcheck.txt"), log); }
+            catch (Exception) { } // folder tidak bisa ditulis: log hilang, exit code tetap 1
             return 1;
         }
     }
@@ -535,5 +591,22 @@ public static class SelfCheck
             doc.Save(Path.Combine(dir, "logo.pdf"));
         }
         File.Copy(Path.Combine(dir, "logo.pdf"), Path.Combine(dir, "logo.ai"), true); // AI "PDF compatible"
+
+        // multi.pdf: 2 halaman (lingkaran oranye 80 pt, persegi panjang biru 180x40 pt) untuk uji satu desain per halaman.
+        if (!File.Exists(Path.Combine(dir, "multi.pdf")))
+        using (var doc = new PdfDocument())
+        {
+            foreach (var (w, h, round) in new[] { (100.0, 100.0, true), (200.0, 60.0, false) })
+            {
+                var page = doc.AddPage();
+                page.Width = XUnit.FromPoint(w);
+                page.Height = XUnit.FromPoint(h);
+                using var g = XGraphics.FromPdfPage(page);
+                var brush = new XSolidBrush(round ? XColor.FromCmyk(0, 0.6, 1, 0) : XColor.FromCmyk(1, 0.4, 0, 0));
+                if (round) g.DrawEllipse(brush, 10, 10, w - 20, h - 20);
+                else g.DrawRectangle(brush, 10, 10, w - 20, h - 20);
+            }
+            doc.Save(Path.Combine(dir, "multi.pdf"));
+        }
     }
 }

@@ -72,21 +72,26 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - CPU saat diam 0%.
   - Build operator dikompilasi ReadyToRun, sehingga waktu CPU saat start ±setengahnya.
   - Ganti zoom 0,1–0,4 detik CPU. Layar memakai salinan gambar maksimal 1600 px (export tetap resolusi asli): dengan satu gambar 4000×3000 px RAM 186 MB, jendela Rapikan 310 MB, kembali ke 267 MB setelah ditutup. Hapus latar 4000×3000 px: 0,5 detik.
-- **Aman:** tanpa koneksi jaringan. File asli customer hanya dibaca. Yang ditulis hanya PDF export (lokasi dipilih operator) dan folder temp milik aplikasi, yang dihapus saat aplikasi ditutup. Error tak terduga tampil sebagai pesan, aplikasi tetap jalan. PDFium versi terbaru (build 8100, 2026) dipakai untuk membaca PDF customer.
+- **Aman:** tanpa koneksi jaringan. File asli customer hanya dibaca. Yang ditulis hanya PDF export (lokasi dipilih operator) dan folder temp milik aplikasi (salinan PDF/AI dan hasil konversi CDR), yang dihapus saat aplikasi ditutup. Bila aplikasi dihentikan paksa, folder itu tertinggal di `%TEMP%\Printech`. Error tak terduga tampil sebagai pesan, aplikasi tetap jalan. PDFium versi terbaru (build 8100, 2026) dipakai untuk membaca PDF customer.
 - **Kertas default A3+ 320×480 mm** (kertas stiker Develop di AP 55). F4/folio tidak ditambahkan karena cakupan hanya stiker.
 - **Ambang resolusi 150 dpi** masih tebakan awal (target riset 300 ppi); disesuaikan setelah melihat hasil cetak Develop.
 - **Rapikan gambar hanya untuk raster** (PNG, JPG, SVG, PDF yang gagal dibaca vektor). File vektor (PDF/AI/CDR) tetap dirapikan di CorelDRAW supaya warna CMYK dan vektornya utuh. Rapikan hanya mengubah transparansi, tidak menggambar ulang piksel.
 - **Reduksi node garis potong (2026-10-16).** RDP literal tidak dipakai. Potrace sudah menghasilkan kurva Bezier yang dioptimasi; RDP hanya bekerja pada garis lurus, jadi kurva harus dipecah dulu. Hasil ukur: teks butuh 117 titik garis lurus untuk akurasi 0,1 mm, sedangkan Bezier cukup 72 node. Yang dipakai:
   - Tuning Potrace: `AlphaMax` 1,3334 (tidak ada sudut tajam, pisau tidak berbelok mendadak) dan `OptTolerance` 1 px = 0,17 mm (lebih banyak segmen kurva digabung).
   - Penghalusan bentuk sebelum trace: blur dengan sigma = nilai Halus (3 lintasan box blur, mendekati Gaussian), lalu threshold. Lekukan kecil hilang. Halus 1–2 mm paling efektif; di atas 2 mm node bisa naik lagi.
-  - Penjaga jarak: garis tidak pernah lebih dekat dari offset - 0,3 mm ke artwork. Garis die selalu membungkus garis kiss.
-  - Hasil di app (kiss 2/1 mm, die 4/2 mm), node kiss/die sebelum -> sesudah: rough.jpg 64/43 -> 16/13 (-73%), lingkaran 11/10 -> 3/4 (-67%), logo.pdf 21/15 -> 8/7 (-58%), bintang 29/27 -> 15/17 (-43%), badge 9/8 -> 8/8. Sudut tajam 2 -> 0. Muat per desain 20-70 ms, stiker 300 mm ±1 detik (Release).
+  - Penjaga jarak: di mask, penghalusan tidak boleh membawa garis lebih dekat dari offset - 0,3 mm ke artwork (jari-jari dibulatkan ke atas sejak 2026-10-18). Garis die selalu membungkus garis kiss, minimal 1 piksel (0,17 mm) di luarnya.
+  - Diukur 2026-10-18 per titik garis terhadap geometri asli file ([validasi-garis-potong-nesting.md](../Printech-TestData/02-expected/validasi-garis-potong-nesting.md)):
+    - median jarak = offset −0,19 s.d. +0,02 mm;
+    - setelah kurva Potrace, garis bisa sampai 0,13 mm lebih dekat dari offset - 0,3 mm. Ini terjadi di sudut lancip dan pada offset kecil (galat mask 6 px/mm).
+  - Hasil di app (kiss 2/1 mm, die 4/2 mm), node kiss/die sebelum -> sesudah: rough.jpg 64/43 -> 16/13 (-73%), lingkaran 11/10 -> 3/4 (-67%), logo.pdf 21/15 -> 8/7 (-58%), bintang 29/27 -> 15/17 (-43%), badge 9/8 -> 8/8. Sudut tajam 2 -> 0. Sejak 2026-10-18 (penjaga dibulatkan ke atas, die minimal 1 px di luar kiss) rough.jpg 17/16. Muat per desain 20-70 ms, stiker 300 mm ±1 detik (Release).
   - Skenario uji S1–S11 beserta hasilnya: [UJI-GARIS-POTONG.md](UJI-GARIS-POTONG.md).
 - **Stabilitas dan performa** (2026-10-17, spesifikasi leader bagian 2):
   - CorelDRAW COM berjalan di proses worker (exe yang sama dengan argumen `--cdr2pdf`), bukan di proses utama. Selama menunggu, UI tetap jalan. Lewat 30 detik, worker dihentikan dan operator mendapat pesan; Printech tetap jalan. CorelDRAW sendiri tidak dimatikan supaya pekerjaan operator yang belum disimpan aman.
   - 3 percobaan nesting dan hapus latar dihitung paralel dengan `Parallel.For`. Spesifikasi menyebut `Parallel.ForEachAsync`, tetapi API itu untuk kerja async (I/O), sedangkan kerja ini murni CPU. Hasilnya identik bit per bit dengan versi berurutan.
   - Hasil ukur (Release, CPU 12 thread): nesting 130 stiker 57 → 43 ms. Gambar 4000×3000: hapus latar 119 → 97 ms (flood fill tetap berurutan), kikis tepi 103 → 31 ms, tampilan 62 → 20 ms. RAM saat diam tidak berubah (total working set versi lama 148–152 MB, versi baru 148–153 MB, 4 kali ukur).
   - Hapus latar dan penghapus klik di jendela Rapikan dihitung di background, jadi jendela tetap merespons. Hanya pembaruan tampilan (±20–70 ms) yang jalan di UI thread.
+  - Sejak 2026-10-19, file PDF/AI disalin ke folder temp saat dimuat. Export dan Susun memakai salinan itu, jadi artwork tetap sama dengan dasar garis potong walau file asli diubah, dipindah, atau dihapus. Untuk memakai isi baru, tambahkan file itu lagi.
+  - Sejak 2026-10-19, hasil konversi CDR disimpan per versi file (waktu ubah + ukuran). CDR yang diedit lalu ditambah ulang dikonversi lagi.
   - Skenario uji P1–P10: [UJI-STABILITAS.md](UJI-STABILITAS.md).
 - **Prepress** (2026-10-17, spesifikasi leader bagian 3):
   - Garis potong ditulis DeviceCMYK murni lewat operator `K`: kiss `0 1 0 0`, die `1 0 0 0`. Tidak ada operator RGB, ruang warna ICC, atau OutputIntent, jadi tidak ada konversi ke sRGB. Operator lain yang ada hanya `0 g`/`0 G` (DeviceGray), yang ditulis PDFsharp sebelum artwork vektor ditempel; itu bukan warna garis potong.
@@ -94,7 +99,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - Bleed ikut mengisi border putih antara artwork dan garis kiss. Pakai bersama offset kecil (0–0,5 mm) untuk stiker tanpa border.
 - **Indikator dan UX operator** (2026-10-17, spesifikasi leader bagian 4):
   - Bentuk reguler atau irregular ditentukan otomatis: bila rata-rata isi bentuk terhadap kotaknya (ditimbang luas) ≥ 75%, dihitung reguler (persegi ±1, lingkaran ±0,79, bintang ±0,57). Batas hijau irregular (60%) tidak disebut di spesifikasi; dipakai aturan yang sama dengan reguler, yaitu batas bawah + 5 poin.
-  - Snap memakai grid nesting 2 mm (posisi kosong terdekat), bukan NFP poligon. Geser dengan panah keyboard tetap bebas. Bila tidak ada tempat kosong, stiker tetap di posisinya dan ditandai merah.
+  - Snap memakai grid nesting 1 mm (posisi kosong terdekat), bukan NFP poligon. Geser dengan panah keyboard tetap bebas. Bila tidak ada tempat kosong, stiker tetap di posisinya dan ditandai merah.
   - Preset bahan memakai nilai awal dari panduan cetak stiker publik ([RESEARCH.md](RESEARCH.md) bagian 13), belum dikonfirmasi operator. Memilih preset langsung menyusun ulang.
 - **Ditunda sampai ada kebutuhan nyata:** hapus latar foto dengan AI dan memperbesar gambar pecah. Untuk gambar pecah, cara tercepat tetap meminta file asli ke customer; angka dpi merah memberi tahu kapan perlu.
 - **Tidak dibangun:** hide copy, simpan proyek, reg mark buatan aplikasi, dan mode nametag/kartu.
@@ -109,14 +114,14 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 
 ## 8. Batasan yang diketahui
 - Jalur CDR lewat COM CorelDRAW belum diuji, karena CorelDRAW tidak terpasang di PC pengembangan.
-- PDF yang diputar (/Rotate) atau tidak bisa dibaca PDFsharp akan ditempel sebagai gambar (±254 dpi, RGB). Aplikasi memberi peringatan bila ini terjadi.
+- PDF yang diputar (/Rotate) atau tidak bisa dibaca PDFsharp akan ditempel sebagai gambar (±254 dpi, RGB). Aplikasi memberi peringatan di status bar sejak desain dimuat ("… PDF ditempel sebagai gambar"; sebelum 2026-10-18 hanya saat impor PDFsharp gagal ketika export).
 - SVG di-export sebagai gambar ±300 dpi.
 - Hanya kontur luar yang dipotong. Lubang di bagian dalam desain tidak ikut dipotong, termasuk lubang yang terbentuk saat offset menutup celah artwork (misalnya huruf C besar).
 - Nesting belum optimal (greedy).
 - Belum ada undo. Stiker belum bisa dipindah antar-lembar. Rotasi hanya kelipatan 90°.
 - Warna di layar hanya preview. Akurasi warna dijaga di file export.
 - Rapikan gambar: latar foto yang ramai (bukan warna polos) belum bisa dihapus otomatis; gambar di atas 4000 px diperkecil ke 4000 px saat dirapikan.
-- Reduksi node: target 60-80% tercapai pada logo kasar dan bentuk bulat. Teks dan bintang turun 33-59% karena sudutnya adalah detail asli. Di area cekung garis bisa bergeser keluar sampai ±0,5 mm (kiss) atau ±0,7 mm (die): border sedikit lebih lebar. Halus 0 mematikan penghalusan bentuk.
+- Reduksi node: target 60-80% tercapai pada logo kasar dan bentuk bulat. Teks dan bintang turun 33-59% karena sudutnya adalah detail asli. Logo dengan gelombang tepi yang nyata (Printech-TestData `png-rough-edge.png`) hanya turun 54%. Di area cekung garis bisa bergeser keluar sampai ±0,5 mm (kiss) atau ±0,7 mm (die): border sedikit lebih lebar. Halus 0 mematikan penghalusan bentuk.
 - CDR: batas 30 detik belum dikalibrasi di PC operator. Bila CorelDRAW menggantung karena dialog yang tidak terlihat, tutup CorelDRAW lalu tambahkan file lagi.
 - Muat ulang desain dan nesting masih berjalan di UI thread (nesting 130 stiker ±85 ms; desain sangat besar bisa ±1 detik).
 - Jarak nyata antar stiker masih lebih lebar dari yang diminta (median +1,2 mm), karena jejak stiker dibulatkan ke grid 1 mm.

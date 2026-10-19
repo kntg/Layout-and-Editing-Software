@@ -1,0 +1,9 @@
+file: 15 (ai-compatible.ai, invalid-file.cdr, jpg-large-24mp.jpg, jpg-low-resolution.jpg, pdf-irregular-shapes.pdf, pdf-large-a3.pdf, pdf-multi-page.pdf, pdf-oversize.pdf, pdf-rotated.pdf, pdf-single-page.pdf, png-147dpi.png, png-152dpi.png, png-rough-edge.png, png-transparent.png, svg-vector.svg)
+dialog 'Gagal memuat' setelah 1.2 s: invalid-file.cdr: CorelDRAW tidak terpasang. Export file CDR ke PDF dulu, lalu tambahkan PDF-nya.
+semua file selesai dimuat dan disusun 3.0 s setelah start
+status: 18 stiker di 2 lembar.
+peringatan: 1 lebih besar dari kertas   2 desain resolusi rendah   1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)
+pemakaian bahan: 54% · sisa 46%
+judul lembar: 5 pcs / lembar A3+ · 91% | 13 pcs / lembar A3+ · 16%
+tangkapan layar: 2026-10-18-semua-input-printech.png
+RAM private working set (Task Manager): 148 MB; responding: True

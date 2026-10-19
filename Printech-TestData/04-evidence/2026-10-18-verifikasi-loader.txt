@@ -1,0 +1,22 @@
+[BENAR] pdf-single-page.pdf: vektor, artwork 60,00 x 30,00 mm, dpi -, kiss 63,99 x 34,04, die 67,91 x 37,88, kontur 1/1, dimuat 223 ms
+[BENAR] pdf-multi-page.pdf p1: vektor, artwork 30,00 x 30,00 mm, dpi -, kiss 34,06 x 34,06, die 37,93 x 37,86, kontur 1/1, dimuat 90 ms
+[BENAR] pdf-multi-page.pdf p2: vektor, artwork 80,10 x 20,00 mm, dpi -, kiss 84,16 x 24,04, die 88,06 x 27,88, kontur 1/1, dimuat 91 ms
+[BENAR] pdf-multi-page.pdf p3: vektor, artwork 40,00 x 35,00 mm, dpi -, kiss 43,44 x 38,75, die 47,50 x 42,79, kontur 1/1, dimuat 93 ms
+[BENAR] ai-compatible.ai: vektor, artwork 50,00 x 25,00 mm, dpi -, kiss 53,97 x 29,07, die 57,70 x 33,03, kontur 1/1, dimuat 33 ms
+[BENAR] png-transparent.png: gambar, artwork 50,00 x 25,00 mm, dpi 406, kiss 53,99 x 29,03, die 57,90 x 32,88, kontur 1/1, dimuat 48 ms
+[BENAR] jpg-low-resolution.jpg: gambar, artwork 50,00 x 50,00 mm, dpi 103 (merah), kiss 53,72 x 53,76, die 57,69 x 57,77, kontur 1/1, dimuat 43 ms
+[BENAR] svg-vector.svg: gambar, artwork 50,00 x 25,00 mm, dpi 305, kiss 54,00 x 28,99, die 57,87 x 32,90, kontur 1/1, dimuat 209 ms
+[BENAR] pdf-irregular-shapes.pdf p1: vektor, artwork 38,00 x 36,20 mm, dpi -, kiss 41,49 x 39,63, die 45,44 x 43,63, kontur 1/1, dimuat 118 ms
+[BENAR] pdf-irregular-shapes.pdf p2: vektor, artwork 40,00 x 40,00 mm, dpi -, kiss 44,07 x 44,06, die 47,96 x 47,96, kontur 1/1, dimuat 118 ms
+[BENAR] pdf-irregular-shapes.pdf p3: vektor, artwork 45,00 x 30,00 mm, dpi -, kiss 48,76 x 34,07, die 52,63 x 37,97, kontur 1/1, dimuat 119 ms
+[BENAR] pdf-irregular-shapes.pdf p4: vektor, artwork 79,00 x 20,00 mm, dpi -, kiss 82,86 x 24,06, die 86,75 x 27,77, kontur 2/2, dimuat 120 ms
+[BENAR] pdf-large-a3.pdf: vektor, artwork 280,20 x 420,24 mm, dpi -, kiss 284,23 x 424,14, die 288,17 x 428,16, kontur 1/1, dimuat 830 ms
+[BENAR] pdf-oversize.pdf: vektor, artwork 310,00 x 310,00 mm, dpi -, kiss 313,96 x 313,95, die 318,00 x 318,04, kontur 1/1, dimuat 783 ms
+[BENAR] png-147dpi.png: gambar, artwork 50,00 x 50,00 mm, dpi 147 (merah), kiss 53,97 x 53,96, die 57,93 x 57,89, kontur 1/1, dimuat 30 ms
+[BENAR] png-152dpi.png: gambar, artwork 50,00 x 50,00 mm, dpi 152, kiss 53,94 x 54,01, die 57,81 x 57,77, kontur 1/1, dimuat 36 ms
+[BENAR] png-rough-edge.png: gambar, artwork 50,00 x 48,89 mm, dpi 366, kiss 53,59 x 52,44, die 57,51 x 56,39, kontur 1/1, dimuat 66 ms
+[BENAR] jpg-large-24mp.jpg: gambar, artwork 50,00 x 32,15 mm, dpi 2.845, kiss 53,93 x 36,21, die 57,81 x 40,12, kontur 1/1, dimuat 298 ms
+[BENAR] pdf-rotated.pdf: gambar, artwork 30,00 x 60,00 mm, dpi 254, kiss 34,00 x 64,03, die 37,92 x 67,87, kontur 1/1, dimuat 58 ms
+desain: 19 (diharapkan 19 tanpa CDR)
+susun A3+: 18 stiker di 2 lembar, tidak muat 1, peringatan export 0; PDF: 2026-10-18-semua-input-export.pdf
+RINGKAS: 0 desain salah dari 19

@@ -74,6 +74,7 @@ public static class Lang
         ["Preview"] = ("Export preview JPG…", "Export preview JPG…"),
         ["PreviewSaved"] = ("Preview tersimpan: {0} file JPG di {1}", "Preview saved: {0} JPG file(s) in {1}"),
         ["LowDpi"] = ("{0} desain resolusi rendah", "{0} low-resolution design(s)"),
+        ["PdfAsImage"] = ("{0} PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)", "{0} PDF(s) placed as image (rotated or unreadable page)"),
         ["DpiTip"] = ("Resolusi cetak pada lebar ini. Ideal 300 dpi; di bawah 150 dpi hasil cetak akan pecah. Minta file asli ke customer.",
                       "Print resolution at this width. 300 dpi is ideal; below 150 dpi the print will look pixelated. Ask the customer for the original file."),
         ["Material"] = ("Bahan terpakai", "Material used"),

@@ -106,6 +106,8 @@ public partial class MainWindow : Window
         if (tooBig > 0) warn.Add(Lang.T("TooBig", tooBig));
         int low = items.Count(i => i.LowDpi);
         if (low > 0) warn.Add(Lang.T("LowDpi", low));
+        int ras = items.Count(i => i.PdfAsImage);
+        if (ras > 0) warn.Add(Lang.T("PdfAsImage", ras));
         WarnText.Text = string.Join("   ", warn);
         WarnPill.Visibility = warn.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -242,7 +244,7 @@ public partial class MainWindow : Window
                 if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != kiss || it.LoadedDie != die
                     || (it.Pdf == null && it.LoadedBleed != bleed)))
                 {
-                    var n = Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed);
+                    var n = Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf);
                     n.Copies = it.Copies;
                     n.Name = it.Name;
                     items[i] = n;
@@ -263,7 +265,7 @@ public partial class MainWindow : Window
     {
         if (sheets.Count == 0) return;
         int i = sheets.Count - 1;
-        sheetH[i] = Math.Ceiling(sheets[i].Max(p => p.Y + p.BH) + MarginMm);
+        sheetH[i] = Nest.Compact(sheets[i], sheetH[i], MarginMm);
         Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
         Redraw(Summary());
     }

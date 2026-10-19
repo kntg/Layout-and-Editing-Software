@@ -7,4 +7,14 @@ samples/export-render-*.png
 samples/layout-*.png
 samples/selfcheck.txt
 samples/preview*.jpg
+samples/bleed.pdf
+samples/compact.pdf
+samples/multi-export.pdf
+samples/print-ticket.pdf
+samples/sumber-export.pdf
 publish/
+# file customer: hanya di PC lokal, repo ini publik
+Printech-TestData/**/customer/*
+!Printech-TestData/01-input/customer/README.md
+# hasil mentah validasi (dibuat ulang oleh Printech-TestData/validasi.ps1)
+Printech-TestData/03-exports/validasi/

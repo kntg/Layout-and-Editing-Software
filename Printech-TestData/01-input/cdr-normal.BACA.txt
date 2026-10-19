@@ -1,0 +1,10 @@
+cdr-normal.cdr belum ada di folder ini.
+
+File CDR asli hanya bisa dibuat dengan CorelDRAW, dan CorelDRAW tidak terpasang di PC pengembangan.
+Buat file ini di PC operator:
+
+1. Buka CorelDRAW (versi yang dipakai di AP 55).
+2. File > Import > 01-input/pdf-single-page.pdf. Taruh di halaman, ukuran jangan diubah.
+3. File > Save As > simpan sebagai 01-input/cdr-normal.cdr.
+
+Hasil benar untuk cdr-normal.cdr sama dengan pdf-single-page.pdf (lihat 02-expected/expected-results.md).

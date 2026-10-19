@@ -1,0 +1,5 @@
+halaman: 2 | OutputIntents: False
+hal 1: K=6, k=3, G=3, g=3, c=72, Do=3 | ColorSpace res: None
+  warna stroke unik: ['0 1 0 0', '1 0 0 0']
+hal 2: K=30, k=15, G=7, g=7, c=369, Do=15 | ColorSpace res: None
+  warna stroke unik: ['0 1 0 0', '1 0 0 0']
