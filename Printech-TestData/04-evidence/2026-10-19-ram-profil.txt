@@ -1,0 +1,11 @@
+PERF-01 / D4 profil RAM (2026-10-19, build Release, ram-profil.ps1; private working set = angka Task Manager)
+tanpa file                                       35 MB (8 s)    35 MB (20 s)
+4 desain kecil (single, ai, png, svg)            67 MB (8 s)    67 MB (20 s)
+jpg-large-24mp.jpg saja                         216 MB (8 s)   216 MB (20 s)
+pdf-large-a3.pdf + pdf-oversize.pdf             347 MB (8 s)   347 MB (20 s)
+semua kecuali 3 file besar (16 desain)           99 MB (8 s)    99 MB (20 s)
+semua file 01-input (19 desain)                 351 MB (8 s)   351 MB (20 s)
+
+Di dalam proses (pwsh + DLL Release): sebelum memuat 35 MB; setelah memuat jpg-large-24mp + pdf-large-a3 + pdf-oversize 381 MB (heap .NET 88 MB); setelah GC.Collect 301 MB (heap .NET 4 MB): memori tertahan di native, bukan sampah .NET.
+Muat ulang jpg-large-24mp 4 kali berturut-turut: 231, 232, 232, 233 MB: tidak bertambah per muat (bukan kebocoran per muat).
+Catatan: uji UI 2026-10-18 mengukur 118-170 MB untuk 19 desain setelah ada interaksi UI; tanpa interaksi (aplikasi diam) 346-351 MB.

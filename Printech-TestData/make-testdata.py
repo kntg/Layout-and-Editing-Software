@@ -148,4 +148,18 @@ save("svg-vector.svg", lambda p: p.write_text(
 # File rusak: teks biasa dengan ekstensi .cdr.
 save("invalid-file.cdr", lambda p: p.write_text("Ini bukan file CorelDRAW. Dipakai untuk menguji pesan error.\n", encoding="utf-8"))
 
+# Kasus khusus (01-input/khusus), diuji terpisah dari "semua file sekaligus":
+# - AI lama tanpa PDF-compatible (PostScript): tidak bisa dibaca, harus muncul pesan.
+# - PDF terenkripsi (hanya kata sandi pemilik): isi sama dengan pdf-single-page.pdf.
+# - PNG/JPG/SVG rusak (teks biasa): harus muncul pesan, file lain tetap masuk.
+(OUT / "khusus").mkdir(exist_ok=True)
+save("khusus/ai-postscript.ai", lambda p: p.write_text(
+    "%!PS-Adobe-3.0 EPSF-3.0\n%%Creator: Adobe Illustrator(R) 8.0\n%%BoundingBox: 0 0 170 85\n%%EndComments\n"
+    "1 0.4 0 0 setcmykcolor 0 0 170 85 rectfill\n%%EOF\n", encoding="utf-8"))
+enc = fitz.open()
+single(enc.new_page(width=120 * MM, height=80 * MM))
+save("khusus/pdf-encrypted.pdf", lambda p: enc.save(p, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw="pemilik", user_pw=""))
+for ext in ("png", "jpg", "svg"):
+    save(f"khusus/invalid-file.{ext}", lambda p: p.write_text(f"Ini bukan file {ext.upper()}. Dipakai untuk menguji pesan error.\n", encoding="utf-8"))
+
 print("selesai:", ", ".join(sorted(p.name for p in OUT.iterdir() if p.is_file())))

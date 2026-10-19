@@ -1,0 +1,3 @@
+EXP-08 Print Ticket panjang (2026-10-19, build Release): 22 desain dimuat, 21 terpasang, 13 lembar
+desain dimuat 22, desain terpasang 21, lembar 13, tidak muat 1
+halaman 1 | A4 210 x 297 | baris lainnya: ['… dan 3 lainnya', '… dan 1 lainnya'] | blok terbawah 270 mm

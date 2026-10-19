@@ -1,0 +1,3 @@
+IMP-17 PDF terenkripsi (khusus/pdf-encrypted.pdf), 2026-10-19, build Release
+Muat: vektor True; PdfAsImage False; artwork 60,00 x 30,00 mm (lewat Loader.LoadAll)
+Export.Pdf: exception "The archive entry was compressed using an unsupported compression method." -> seluruh export layout gagal (temuan D8)

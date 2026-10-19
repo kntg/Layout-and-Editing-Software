@@ -17,6 +17,16 @@ Validasi mesin garis potong dan nesting yang lebih teliti (jarak garis ke artwor
 | Vektor tetap vektor di export | `pdf-single-page.pdf`, `pdf-rotated.pdf` | Artwork yang seharusnya vektor tidak berubah menjadi gambar tanpa alasan | PDF biasa tetap vektor (warna CMYK sama). PDF dengan halaman /Rotate ditempel sebagai gambar RGB ±254 dpi (batasan di PRD), dan muncul peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)". | Peringatan, validasi X3 |
 | Artwork besar atau bentuk tidak beraturan | `pdf-large-a3.pdf`, `pdf-oversize.pdf`, `jpg-large-24mp.jpg`, `pdf-irregular-shapes.pdf`, `png-rough-edge.png` | Pemrosesan stabil; tidak memotong elemen secara keliru | Tiap file dimuat < 5 detik tanpa crash. `pdf-oversize.pdf` tidak dipasang dan masuk peringatan "1 lebih besar dari kertas". Cincin C: celah tertutup, lubang tidak dipotong. Garis tipis 0,2 mm tetap dikelilingi garis. Lingkaran bercelah 4 mm menyatu; bercelah 15 mm punya garis sendiri. | Panel Desain, validasi A/B |
 
+## Kasus khusus (`01-input/khusus/`)
+File di folder ini diuji terpisah. Jangan ikut ditambahkan dalam uji "semua file sekaligus".
+
+| File | Hasil benar |
+|---|---|
+| `ai-postscript.ai` (AI lama tanpa PDF-compatible) | Dialog "Gagal memuat" berisi nama file; aplikasi tidak crash |
+| `invalid-file.png`, `invalid-file.jpg`, `invalid-file.svg` (teks biasa) | Masing-masing memunculkan dialog "Gagal memuat"; aplikasi tidak crash |
+| `pdf-encrypted.pdf` (hanya kata sandi pemilik) | Dimuat, artwork 60,0 × 30,0 mm. Bila PDFsharp bisa membacanya, desain tetap vektor. Bila tidak, desain ditempel sebagai gambar dan muncul peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" (PRD §8). Export PDF tetap jadi, tanpa error. |
+| Kelima file ditambahkan sekaligus | 4 dialog, ditutup satu per satu; 1 desain masuk; status "1 stiker di 1 lembar."; aplikasi tetap responsif |
+
 ## Pengaturan saat menguji
 Pakai nilai bawaan aplikasi:
 - kertas A3+ (320 × 480 mm), margin 10 mm, jarak antar stiker 2 mm, bleed 0;
@@ -102,4 +112,5 @@ Toleransi:
 | Ukuran tiap file lewat Loader Printech | 19/19 desain benar. Bukti: [verifikasi-loader](../04-evidence/2026-10-18-verifikasi-loader.txt) |
 | UI, semua file sekaligus | Dialog CDR muncul setelah 1,2 detik. Semua file selesai dimuat dan disusun 3,0 detik setelah start (2,5–4,0 detik pada 3 kali jalan). Status, peringatan, pemakaian bahan, dan judul lembar sama dengan harapan di atas. Aplikasi tetap responsif. RAM (private working set) 136–170 MB. Bukti: [ui-semua-input](../04-evidence/2026-10-18-ui-semua-input.txt), [tangkapan layar](../04-evidence/2026-10-18-semua-input-printech.png) |
 | File original | 15/15 `sama` setelah semua uji. Tujuh file lama juga sama dengan hash sebelum file baru dibuat. |
+| Kasus khusus (2026-10-19) | `ui-file-khusus.ps1`: 4 dialog "Gagal memuat", 1 desain masuk, status "1 stiker di 1 lembar.", aplikasi responsif. Pesan error masih teknis (temuan D9). **`pdf-encrypted.pdf` GAGAL:** dimuat sebagai vektor, tetapi export PDF melempar error dan seluruh export layout gagal (temuan D8). Bukti: [ui-file-khusus](../04-evidence/2026-10-19-ui-file-khusus.txt), [pdf-terenkripsi](../04-evidence/2026-10-19-pdf-terenkripsi.txt) |
 | Validasi garis potong, nesting, dan export | Lihat [validasi-garis-potong-nesting.md](validasi-garis-potong-nesting.md) |

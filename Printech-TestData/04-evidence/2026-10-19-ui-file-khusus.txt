@@ -1,0 +1,10 @@
+file: ai-postscript.ai, invalid-file.jpg, invalid-file.png, invalid-file.svg, pdf-encrypted.pdf
+dialog 1 'Gagal memuat' (1.5 s): ai-postscript.ai: PDF tidak bisa dibuka (PDFium error 3).
+dialog 2 'Gagal memuat' (2.2 s): invalid-file.jpg: No imaging component suitable to complete this operation was found.
+dialog 3 'Gagal memuat' (2.8 s): invalid-file.png: No imaging component suitable to complete this operation was found.
+dialog 4 'Gagal memuat' (3.5 s): invalid-file.svg: Data at the root level is invalid. Line 1, position 1.
+dialog ditutup: 4
+status: 1 stiker di 1 lembar.
+peringatan: 
+daftar desain: pdf-encrypted.pdf | × 30 mm | pcs |  | 
+responding: True

@@ -1,11 +1,11 @@
 param([switch]$Catat)
-# Cek bahwa file original di 01-input dan 01-input/customer tidak berubah. SHA-256 tiap file dibandingkan dengan
+# Cek bahwa file original di 01-input, 01-input/khusus, dan 01-input/customer tidak berubah. SHA-256 tiap file dibandingkan dengan
 # CHECKSUMS.sha256 di folder yang sama.
 # Exit code 0 = semua sama dan tercatat; 1 = ada file yang berubah, hilang, atau belum tercatat.
 # -Catat: tambahkan hash file yang belum tercatat (misalnya file customer baru). Hash yang sudah ada tidak pernah ditimpa.
 # Jalankan: powershell -ExecutionPolicy Bypass -File cek-original.ps1 [-Catat]
 $bad = 0
-foreach ($dir in "$PSScriptRoot\01-input", "$PSScriptRoot\01-input\customer") {
+foreach ($dir in "$PSScriptRoot\01-input", "$PSScriptRoot\01-input\khusus", "$PSScriptRoot\01-input\customer") {
   if (-not (Test-Path $dir)) { continue }
   $list = Join-Path $dir 'CHECKSUMS.sha256'
   $known = @{}
