@@ -235,7 +235,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | HW-09 | Operator/hardware | CDR asli | UJI-STABILITAS P7 | Desain masuk; waktu dicatat untuk kalibrasi batas 30 detik | Catatan waktu | Dok: UJI-STABILITAS P7 | BLOCKED |
 | HW-10 | Operator/hardware | CDR | UJI-STABILITAS P8 | Dokumen operator utuh; CorelDRAW tidak tertutup | Tangkapan layar | Dok: UJI-STABILITAS P8 | BLOCKED |
 | HW-11 | Operator/hardware | 3 file CDR | UJI-STABILITAS P10 | Ketiganya masuk berurutan; UI responsif; Susun tidak membuka CorelDRAW lagi | Video atau catatan | Dok: UJI-STABILITAS P10 | BLOCKED |
-| HW-12 | Operator/hardware | Zip operator | Unblock zip, jalankan, lalu --selfcheck | Aplikasi terbuka; selfcheck exit 0 di PC operator | Output selfcheck | Dok: PRD §11 | BLOCKED — Zip di publish/ dibuat sebelum perubahan 2026-10-18 malam |
+| HW-12 | Operator/hardware | Zip operator | Unblock zip, jalankan, lalu --selfcheck | Aplikasi terbuka; selfcheck exit 0 di PC operator | Output selfcheck | Dok: PRD §11 | BLOCKED — Zip dibangun ulang dari commit 0cc6446 (2026-10-19); selfcheck exe paket di PC pengembang: exit 0, 15/15 |
 | HW-13 | Operator/hardware | Preview JPG | Kirim ke customer | Cukup jelas untuk konfirmasi | Tangkapan layar WhatsApp | Dok: PRD §10 butir 3 | BLOCKED |
 | HW-14 | Operator/hardware | Print Ticket | Lampirkan ke SPK | Isinya cukup untuk kasir | Catatan operator | Dok: PRD §10 butir 11 | BLOCKED |
 
