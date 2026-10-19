@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulasi Produksi Printech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  /* Layout: panggung 3D penuh layar. Slug produksi kiri atas, tiket lembar kanan atas, keterangan tahap dan rel kontrol di bawah. */
+  --ink: #101318;
+  --panel: rgba(21, 26, 33, .88);
+  --edge: rgba(226, 233, 243, .14);
+  --fg: #e8ecf2;
+  --muted: #9ba5b3;
+  --paper: #f5f4ef;
+  --kiss: #ec008c;
+  --die: #00aeef;
+  --note: #f0b44c;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--ink); color: var(--fg); font: 400 15px/1.45 var(--display); }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+#tags { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.tag { position: absolute; left: 0; top: 0; white-space: nowrap; padding: 4px 8px; font: 500 11px/1.3 var(--mono); color: var(--fg); background: rgba(16, 19, 24, .84); border: 1px solid var(--edge); border-radius: 6px; }
+.tag .il { color: var(--note); }
+.hud { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 12px; pointer-events: none;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px)); padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.hud > * { min-width: 0; }
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.brand { min-width: 0; text-shadow: 0 1px 14px rgba(0, 0, 0, .7); }
+.brand h1 { margin: 0; font-size: clamp(22px, 2.6vw, 34px); font-weight: 800; font-stretch: 125%; letter-spacing: .06em; line-height: 1; }
+.brand .sub { margin: 6px 0 0; font-weight: 500; }
+.slug { margin: 2px 0 0; font: 12px/1.5 var(--mono); color: var(--muted); }
+.chip { display: inline-block; margin: 8px 0 0; padding: 3px 9px; font: 500 11px/1.4 var(--mono); color: var(--note); background: rgba(16, 19, 24, .6); border: 1px solid rgba(240, 180, 76, .45); border-radius: 999px; text-shadow: none; }
+.panel { pointer-events: auto; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.ticket { width: 340px; max-width: 100%; font-size: 13px; }
+.ticket summary { display: flex; gap: 12px; padding: 10px 14px; cursor: pointer; list-style: none; font: 600 11px/1.3 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ticket summary::-webkit-details-marker { display: none; }
+.ticket summary .no { margin-left: auto; font-family: var(--mono); letter-spacing: 0; }
+.ticket summary::after { content: "+"; font-family: var(--mono); }
+.ticket[open] summary::after { content: "\2013"; }
+.ticket dl { margin: 0; padding: 0 14px; }
+.ticket dl > div { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid var(--edge); }
+.ticket dt { color: var(--muted); }
+.ticket dd { margin: 0; font: 12px/1.45 var(--mono); font-variant-numeric: tabular-nums; }
+.ticket dd b { font-weight: 600; color: var(--paper); }
+.ticket dd small { display: block; font-size: 11px; color: var(--muted); }
+.sw { display: inline-block; width: 12px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+.sw.kiss { background: var(--kiss); }
+.sw.die { background: var(--die); }
+.bar { display: block; height: 4px; margin-top: 6px; overflow: hidden; border-radius: 2px; background: rgba(255, 255, 255, .1); }
+.bar > i, .rail .f > i { display: block; height: 100%; background: var(--paper); transform: scaleX(0); transform-origin: left; }
+.status { margin: 0; padding: 9px 14px; border-top: 1px solid var(--edge); font: 500 12px/1.4 var(--mono); color: var(--paper); }
+.fine { margin: 0; padding: 0 14px 12px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+.bottom { display: grid; gap: 10px; justify-items: start; }
+.caption { max-width: 560px; padding: 14px 16px; }
+.eyebrow { margin: 0 0 4px; font: 600 11px/1.3 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.caption h2 { margin: 0 0 6px; font-size: clamp(19px, 2vw, 24px); font-weight: 700; font-stretch: 112%; line-height: 1.15; text-wrap: balance; }
+.caption .text { margin: 0; max-width: 62ch; }
+.caption .note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+button { font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+button:hover { background: rgba(255, 255, 255, .07); }
+:focus-visible { outline: 2px solid var(--die); outline-offset: 2px; }
+.next { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 14px; font-weight: 600; color: var(--ink); background: var(--paper); }
+.next:hover, .play:hover { background: #fff; }
+.controls { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px; border-radius: 12px; }
+.icon { width: 40px; height: 40px; display: grid; place-items: center; flex: none; }
+.play { color: var(--ink); background: var(--paper); }
+.play .i-play, .play.paused .i-pause { display: none; }
+.play.paused .i-play { display: block; }
+.rail { flex: 1 1 380px; min-width: 0; display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.rail li { flex: 1 1 0; min-width: 64px; }
+.rail button { width: 100%; display: grid; gap: 6px; padding: 6px 8px 8px; text-align: left; font-size: 13px; }
+.rail .n { margin-right: 6px; font: 500 11px var(--mono); color: var(--muted); }
+.rail button[aria-current="step"] { background: rgba(255, 255, 255, .08); border-color: var(--edge); }
+.rail .f { display: block; height: 3px; overflow: hidden; border-radius: 2px; background: rgba(255, 255, 255, .12); }
+.opt { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; font-size: 13px; color: var(--muted); cursor: pointer; }
+select { padding: 5px 6px; font: 500 13px var(--mono); color: var(--fg); background: rgba(255, 255, 255, .06); border: 1px solid var(--edge); border-radius: 6px; }
+input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--die); }
+#fail { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(480px, calc(100% - 32px)); margin: 0; padding: 16px 18px; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; }
+@media (max-width: 720px) {
+  .ticket { width: auto; max-width: 58vw; }
+  .ticket dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .brand .sub { font-size: 13px; }
+  .caption { max-width: none; padding: 12px 14px; }
+  .caption .text { font-size: 14px; }
+  .opt .lbl { display: none; }
+  .rail { order: 5; flex-basis: 100%; }
+}
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Simulasi 3D: stiker disusun Printech di lembar A3+, dicetak, lalu dipotong kiss-cut dan die-cut."></canvas>
+<div id="tags" aria-hidden="true">
+  <span class="tag" id="tagCanvas" hidden>Kanvas layout Printech</span>
+  <span class="tag" id="tagPrinter" hidden>Printer Develop · <span class="il">ilustrasi</span></span>
+  <span class="tag" id="tagReg" hidden>Reg mark · dari Cutting Master 5</span>
+  <span class="tag" id="tagCutter" hidden>Pemotong Graphtec · <span class="il">ilustrasi</span></span>
+</div>
+<div class="hud">
+  <header class="top">
+    <div class="brand">
+      <h1>PRINTECH</h1>
+      <p class="sub">Simulasi produksi stiker</p>
+      <p class="slug" id="slug"></p>
+      <p class="chip">Mesin: ilustrasi · uji fisik belum dijalankan</p>
+    </div>
+    <details class="ticket panel" id="ticket" open>
+      <summary><span>Tiket lembar</span><span class="no" id="sheetNo"></span></summary>
+      <dl>
+        <div><dt>Kertas</dt><dd id="rPaper"></dd></div>
+        <div><dt>Area cetak</dt><dd id="rArea"></dd></div>
+        <div><dt>Stiker</dt><dd><b id="vCount">0</b> dari <span id="rN"></span><small id="rAll"></small></dd></div>
+        <div><dt>Pemakaian bahan</dt><dd><b id="vUse">0,0 %</b><span class="bar"><i id="barUse"></i></span></dd></div>
+        <div><dt>Desain</dt><dd id="rDesign"></dd></div>
+        <div><dt><i class="sw kiss"></i>Kiss-cut</dt><dd id="rKiss"></dd></div>
+        <div><dt><i class="sw die"></i>Die-cut</dt><dd id="rDie"></dd></div>
+        <div><dt>Jarak</dt><dd id="rGap"></dd></div>
+        <div><dt>Rotasi</dt><dd id="rRot"></dd></div>
+      </dl>
+      <p class="status" id="status"></p>
+      <p class="fine">Posisi stiker, garis potong, dan angka di sini berasal dari hasil Printech (skenario uji <span id="rScen"></span>, 19 Okt 2026). Printer, pemotong, urutan, dan kecepatan potong hanya ilustrasi. Uji cetak dan potong fisik di Develop dan Graphtec belum dijalankan.</p>
+    </details>
+  </header>
+  <div></div>
+  <footer class="bottom">
+    <section class="caption panel" aria-live="polite">
+      <p class="eyebrow" id="capStep"></p>
+      <h2 id="capTitle"></h2>
+      <p class="text" id="capText"></p>
+      <p class="note" id="capNote"></p>
+      <button type="button" class="next" id="next" hidden><span id="nextLabel"></span><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </section>
+    <nav class="controls panel" aria-label="Kontrol simulasi">
+      <button type="button" class="icon" id="restart" aria-label="Ulang dari awal" title="Ulang dari awal (R)"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 4.5V9h4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="icon play" id="play" aria-label="Jeda" title="Putar atau jeda (Spasi)"><svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg><svg class="i-play" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button>
+      <ol class="rail" id="rail">
+        <li><button type="button"><span><span class="n">1</span>Susun</span><span class="f"><i></i></span></button></li>
+        <li><button type="button"><span><span class="n">2</span>Cetak</span><span class="f"><i></i></span></button></li>
+        <li><button type="button"><span><span class="n">3</span>Potong</span><span class="f"><i></i></span></button></li>
+        <li><button type="button"><span><span class="n">4</span>Hasil</span><span class="f"><i></i></span></button></li>
+      </ol>
+      <label class="opt"><span class="lbl">Kecepatan</span><select id="speed" aria-label="Kecepatan simulasi"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+      <label class="opt"><input type="checkbox" id="pauseEach" checked> Jeda per tahap</label>
+      <label class="opt"><input type="checkbox" id="autoCam" checked> Kamera otomatis</label>
+      <button type="button" class="icon" id="full" aria-label="Layar penuh" title="Layar penuh (F)"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </nav>
+  </footer>
+</div>
+<p id="fail" role="alert" hidden></p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>
+<script src="sim-data.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fail = msg => { $('fail').textContent = msg; $('fail').hidden = false; };
+  const S = window.SIM;
+  if (!window.THREE || !THREE.OrbitControls || !S) return fail('Pustaka 3D atau data simulasi gagal dimuat. Periksa koneksi internet, lalu muat ulang halaman.');
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({canvas: $('stage'), antialias: true}); }
+  catch (e) { return fail('Browser ini tidak bisa menjalankan WebGL. Buka halaman ini di Chrome atau Edge versi terbaru.'); }
+
+  // ---------- konstanta (mm, detik) ----------
+  const W = S.W, H = S.H, M = S.margin, N = S.placements.length;
+  const LINER = .45, FACE = .35, TH = LINER + FACE; // tebal lembar dibesarkan supaya terlihat
+  const DIG_Z = 70, UP = 5, KISS = 0xec008c, DIE = 0x00aeef;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+  const easeOut = t => 1 - (1 - t) ** 3;
+  const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const fmt = (v, d = 1) => v.toLocaleString('id-ID', {minimumFractionDigits: d, maximumFractionDigits: d});
+  const fmtM = mm => fmt(mm / 1000, 2) + ' m';
+
+  // ---------- renderer, kamera, cahaya ----------
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.localClippingEnabled = true;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x101318);
+  scene.fog = new THREE.Fog(0x101318, 1600, 3600);
+  const camera = new THREE.PerspectiveCamera(36, 1, 5, 9000);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  Object.assign(controls, {enableDamping: true, dampingFactor: .08, minDistance: 90, maxDistance: 2600, maxPolarAngle: Math.PI * .47});
+  scene.add(new THREE.HemisphereLight(0xe9eef6, 0x1b1e24, .5));
+  const sun = new THREE.DirectionalLight(0xffffff, .62);
+  sun.position.set(-260, 720, 380);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, {left: -430, right: 430, top: 430, bottom: -430, near: 100, far: 1900});
+  sun.shadow.bias = -.0004;
+  scene.add(sun);
+
+  // Ruang lembar: x ke kanan, y = -(y lembar), z ke atas. Titik (0, 0) = pojok kiri atas lembar.
+  const space = new THREE.Group();
+  space.rotation.x = -Math.PI / 2;
+  space.position.set(-W / 2, 0, -H / 2);
+  scene.add(space);
+
+  // ---------- material ----------
+  const tex = new THREE.TextureLoader().load(S.tex); // artwork hasil export Printech tanpa garis potong; data URI supaya jalan juga dari file://
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const printPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), -H / 2 - 40); // bagian lembar yang sudah tercetak
+  const mat = {
+    tile: new THREE.MeshBasicMaterial({map: tex}),
+    print: new THREE.MeshStandardMaterial({map: tex, roughness: .45, clippingPlanes: [printPlane], polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1}),
+    vinyl: new THREE.MeshStandardMaterial({map: tex, roughness: .45}),
+    paper: new THREE.MeshStandardMaterial({color: 0xf5f4ef, roughness: .5}),
+    liner: new THREE.MeshStandardMaterial({color: 0xe2d5b8, roughness: .78}),
+    reg: new THREE.MeshBasicMaterial({color: 0x15171a, clippingPlanes: [printPlane], polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}),
+    body: new THREE.MeshStandardMaterial({color: 0x2b313a, roughness: .55, metalness: .25}),
+    shell: new THREE.MeshStandardMaterial({color: 0xe6e8eb, roughness: .45}),
+    steel: new THREE.MeshStandardMaterial({color: 0xaab2bd, roughness: .3, metalness: .75}),
+  };
+  const lineMat = (color, extra) => new THREE.MeshBasicMaterial(Object.assign({color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4}, extra));
+
+  // ---------- geometri ----------
+  const V2 = ([x, y]) => new THREE.Vector2(x, -y);
+  const shape = (c, holes = []) => { const s = new THREE.Shape(c.map(V2)); holes.forEach(h => s.holes.push(new THREE.Path(h.map(V2)))); return s; };
+  const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const extrude = (shapes, depth) => new THREE.ExtrudeGeometry(shapes, {depth, bevelEnabled: false});
+  const buffer = arr => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); return g; };
+  const lines = (arr, color, opacity) => new THREE.LineSegments(buffer(arr), new THREE.LineBasicMaterial({color, transparent: true, opacity, depthWrite: false}));
+  const box = (w, d, h, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, d, h), m); o.castShadow = o.receiveShadow = true; return o; };
+  // UV dari posisi absolut di lembar, supaya setiap potongan membawa bagian artwork-nya sendiri.
+  const bakeUV = g => {
+    const p = g.attributes.position, uv = new Float32Array(p.count * 2);
+    for (let i = 0; i < p.count; i++) { uv[2 * i] = p.getX(i) / W; uv[2 * i + 1] = 1 + p.getY(i) / H; }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    return g;
+  };
+  // Pita garis a-b selebar w (mm), 6 verteks per segmen.
+  function quad(out, a, b, w) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+    const ux = dx / L * w / 2, uy = dy / L * w / 2;
+    const ax = a[0] - ux, ay = a[1] - uy, bx = b[0] + ux, by = b[1] + uy;
+    out.push(ax - uy, -(ay + ux), 0, ax + uy, -(ay - ux), 0, bx - uy, -(by + ux), 0,
+             bx - uy, -(by + ux), 0, ax + uy, -(ay - ux), 0, bx + uy, -(by - ux), 0);
+  }
+  const bbox = cs => {
+    const b = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const c of cs) for (const [x, y] of c) { b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }
+    return b;
+  };
+  const inside = ([px, py], poly) => {
+    let r = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) r = !r;
+    }
+    return r;
+  };
+  // Sama dengan Nest.Xf / Export.Place di Printech dan place() di validasi.py: putar searah jarum jam, lalu geser.
+  function place(flat, p) {
+    const d = S.designs[p[0]], rot = p[3];
+    const c = Math.round(Math.cos(rot * Math.PI / 180)), s = Math.round(Math.sin(rot * Math.PI / 180));
+    const [tx, ty] = {0: [0, 0], 90: [d.H, 0], 180: [d.W, d.H], 270: [0, d.W]}[rot];
+    const out = [];
+    for (let i = 0; i < flat.length; i += 2) out.push([flat[i] * c - flat[i + 1] * s + p[1] + tx, flat[i] * s + flat[i + 1] * c + p[2] + ty]);
+    return out;
+  }
+  const items = S.placements.map((p, i) => {
+    const d = S.designs[p[0]], die = d.die.map(f => place(f, p)), kiss = d.kiss.map(f => place(f, p));
+    const outer = die.length ? die : kiss, bb = bbox(outer);
+    return {i, p, area: d.area, die, kiss, outer, bb, cx: (bb[0] + bb[2]) / 2, cy: (bb[1] + bb[3]) / 2};
+  });
+  const totalArea = items.reduce((a, it) => a + it.area, 0), usable = (W - 2 * M) * (H - 2 * M);
+
+  // ---------- meja, alas potong dengan penggaris mm ----------
+  const bedCv = document.createElement('canvas');
+  bedCv.width = (W + 80) * 3; bedCv.height = (H + 80) * 3;
+  const bedTex = new THREE.CanvasTexture(bedCv);
+  bedTex.anisotropy = tex.anisotropy;
+  function drawBed() {
+    const g = bedCv.getContext('2d'), P = 3, O = 40 * P;
+    g.fillStyle = '#262b33'; g.fillRect(0, 0, bedCv.width, bedCv.height);
+    for (let mm = -40; mm <= W + 40; mm += 10) { g.fillStyle = mm % 50 ? 'rgba(255,255,255,.045)' : 'rgba(255,255,255,.1)'; g.fillRect(O + mm * P - 1, 0, 2, bedCv.height); }
+    for (let mm = -40; mm <= H + 40; mm += 10) { g.fillStyle = mm % 50 ? 'rgba(255,255,255,.045)' : 'rgba(255,255,255,.1)'; g.fillRect(0, O + mm * P - 1, bedCv.width, 2); }
+    g.fillStyle = 'rgba(232,236,242,.78)';
+    g.font = '500 24px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+    for (let mm = 0; mm <= W; mm += 5) {
+      const L = mm % 50 ? (mm % 10 ? 10 : 20) : 34;
+      g.fillRect(O + mm * P - 1, O - 6 - L, 2, L);
+      if (mm % 50 === 0) g.fillText(String(mm), O + mm * P + 5, O - 26);
+    }
+    for (let mm = 0; mm <= H; mm += 5) {
+      const L = mm % 50 ? (mm % 10 ? 10 : 20) : 34;
+      g.fillRect(O - 6 - L, O + mm * P - 1, L, 2);
+      if (mm % 50 === 0 && mm) { g.save(); g.translate(O - 26, O + mm * P - 5); g.rotate(-Math.PI / 2); g.fillText(String(mm), 0, 0); g.restore(); }
+    }
+    g.font = '600 26px "Archivo", Arial, sans-serif';
+    g.fillText(`A3+ · ${W} × ${H} mm`, O, O + H * P + 64);
+  }
+  drawBed();
+  if (document.fonts) document.fonts.ready.then(() => document.fonts.load('500 24px "IBM Plex Mono"')).then(() => { drawBed(); bedTex.needsUpdate = true; }).catch(() => {});
+  const bed = new THREE.Mesh(new THREE.PlaneGeometry(W + 80, H + 80), new THREE.MeshStandardMaterial({map: bedTex, roughness: .92}));
+  bed.position.set(W / 2, -H / 2, -.25); bed.receiveShadow = true; space.add(bed);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({color: 0x161a20, roughness: 1}));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -.8; ground.receiveShadow = true; scene.add(ground);
+
+  // ---------- lembar fisik dan reg mark ----------
+  const sheetBlank = new THREE.Mesh(extrude(shape(rect(0, 0, W, H)), TH), mat.paper);
+  sheetBlank.receiveShadow = true; space.add(sheetBlank);
+  const sheetPrint = new THREE.Mesh(bakeUV(new THREE.ShapeGeometry(shape(rect(0, 0, W, H)))), mat.print);
+  sheetPrint.position.z = TH + .01; sheetPrint.receiveShadow = true; space.add(sheetPrint);
+  // Reg mark dibuat Cutting Master 5, bukan Printech. Posisinya di sini ilustrasi.
+  const MARKS = [[4, 4, 1, 1], [W - 4, 4, -1, 1], [W - 4, H - 4, -1, -1], [4, H - 4, 1, -1]];
+  for (const [x, y, sx, sy] of MARKS) {
+    const L = [[0, 0], [8, 0], [8, 1.2], [1.2, 1.2], [1.2, 8], [0, 8]].map(([a, b]) => [x + a * sx, y + b * sy]);
+    const m = new THREE.Mesh(new THREE.ShapeGeometry(shape(L)), mat.reg);
+    m.position.z = TH + .03; space.add(m);
+  }
+
+  // ---------- kanvas layout digital (tahap 1-2) ----------
+  const digital = new THREE.Group(); digital.position.z = DIG_Z - .3; space.add(digital);
+  const digMat = new THREE.MeshBasicMaterial({color: 0x15354f, transparent: true, opacity: .34, depthWrite: false, side: THREE.DoubleSide});
+  digital.add(new THREE.Mesh(new THREE.ShapeGeometry(shape(rect(0, 0, W, H))), digMat));
+  const gridArr = [];
+  for (let x = 0; x <= W; x += 20) gridArr.push(x, 0, 0, x, -H, 0);
+  for (let y = 0; y <= H; y += 20) gridArr.push(0, -y, 0, W, -y, 0);
+  const loop = c => c.flatMap((q, k) => { const r = c[(k + 1) % c.length]; return [q[0], -q[1], 0, r[0], -r[1], 0]; });
+  const digLines = [lines(gridArr, 0x8fd8ff, .1), lines(loop(rect(0, 0, W, H)), 0x8fd8ff, .7), lines(loop(rect(M, M, W - M, H - M)), 0x8fd8ff, .35)];
+  digLines.forEach(l => { l.userData.o = l.material.opacity; digital.add(l); });
+
+  const tileKiss = lineMat(KISS), tileDie = lineMat(DIE);
+  for (const it of items) {
+    const g = new THREE.Group();
+    const geo = bakeUV(new THREE.ShapeGeometry(it.outer.map(c => shape(c))));
+    geo.translate(-it.cx, it.cy, 0);
+    g.add(new THREE.Mesh(geo, mat.tile));
+    for (const [cs, m] of [[it.kiss, tileKiss], [it.die, tileDie]]) {
+      if (!cs.length) continue;
+      const arr = [];
+      for (const c of cs) for (let k = 0; k < c.length; k++) quad(arr, c[k], c[(k + 1) % c.length], 1);
+      const r = new THREE.Mesh(buffer(arr), m);
+      r.geometry.translate(-it.cx, it.cy, .08);
+      g.add(r);
+    }
+    it.r0 = ((it.p[3] + 180) % 360 - 180) * Math.PI / 180; // mulai dari arah desain asli, berputar ke arah hasil susun
+    it.sx = -150 - rnd(it.i) * 50; it.sy = H * (.1 + .8 * rnd(it.i + 17));
+    g.visible = false;
+    it.tile = g; space.add(g);
+  }
+
+  // ---------- printer (tahap 2, ilustrasi) ----------
+  const printer = new THREE.Group(); space.add(printer);
+  const pb = box(W + 90, 46, 34, mat.body); pb.position.set(W / 2, 0, TH + 26); printer.add(pb);
+  const lip = box(W + 90, 3, 5, mat.shell); lip.position.set(W / 2, -23.5, TH + 36); printer.add(lip);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(W + 6, 5), new THREE.MeshBasicMaterial({color: 0xfff0c8, transparent: true, opacity: .9, depthWrite: false}));
+  glow.position.set(W / 2, 0, TH + .15); printer.add(glow);
+
+  // ---------- pemotong (tahap 3, ilustrasi) ----------
+  const cutter = new THREE.Group(); space.add(cutter);
+  for (const x of [-46, W + 46]) { const r = box(16, H + 170, 10, mat.body); r.position.set(x, -H / 2, 5); cutter.add(r); }
+  const beam = new THREE.Group(); cutter.add(beam);
+  const BZ = 46;
+  const bm = box(W + 120, 24, 20, mat.body); bm.position.set(W / 2, 22, BZ); beam.add(bm);
+  for (const x of [-46, W + 46]) { const t = box(26, 34, BZ + 10, mat.body); t.position.set(x, 22, (BZ + 10) / 2 + 2); beam.add(t); }
+  const carriage = new THREE.Group(); beam.add(carriage);
+  const cb = box(42, 34, 40, mat.shell); cb.position.set(0, 4, BZ + 2); carriage.add(cb);
+  const led = new THREE.Mesh(new THREE.BoxGeometry(16, 1, 4), new THREE.MeshBasicMaterial({color: 0x4a525e}));
+  led.position.set(0, -13.6, BZ + 12); carriage.add(led);
+  const blade = new THREE.Group(); carriage.add(blade);
+  const holder = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 26, 20).rotateX(Math.PI / 2), mat.steel);
+  holder.position.z = TH + 17; holder.castShadow = true; blade.add(holder);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(2.4, 4, 20).rotateX(-Math.PI / 2), mat.steel);
+  tip.position.z = TH + 2; blade.add(tip);
+  const spot = new THREE.Mesh(new THREE.CircleGeometry(4.5, 32), new THREE.MeshBasicMaterial({color: 0xff3b30, transparent: true, opacity: .85, depthWrite: false}));
+  spot.position.z = TH + .1; carriage.add(spot);
+
+  // ---------- potongan die-cut dan sisa lembar (tahap 4) ----------
+  const wasteShape = shape(rect(0, 0, W, H)), pieces = [];
+  for (const it of items) for (const c of it.die) {
+    wasteShape.holes.push(new THREE.Path(c.map(V2)));
+    const ks = it.kiss.filter(k => inside(k[0], c)), bb = bbox([c]);
+    const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, j = pieces.length;
+    const g = new THREE.Group(); g.visible = false; space.add(g);
+    const part = (geo, m, z) => { const o = new THREE.Mesh(bakeUV(geo).translate(-cx, cy, z), m); o.castShadow = o.receiveShadow = true; return o; };
+    g.add(part(extrude(shape(c), LINER), mat.liner, 0), part(extrude(shape(c, ks), FACE), mat.vinyl, LINER));
+    const pivots = ks.map(k => { // stiker kiss-cut terkelupas dari liner, berengsel di sisi kirinya
+      const hx = Math.min(...k.map(q => q[0])) - cx, pv = new THREE.Group(), s = part(extrude(shape(k), FACE), mat.vinyl, 0);
+      s.geometry.translate(-hx, 0, 0); pv.add(s); pv.position.set(hx, 0, LINER); g.add(pv);
+      return pv;
+    });
+    pieces.push({g, cx, cy, pivots, delay: 1.1 * (.35 * cx / W + .65 * cy / H), lift: 20 + 18 * rnd(j + 3), tx: (rnd(j + 9) - .5) * .14, ty: (rnd(j + 21) - .5) * .14});
+  }
+  const waste = new THREE.Mesh(bakeUV(extrude(wasteShape, TH)), mat.vinyl);
+  waste.receiveShadow = true; waste.visible = false; space.add(waste);
+
+  // ---------- jalur pisau ----------
+  // Urutan ilustrasi: baca 4 reg mark, semua kiss-cut, lalu semua die-cut; tiap kali ke garis terdekat.
+  function nearest(list, from) {
+    const left = list.slice(), out = [];
+    let cur = from;
+    while (left.length) {
+      let bi = 0, bq = 0, bd = Infinity;
+      left.forEach((c, i) => c.forEach((q, k) => { const d = (q[0] - cur[0]) ** 2 + (q[1] - cur[1]) ** 2; if (d < bd) { bd = d; bi = i; bq = k; } }));
+      const c = left.splice(bi, 1)[0];
+      out.push({c: c.slice(bq).concat(c.slice(0, bq))});
+      cur = out[out.length - 1].c[0];
+    }
+    return out;
+  }
+  const ord = {kiss: nearest(items.flatMap(it => it.kiss), [0, 0])};
+  ord.die = nearest(items.flatMap(it => it.die), ord.kiss.length ? ord.kiss[ord.kiss.length - 1].c[0] : [0, 0]);
+  const trail = {}, plan = {}, LEN = {kiss: 0, die: 0};
+  for (const [kind, color] of [['kiss', KISS], ['die', DIE]]) {
+    const arr = [], seg = [];
+    for (const p of ord[kind]) {
+      p.kind = kind;
+      p.pts = [p.c[0]];
+      for (let k = 1; k <= p.c.length; k++) {
+        const a = p.c[k - 1], b = p.c[k % p.c.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1])));
+        for (let j = 1; j <= n; j++) p.pts.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]);
+      }
+      p.cum = [0];
+      for (let k = 1; k < p.pts.length; k++) p.cum.push(p.cum[k - 1] + Math.hypot(p.pts[k][0] - p.pts[k - 1][0], p.pts[k][1] - p.pts[k - 1][1]));
+      p.len = p.cum[p.cum.length - 1]; LEN[kind] += p.len;
+      p.v0 = arr.length / 3;
+      for (let k = 1; k < p.pts.length; k++) {
+        quad(arr, p.pts[k - 1], p.pts[k], 1);
+        seg.push(p.pts[k - 1][0], -p.pts[k - 1][1], 0, p.pts[k][0], -p.pts[k][1], 0);
+      }
+    }
+    trail[kind] = new THREE.Mesh(buffer(arr), lineMat(color, {transparent: true}));
+    trail[kind].position.z = TH + .05; space.add(trail[kind]);
+    plan[kind] = lines(seg, color, .5); plan[kind].position.z = TH + .06; space.add(plan[kind]);
+  }
+  // Waktu simulasi dipercepat; tidak mewakili kecepatan mesin.
+  const V_CUT = (LEN.kiss + LEN.die) / 14, V_MOVE = V_CUT * 2.4, PARK = [W / 2, -70];
+  const segs = [];
+  let tt = 0, pos = PARK, wasCut = false;
+  const move = (to, down) => {
+    const dur = .05 + Math.hypot(to[0] - pos[0], to[1] - pos[1]) / V_MOVE;
+    segs.push({type: 'move', t0: tt, t1: tt += dur, a: pos, b: to, up0: !wasCut, down});
+    pos = to; wasCut = false;
+  };
+  MARKS.forEach(([x, y]) => { move([x, y], false); segs.push({type: 'read', t0: tt, t1: tt += .5, a: pos}); });
+  const READ_END = tt;
+  for (const p of [...ord.kiss, ...ord.die]) { move(p.pts[0], true); p.t0 = tt; segs.push({type: 'cut', t0: tt, t1: tt += p.len / V_CUT, p}); p.t1 = tt; wasCut = true; }
+  const CUT_END = tt;
+  move(PARK, false);
+  const SEG_END = tt;
+
+  function knifeAt(u) {
+    let lo = 0, hi = segs.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (segs[m].t1 < u) lo = m + 1; else hi = m; }
+    const s = segs[lo], f = clamp((u - s.t0) / (s.t1 - s.t0));
+    if (s.type === 'read') return {x: s.a[0], y: s.a[1], z: UP, mode: 'read'};
+    if (s.type === 'move') {
+      const e = ease(f), z = Math.min(s.up0 ? 1 : f / .25, s.down ? (1 - f) / .25 : 1);
+      return {x: lerp(s.a[0], s.b[0], e), y: lerp(s.a[1], s.b[1], e), z: UP * clamp(z), mode: 'move'};
+    }
+    const p = s.p, dist = f * p.len;
+    let a = 1, b = p.cum.length - 1;
+    while (a < b) { const m = (a + b) >> 1; if (p.cum[m] < dist) a = m + 1; else b = m; }
+    const q = (dist - p.cum[a - 1]) / ((p.cum[a] - p.cum[a - 1]) || 1);
+    return {x: lerp(p.pts[a - 1][0], p.pts[a][0], q), y: lerp(p.pts[a - 1][1], p.pts[a][1], q), z: 0, mode: p.kind};
+  }
+  // [verteks pita yang sudah tergambar, panjang terpotong mm] pada waktu u
+  function progress(list, u) {
+    let n = 0, len = 0;
+    for (const p of list) {
+      if (u >= p.t1) { n = p.v0 + 6 * (p.pts.length - 1); len += p.len; continue; }
+      if (u > p.t0) {
+        const dist = (u - p.t0) / (p.t1 - p.t0) * p.len;
+        let a = 1, b = p.cum.length - 1;
+        while (a < b) { const m = (a + b) >> 1; if (p.cum[m] < dist) a = m + 1; else b = m; }
+        n = p.v0 + 6 * a; len += dist;
+      }
+      break;
+    }
+    return [n, len];
+  }
+
+  // ---------- linimasa ----------
+  const STAG = .1, FLY = .95, PRINT = 7;
+  const D = [(N - 1) * STAG + FLY + 1.1, PRINT + .9, SEG_END + .8, 6.5];
+  const ST = [0, D[0], D[0] + D[1], D[0] + D[1] + D[2]], TOTAL = ST[3] + D[3];
+  const stageAt = t => t >= ST[3] ? 3 : t >= ST[2] ? 2 : t >= ST[1] ? 1 : 0;
+  const CAP = [
+    {t: 'Susun otomatis', x: `Printech membuat garis potong dari bentuk tiap artwork, lalu menyusun ${N} stiker di lembar A3+ dengan jarak ${S.gap} mm. Tiap stiker dicoba dalam 4 arah putar supaya bahan lebih hemat.`, n: 'Garis magenta = kiss-cut, garis cyan = die-cut. Posisi dan garis diambil dari hasil Printech.'},
+    {t: 'Cetak', x: 'PDF dari Printech dibuka di CorelDRAW. Cutting Master 5 menambahkan reg mark, lalu lembar dicetak di printer Develop.', n: 'Printer dan posisi reg mark digambar sebagai ilustrasi.'},
+    {t: 'Potong', x: 'Graphtec membaca reg mark untuk menyamakan posisi, lalu memotong garis magenta (kiss-cut) dan garis cyan (die-cut).', n: 'Urutan dan kecepatan pisau hanya ilustrasi. Urutan sebenarnya diatur di Cutting Master 5.'},
+    {t: 'Hasil', x: 'Die-cut memotong sampai liner, jadi tiap stiker lepas dari lembar. Kiss-cut hanya memotong lapisan stiker, jadi stiker bisa dikelupas dari liner.', n: 'Hasil potong fisik belum diuji di Develop dan Graphtec.'},
+  ];
+
+  // ---------- tiket lembar ----------
+  const exts = [...new Set(S.sources.map(f => f.split('.').pop().toUpperCase()))].sort().join(', ');
+  const rots = {};
+  S.placements.forEach(p => { rots[p[3]] = (rots[p[3]] || 0) + 1; });
+  const turned = S.placements.filter(p => p[3]).length;
+  const tk = k => (S.ticket.find(l => l.startsWith(k)) || '').replace(/^[^:]*:\s*/, '');
+  $('slug').textContent = `Skenario uji ${S.scenario} · lembar ${S.sheet} dari ${S.sheets}`;
+  $('sheetNo').textContent = `${S.sheet}/${S.sheets}`;
+  $('rPaper').textContent = `A3+ · ${W} × ${H} mm`;
+  $('rArea').textContent = `${W - 2 * M} × ${H - 2 * M} mm · margin ${M} mm`;
+  $('rN').textContent = N;
+  $('rAll').textContent = `${S.stickersAll} stiker di ${S.sheets} lembar`;
+  $('rDesign').textContent = `${Object.keys(S.designs).length} desain dari ${S.sources.length} file (${exts})`;
+  $('rKiss').textContent = `${tk('Kiss-cut')} · ${fmtM(LEN.kiss)}`;
+  $('rDie').textContent = `${tk('Die-cut')} · ${fmtM(LEN.die)}`;
+  $('rGap').textContent = `${S.gap} mm antar stiker`;
+  $('rRot').textContent = turned ? `${turned} stiker diputar (${Object.keys(rots).filter(r => +r).map(r => `${r}° ×${rots[r]}`).join(', ')})` : 'tidak ada';
+  $('rScen').textContent = S.scenario;
+  if (matchMedia('(max-width: 720px)').matches) $('ticket').open = false;
+
+  // ---------- keadaan adegan pada waktu T ----------
+  let py = -40;
+  function update(T, st) {
+    py = -40 + (H + 80) * clamp((T - ST[1]) / PRINT);
+    printPlane.constant = py - H / 2;
+    const dig = clamp(T / .5) * (1 - clamp((py - H * .7) / (H * .3)));
+    digital.visible = st < 2 && dig > .01;
+    digMat.opacity = .34 * dig;
+    digLines.forEach(l => { l.material.opacity = l.userData.o * dig; });
+    let landed = 0, area = 0;
+    for (const it of items) {
+      const g = it.tile, t0 = it.i * STAG;
+      if (T >= t0 + FLY) { landed++; area += it.area; }
+      g.visible = T >= t0 && st < 2 && !(st === 1 && py >= it.bb[3] + 2);
+      if (!g.visible) continue;
+      if (st === 0) {
+        const f = clamp((T - t0) / FLY), e = ease(f), arc = Math.sin(Math.PI * f);
+        g.position.set(lerp(it.sx, it.cx, e), -lerp(it.sy, it.cy, e), lerp(150, DIG_Z, e) + arc * 50);
+        g.rotation.set(arc * .5, 0, it.r0 * (1 - e));
+        g.scale.setScalar(.6 + .4 * e);
+      } else { // turun ke lembar tepat sebelum garis cetak lewat
+        const f = clamp((py - (it.bb[1] - 130)) / 90);
+        g.position.set(it.cx, -it.cy, lerp(DIG_Z, TH + .04, f * f));
+        g.rotation.set(0, 0, 0);
+        g.scale.setScalar(1);
+      }
+    }
+    printer.visible = st === 1;
+    printer.position.y = -py;
+    sheetBlank.visible = sheetPrint.visible = st < 3;
+    waste.visible = st === 3;
+    const u3 = T - ST[2], k = knifeAt(clamp(u3, 0, SEG_END));
+    cutter.visible = st >= 2;
+    beam.position.y = -k.y; carriage.position.x = k.x; blade.position.z = k.z;
+    spot.visible = k.mode === 'read';
+    led.material.color.setHex(k.mode === 'kiss' ? KISS : k.mode === 'die' ? DIE : k.mode === 'read' ? 0xff3b30 : 0x4a525e);
+    const fade = 1 - clamp((T - ST[3]) / .6), pr = {kiss: progress(ord.kiss, u3), die: progress(ord.die, u3)};
+    for (const kind of ['kiss', 'die']) {
+      trail[kind].visible = st >= 2 && fade > 0;
+      trail[kind].material.opacity = fade;
+      trail[kind].geometry.setDrawRange(0, pr[kind][0]);
+      plan[kind].visible = st === 2;
+    }
+    const u4 = T - ST[3];
+    for (const pc of pieces) {
+      pc.g.visible = st === 3;
+      if (st !== 3) continue;
+      const e = easeOut(clamp((u4 - .5 - pc.delay) / 1.5)), q = ease(clamp((u4 - 2.3 - pc.delay) / 1.3));
+      pc.g.position.set(pc.cx + (pc.cx - W / 2) * .1 * e, -(pc.cy + (pc.cy - H / 2) * .1 * e), e * pc.lift);
+      pc.g.rotation.set(e * pc.tx, e * pc.ty, 0);
+      for (const pv of pc.pivots) { pv.rotation.y = -.8 * q; pv.position.z = LINER + .8 * q; }
+    }
+    hud(T, st, landed, area, pr, u3);
+  }
+
+  // ---------- HUD ----------
+  const shown = {};
+  const put = (id, v) => { if (shown[id] !== v) { shown[id] = v; $(id).textContent = v; } };
+  const railBtns = [...document.querySelectorAll('#rail button')];
+  const railFill = railBtns.map(b => b.querySelector('.f > i'));
+  railBtns.forEach((b, i) => { b.parentElement.style.flexGrow = D[i].toFixed(2); b.addEventListener('click', () => go(i)); });
+  let capSt = -1;
+  function hud(T, st, landed, area, pr, u3) {
+    put('vCount', String(st ? N : landed));
+    const use = (st ? totalArea : area) / usable;
+    put('vUse', fmt(use * 100) + ' %');
+    $('barUse').style.transform = `scaleX(${use.toFixed(4)})`;
+    let s;
+    if (st === 0) s = `Menyusun ${landed} dari ${N} stiker`;
+    else if (st === 1) s = `Mencetak ${Math.round(clamp((py + 40) / (H + 80)) * 100)} %`;
+    else if (st === 2) s = u3 < READ_END ? `Membaca reg mark ${segs.filter(x => x.type === 'read' && x.t0 <= u3).length} dari 4`
+      : u3 >= CUT_END ? `Selesai: kiss-cut ${fmtM(LEN.kiss)}, die-cut ${fmtM(LEN.die)}`
+      : pr.die[1] > 0 ? `Die-cut ${fmtM(pr.die[1])} dari ${fmtM(LEN.die)}` : `Kiss-cut ${fmtM(pr.kiss[1])} dari ${fmtM(LEN.kiss)}`;
+    else s = `${N} stiker lepas dari lembar (${pieces.length} potongan die-cut)`;
+    put('status', s);
+    railFill.forEach((f, i) => { f.style.transform = `scaleX(${clamp((T - ST[i]) / D[i]).toFixed(4)})`; });
+    if (st !== capSt) {
+      capSt = st;
+      $('capStep').textContent = `Tahap ${st + 1} dari 4`;
+      $('capTitle').textContent = CAP[st].t;
+      $('capText').textContent = CAP[st].x;
+      $('capNote').textContent = CAP[st].n;
+      railBtns.forEach((b, i) => b.setAttribute('aria-current', i === st ? 'step' : 'false'));
+    }
+  }
+
+  // ---------- kamera otomatis per tahap ----------
+  const CAM = [
+    [[-80, 560, 600], [-60, 50, 10]],
+    [[440, 330, 440], [0, 12, 30]],
+    [[-40, 560, 480], [0, 0, 20]],
+    [[-310, 230, 420], [10, 22, 70]],
+  ].map(([p, t]) => ({off: new THREE.Vector3(...p).sub(new THREE.Vector3(...t)), t: new THREE.Vector3(...t)}));
+  const goalP = new THREE.Vector3(), goalT = new THREE.Vector3(), kw = new THREE.Vector3();
+  let auto = true, snap = true, clock = 0;
+  function camStep(dt, st) {
+    if (!auto) return;
+    goalT.copy(CAM[st].t);
+    if (st === 2) { carriage.getWorldPosition(kw); kw.y = 0; goalT.lerp(kw, .3); }
+    const fit = camera.aspect >= 1.35 ? 1 : Math.pow(1.35 / camera.aspect, .85);
+    goalP.copy(CAM[st].off).multiplyScalar(fit).add(goalT);
+    if (!reduce) goalP.x += Math.sin(clock * .12) * 30;
+    const a = snap || reduce ? 1 : 1 - Math.exp(-dt * 1.6);
+    camera.position.lerp(goalP, a);
+    controls.target.lerp(goalT, a);
+    snap = false;
+  }
+  function setAuto(v) { auto = v; $('autoCam').checked = v; }
+  controls.addEventListener('start', () => setAuto(false));
+
+  // ---------- label 3D ----------
+  const tagV = new THREE.Vector3();
+  const tags = [
+    [$('tagCanvas'), st => st === 0 || (st === 1 && digital.visible), v => v.set(10, 8, DIG_Z)],
+    [$('tagPrinter'), st => st === 1, v => v.set(W + 50, -py, TH + 46)],
+    [$('tagReg'), (st, T) => (st === 1 && py > 12) || (st === 2 && T - ST[2] < READ_END + .8), v => v.set(4, -4, TH)],
+    [$('tagCutter'), st => st === 2, v => v.set(carriage.position.x, beam.position.y, 92)],
+  ];
+  function placeTags(st, T) {
+    const w = innerWidth, h = innerHeight;
+    for (const [el, on, at] of tags) {
+      let show = on(st, T);
+      if (show) {
+        space.localToWorld(at(tagV)).project(camera);
+        show = tagV.z < 1 && Math.abs(tagV.x) < 1.05 && Math.abs(tagV.y) < 1.05;
+        if (show) el.style.transform = `translate(${((tagV.x + 1) / 2 * w).toFixed(1)}px, ${((1 - tagV.y) / 2 * h).toFixed(1)}px) translate(-50%, calc(-100% - 6px))`;
+      }
+      if (el.hidden === show) el.hidden = !show;
+    }
+  }
+
+  // ---------- kontrol ----------
+  const TOKENS = ['susun', 'cetak', 'potong', 'hasil'];
+  let T = 0, playing = true, speed = 1, pauseEach = true;
+  const h0 = TOKENS.indexOf(location.hash.slice(1).toLowerCase());
+  if (h0 > 0) T = ST[h0];
+  else if (reduce) { T = ST[1] - 1e-4; playing = false; }
+  const playBtn = $('play'), nextBtn = $('next');
+  const atStageEnd = () => { const st = stageAt(T); return st < 3 && ST[st + 1] - T < 1e-3; };
+  function setPlaying(v) {
+    playing = v;
+    playBtn.classList.toggle('paused', !v);
+    playBtn.setAttribute('aria-label', v ? 'Jeda' : 'Putar');
+    const end = !v && atStageEnd();
+    nextBtn.hidden = !end;
+    if (end) $('nextLabel').textContent = `Lanjut ke tahap ${stageAt(T) + 2}: ${CAP[stageAt(T) + 1].t}`;
+  }
+  function go(k) { T = ST[k]; setAuto(true); setPlaying(true); }
+  function resume() { if (T >= TOTAL - 1e-3) return go(0); if (atStageEnd()) T = ST[stageAt(T) + 1]; setPlaying(true); }
+  const toggle = () => playing ? setPlaying(false) : resume();
+  const next = () => { if (!playing && atStageEnd()) return resume(); const st = stageAt(T); if (st < 3) go(st + 1); };
+  const prev = () => { const st = stageAt(T); go(T - ST[st] > 1 || st === 0 ? st : st - 1); };
+  function fullscreen() {
+    try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); } catch (e) { /* tidak didukung */ }
+  }
+  playBtn.addEventListener('click', toggle);
+  nextBtn.addEventListener('click', resume);
+  $('restart').addEventListener('click', () => go(0));
+  $('speed').addEventListener('change', e => { speed = +e.target.value; });
+  $('pauseEach').addEventListener('change', e => { pauseEach = e.target.checked; });
+  $('autoCam').addEventListener('change', e => setAuto(e.target.checked));
+  $('full').hidden = !document.fullscreenEnabled;
+  $('full').addEventListener('click', fullscreen);
+  // Klik presenter mengirim panah atau PageUp/PageDown.
+  addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t && t.closest('select')) return;
+    const k = e.key;
+    if (k === ' ' || k === 'k' || k === 'K') { if (k === ' ' && t && t.closest('button, summary, input')) return; e.preventDefault(); toggle(); }
+    else if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); next(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); prev(); }
+    else if (/^[1-4]$/.test(k)) go(+k - 1);
+    else if (k === 'r' || k === 'R') go(0);
+    else if (k === 'f' || k === 'F') fullscreen();
+    else if (k === 'c' || k === 'C') setAuto(!auto);
+  });
+  function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  addEventListener('resize', resize);
+  resize();
+  setPlaying(playing);
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, Math.max(0, (now - last) / 1000));
+    last = now; clock += dt;
+    if (playing) {
+      const before = T;
+      T = Math.min(TOTAL, T + dt * speed);
+      if (pauseEach) for (let i = 1; i < 4; i++) if (before < ST[i] && T >= ST[i]) { T = ST[i] - 1e-4; setPlaying(false); break; }
+      if (playing && T >= TOTAL) setPlaying(false);
+    }
+    const st = stageAt(T);
+    update(T, st);
+    camStep(dt, st);
+    controls.update();
+    renderer.render(scene, camera);
+    placeTags(st, T);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
