@@ -8,7 +8,7 @@ Fitur yang diuji: tuning Potrace (tanpa sudut tajam), penghalusan bentuk lewat s
 - Pengaturan default: kiss offset 2 mm, halus 1 mm; die offset 4 mm, halus 2 mm.
 
 | ID | Skenario | Kriteria lulus | Cara | Hasil 2026-10-17 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | S1 | Logo JPG bertepi kasar (`rough.jpg`, 40 mm) | Node turun ≥60% dibanding Halus 0; tidak ada sudut tajam | Otomatis | Lulus: kiss 66 → 17 (−74%), die 45 → 16 (−64%). Sebelum penjaga jarak dibulatkan ke atas (2026-10-18): 16 dan 13 |
 | S2 | Lingkaran 40 mm | Maksimal 4 node; garis tetap bulat (selisih lebar dan tinggi < 0,3 mm); diameter 44 mm ± 0,5 | Otomatis | Lulus: 3 node, 44,03 × 44,02 mm |
 | S3 | Teks tebal "PRINTECH" 60 mm | Node lebih sedikit dari Halus 0; tidak ada sudut; huruf tidak terpotong (luas artwork di luar garis < 0,5 mm²) | Otomatis | Lulus: 43 → 20 node, 0,00 mm² |
@@ -22,6 +22,7 @@ Fitur yang diuji: tuning Potrace (tanpa sudut tajam), penghalusan bentuk lewat s
 | S11 | Cincin "C" (celah 3 mm) dan 12 titik melingkar + lingkaran tengah. Offset menutup celah sehingga terbentuk lubang | Kiss dan die masing-masing tepat 1 kontur; lubang tidak ikut dipotong | Otomatis | Lulus: 1 / 1 kontur. Sebelum perbaikan: cincin 2 / 2, titik 3 / 1 |
 
 ## S10 — langkah potong fisik (operator)
+
 1. Siapkan `rough.jpg`, `circle.png`, dan 2–3 teks/logo customer yang biasa dipotong. File contoh ada di folder `samples/`, atau buat ulang dengan `StickerLayout.exe --selfcheck <folder>`.
 2. Di Printech: lebar 40–60 mm, 4 salinan per desain, kertas A3+. Centang kiss dan die, nilai offset dan halus default.
 3. Export PDF, buka di CorelDRAW, pasang reg mark dengan cara yang biasa dipakai operator, lalu cetak di Develop.
@@ -35,5 +36,6 @@ Fitur yang diuji: tuning Potrace (tanpa sudut tajam), penghalusan bentuk lewat s
 6. Catat hasil per desain. Bila pisau tersendat, catat bentuknya dan nilai Halus yang dipakai.
 
 ## Catatan
+
 1. **Halus lebih dari 2 mm tidak menambah kehalusan.** Pada logo kasar 40 mm, Halus 4 mm justru menaikkan node lagi menjadi 47, padahal Halus 1–2 mm hanya 16–17. Dugaan penyebab (belum diukur terpisah): penghalusan besar menarik garis ke dalam, lalu penjaga jarak ke artwork mengembalikan lekukan aslinya. Nilai yang disarankan: Halus 1–2 mm.
 2. Skenario S1–S9 membuktikan bentuk garisnya. Apakah gerakan pisau benar-benar mulus hanya bisa dibuktikan lewat S10.

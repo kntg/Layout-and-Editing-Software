@@ -1,6 +1,7 @@
 # Skenario uji: stabilitas dan performa (spesifikasi bagian 2)
 
 Fitur yang diuji:
+
 - konversi CDR di proses worker, dengan batas waktu 30 detik;
 - UI tetap jalan selama menunggu CorelDRAW;
 - 3 percobaan nesting yang dijalankan paralel;
@@ -9,12 +10,13 @@ Fitur yang diuji:
 Lihat [PRD.md](PRD.md), bagian Keputusan "Stabilitas dan performa".
 
 Cara menjalankan:
+
 - **Otomatis:** jalankan `StickerLayout.exe --selfcheck <folder>`. Hasilnya tertulis di `selfcheck.txt` sebagai baris `P1 LULUS ...` sampai `P5`. Bila satu skenario gagal, exit code 1.
 - **Pengembang:** P6 diukur dengan Task Manager. P1 juga dicek lewat UI.
 - **Operator:** P7–P10 butuh PC dengan CorelDRAW terpasang.
 
 | ID | Skenario | Kriteria lulus | Cara | Hasil 2026-10-17 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | P1 | Tambah file CDR di PC tanpa CorelDRAW | Muncul pesan "CorelDRAW tidak terpasang"; aplikasi tidak crash | Otomatis + UI | Lulus. Selfcheck: pesan dalam 0,3 detik. Lewat UI: pesan muncul 1,1 detik setelah file ditambahkan, aplikasi tetap responsif |
 | P2 | Worker melewati batas waktu | Worker dihentikan, muncul pesan batas waktu, tidak ada worker yang tersisa | Otomatis (batas diset 1 ms) | Lulus: dihentikan dalam 20–36 ms, 0 worker tersisa |
 | P3 | Nesting paralel dijalankan 5 kali | Hasilnya identik setiap kali | Otomatis | Lulus: 5 kali, 1 hasil. Saat paralel diterapkan (grid 2 mm), jumlah lembar dan pemakaian bahan sama persis dengan versi berurutan |
@@ -27,6 +29,7 @@ Cara menjalankan:
 | P10 | Tiga file CDR sekaligus, lalu ubah offset dan klik Susun | Ketiganya masuk berurutan dan UI tetap responsif; saat Susun, CorelDRAW tidak dibuka lagi | Operator | Belum diuji |
 
 ## Langkah operator (P7–P10)
+
 1. **P7:** Tutup CorelDRAW. Tambahkan satu file CDR yang biasa dipakai, lalu catat berapa detik dari klik sampai desain muncul. Ulangi dengan CorelDRAW dalam keadaan terbuka.
 2. **P8:** Buka CorelDRAW, buat dokumen baru, gambar sesuatu, dan jangan disimpan. Tambahkan file CDR di Printech. Setelah selesai, pastikan dokumen di CorelDRAW masih ada.
 3. **P9:**
@@ -40,6 +43,7 @@ Cara menjalankan:
 5. Catat hasil setiap skenario: lulus atau gagal, waktu, dan catatan.
 
 ## Catatan
+
 1. **"60 FPS" tidak diukur langsung.** Yang diukur adalah lama kerja di UI thread (P5):
    - susun 130 stiker sekitar 85 ms (grid 1 mm), atau ±5 frame;
    - langkah Rapikan dihitung di background, jadi jendela tetap merespons; hanya pembaruan tampilan (±20–70 ms) di UI thread;
