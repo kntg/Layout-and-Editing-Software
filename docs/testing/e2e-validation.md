@@ -119,6 +119,8 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 | `ram-profil.ps1` | 0 | Kosong 35 MB, 4 desain 67, 16 desain 99, JPG 24 MP 216, dua PDF besar 347, semua 19 desain 351 MB (D4). |
 | `cek-original.ps1` (termasuk `01-input/khusus`) | 0 | 20/20 file original tidak berubah. |
 
+**Diulang 2026-10-21 setelah perbaikan D10:** build Release dan Debug 0 warning; selfcheck Release dan Debug 4/4 sesuai harapan (15/15 skenario, ditambah cek latar abu 242, pink pastel, dan hampir putih 252); `validasi.ps1` menghasilkan 1144 nilai garis, ukuran, dan posisi yang identik dengan 2026-10-19; laporan `validasi.py` identik (A2b, A4, A5 tetap gagal seperti sebelumnya); `cek-original.ps1` 23/23 sama (3 file baru `01-input/latar`); tiga PNG latar dimuat di UI tanpa peringatan.
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -128,11 +130,12 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 | Di PDF export | Vektor, warna CMYK utuh (EXP-04: PASS). Halaman /Rotate jadi gambar + peringatan (IMP-16: PASS) | Vektor (EXP-04: PASS) | Vektor bila konversi berhasil (BLOCKED) | Gambar | Gambar | Gambar ±300 dpi (batasan PRD) |
 | dpi dan peringatan resolusi | Tidak tampil (vektor) | Tidak tampil | Tidak tampil | IMP-13: PASS | IMP-13: PASS | ±305 dpi |
 | File rusak atau gagal | IMP-17: FAIL (PDF terenkripsi gagal di export, D8) | IMP-04: PASS | IMP-06: PASS; IMP-08: BLOCKED | IMP-21: PASS | IMP-21: PASS | IMP-21: PASS |
+| Latar warna muda (abu 242, pink pastel) | — | — | — | IMP-23: PASS (sebelumnya hilang, D10) | Aturan sama, belum ada file uji | — |
 | Latar putih | IMP-18: BLOCKED (D7) | Sama dengan PDF | — | Ada transparansi: putih dihitung artwork | Putih dibuang (IMP-11) | — |
 
 ## 6. Kasus uji
 
-Total 80 kasus: PASS 56, FAIL 5, BLOCKED 18, NOT RUN 1. Status per 2026-10-19.
+Total 81 kasus: PASS 57, FAIL 5, BLOCKED 18, NOT RUN 1. Status per 2026-10-19; IMP-23 per 2026-10-21.
 
 Kolom Sumber menunjukkan asal kriterianya:
 - **Dok:** sudah tertulis di PRD, dokumen uji, atau spesifikasi leader.
@@ -168,6 +171,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | IMP-20 | Integrasi | 01-input dan 01-input/customer | powershell -ExecutionPolicy Bypass -File cek-original.ps1 | Semua baris "sama"; exit code 0 | Output cek-original | Permintaan user: file original tidak berubah | PASS — 15/15 |
 | IMP-21 | Manual UI (otomatis UIA) | 01-input/khusus/invalid-file.png, .jpg, .svg | ui-file-khusus.ps1 | Dialog "Gagal memuat"; aplikasi tidak crash; file lain tetap masuk | 04-evidence/2026-10-19-ui-file-khusus.txt | Usul | PASS — Pesan teknis berbahasa Inggris, misalnya "No imaging component suitable to complete this operation was found." (D9) |
 | IMP-22 | Manual UI | File customer di 01-input/customer | Tambah file; bandingkan dengan hasil-benar.md | Sesuai hasil-benar.md | 04-evidence/customer/ | Usul | NOT RUN — Belum ada file customer |
+| IMP-23 | Integrasi + Manual UI | 01-input/latar/png-latar-abu-muda.png, png-latar-pink-pastel.png, png-latar-putih.png | Loader + Export.Pdf, warna latar diukur di render MuPDF; UI: exe dengan ketiga file sebagai argumen | Latar abu muda dan pink pastel utuh di layar dan PDF, garis kiss mengelilingi kotak gambar; latar putih dibuang | 04-evidence/2026-10-21-png-latar.txt, -sebelum.png, -sesudah.png, -ui.png | Temuan tim 2026-10-21 (D10) | PASS — Sebelum perbaikan FAIL: latar tinggal 5 % dan logo ±4× lebih besar. Diperbaiki 2026-10-21 (Loader.WhiteBorder) |
 
 ### Garis potong
 
@@ -323,6 +327,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | D7 | PDF dengan kotak putih yang tidak memenuhi halaman menghasilkan garis potong berbentuk kotak (84 × 84 mm), bukan mengikuti logo. Bila latar putih memenuhi halaman, garis mengikuti logo (44 × 44 mm). | Probe 2026-10-19 | [Core.cs:154-155](../../StickerLayout/Core.cs#L154-L155), [Core.cs:360-361](../../StickerLayout/Core.cs#L360-L361) | Mayor (perilaku perlu diputuskan) |
 | D8 | PDF terenkripsi (hanya kata sandi pemilik) lolos cek vektor saat dimuat. Lalu `Export.Pdf` melempar exception "The archive entry was compressed using an unsupported compression method." sehingga **seluruh export layout gagal**. PRD: PDF yang tidak terbaca PDFsharp seharusnya ditempel sebagai gambar dengan peringatan. | Probe 2026-10-19 | [Core.cs:297-306](../../StickerLayout/Core.cs#L297-L306), [Export.cs:95-99](../../StickerLayout/Export.cs#L95-L99) | Mayor |
 | D9 | Pesan error untuk file rusak masih teknis, sebagian berbahasa Inggris: "PDF tidak bisa dibuka (PDFium error 3)." untuk AI tanpa PDF-compatible; "No imaging component suitable…" untuk PNG/JPG; "Data at the root level is invalid…" untuk SVG. | `ui-file-khusus.ps1` | [Pdfium.cs:43](../../StickerLayout/Pdfium.cs#L43), [MainWindow.xaml.cs:178](../../StickerLayout/MainWindow.xaml.cs#L178) | Minor |
+| D10 | **Diperbaiki 2026-10-21:** latar PNG/JPG opak hanya dibuang bila minimal separuh tepi gambar putih (R, G, B ≥ 250) ([Core.cs:158](../../StickerLayout/Core.cs#L158), [Core.cs:367-374](../../StickerLayout/Core.cs#L367-L374)); dicek selfcheck. Sebelumnya (laporan tim): latar warna muda dengan R, G, B ≥ 240, misalnya abu 242 atau pink pastel 255,240,245, dianggap putih. Latar hilang dari layar dan PDF, tinggal cincin selebar offset kiss, dan lebar stiker dipakai untuk logo saja (logo ±4× lebih besar). | [png-latar](../../Printech-TestData/04-evidence/2026-10-21-png-latar.txt) | [Core.cs:363-374](../../StickerLayout/Core.cs#L363-L374) | Mayor |
 
 **Batasan yang sudah diketahui** (tercatat di PRD, bukan defect baru):
 - file selain CDR dimuat di UI thread ([MainWindow.xaml.cs:176](../../StickerLayout/MainWindow.xaml.cs#L176));
@@ -336,6 +341,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 - die minimal 1 piksel di luar kiss ([Core.cs:186](../../StickerLayout/Core.cs#L186));
 - D1: cache konversi CDR dengan versi file ([Core.cs:518-519](../../StickerLayout/Core.cs#L518-L519));
 - D2: salinan PDF/AI saat dimuat ([Core.cs:110-122](../../StickerLayout/Core.cs#L110-L122), [MainWindow.xaml.cs:247](../../StickerLayout/MainWindow.xaml.cs#L247));
+- D10: latar PNG/JPG warna muda tidak lagi dibuang ([Core.cs:158](../../StickerLayout/Core.cs#L158)), 2026-10-21;
 - peringatan PDF yang ditempel sebagai gambar ([Core.cs:32](../../StickerLayout/Core.cs#L32), [MainWindow.xaml.cs:109-110](../../StickerLayout/MainWindow.xaml.cs#L109-L110)).
 
 ## 11. Urutan perbaikan yang disarankan (berdasarkan risiko produksi)
@@ -353,5 +359,5 @@ D1 dan D2 sudah diperbaiki 2026-10-19. Berikutnya:
 4. **A4/D3:** terima toleransi 0,15 mm dan tulis di aturan (saran), atau uji mask 10 px/mm (lebih berat, belum diuji)?
 5. **A2b/D5:** target node ≥ 60% berlaku hanya untuk `rough.jpg` (S1)?
 6. **Pemeriksaan otomatis yang wajib untuk rilis:** self-check saja, atau ditambah `validasi.py` exit 0 dan `ui-edit-layout.ps1` 11/11?
-7. **Severity:** apakah usulan severity D1–D9 dan definisinya (bagian 1) disetujui?
+7. **Severity:** apakah usulan severity D1–D10 dan definisinya (bagian 1) disetujui?
 8. **File customer:** di mana lokasi file customer yang sudah diizinkan untuk pengujian?

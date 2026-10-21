@@ -6,6 +6,7 @@ Kumpulan file uji untuk Printech. Hasil benar setiap file sudah diketahui sebelu
 |---|---|
 | `01-input/` | File uji sintetis. Daftar file dan skenario yang diuji masing-masing: [expected-results.md](02-expected/expected-results.md). `cdr-normal.cdr` dibuat operator di CorelDRAW (lihat `cdr-normal.BACA.txt`). `CHECKSUMS.sha256` = hash file original. |
 | `01-input/khusus/` | Kasus khusus yang diuji terpisah: AI tanpa PDF-compatible, PDF terenkripsi, PNG/JPG/SVG rusak. Hasil benar di [expected-results.md](02-expected/expected-results.md). |
+| `01-input/latar/` | PNG opak berlatar abu muda, pink pastel, dan putih (temuan D10): latar warna harus ikut tercetak, latar putih dibuang. Hasil benar di [expected-results.md](02-expected/expected-results.md). |
 | `01-input/customer/` | File customer yang diizinkan untuk pengujian. Hanya ada di PC lokal, tidak masuk git. Lihat [README](01-input/customer/README.md). |
 | `02-expected/` | [expected-results.md](02-expected/expected-results.md): hasil benar per file, toleransi, cara mengecek. [validasi-garis-potong-nesting.md](02-expected/validasi-garis-potong-nesting.md): kriteria dan hasil validasi mesin garis potong dan nesting. |
 | `03-exports/` | Hasil export Printech saat menguji. `validasi/` berisi export dan data mentah dari `validasi.ps1`; folder ini dibuat ulang setiap kali validasi dijalankan dan tidak masuk git. |

@@ -27,6 +27,15 @@ File di folder ini diuji terpisah. Jangan ikut ditambahkan dalam uji "semua file
 | `pdf-encrypted.pdf` (hanya kata sandi pemilik) | Dimuat, artwork 60,0 × 30,0 mm. Bila PDFsharp bisa membacanya, desain tetap vektor. Bila tidak, desain ditempel sebagai gambar dan muncul peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" (PRD §8). Export PDF tetap jadi, tanpa error. |
 | Kelima file ditambahkan sekaligus | 4 dialog, ditutup satu per satu; 1 desain masuk; status "1 stiker di 1 lembar."; aplikasi tetap responsif |
 
+## Latar PNG (`01-input/latar/`, temuan D10)
+PNG opak 600 × 400 px: persegi biru membulat 300 × 200 px dan lingkaran oranye di tengah. Latar putih dibuang karena printer tidak mencetak putih. Latar berwarna, termasuk warna muda, ikut tercetak.
+
+| File | Hasil benar (lebar 50 mm) |
+|---|---|
+| `png-latar-abu-muda.png` (latar 242, 242, 242) | Seluruh gambar = artwork 50 × 33,3 mm, 305 dpi; latar abu tampil di layar dan PDF; garis kiss mengelilingi kotak gambar |
+| `png-latar-pink-pastel.png` (latar 255, 240, 245) | Sama dengan abu muda |
+| `png-latar-putih.png` (latar putih) | Latar dibuang: artwork = persegi biru 50 × 33,4 mm, 153 dpi; garis kiss mengikuti persegi |
+
 ## Pengaturan saat menguji
 Pakai nilai bawaan aplikasi:
 - kertas A3+ (320 × 480 mm), margin 10 mm, jarak antar stiker 2 mm, bleed 0;
@@ -113,4 +122,5 @@ Toleransi:
 | UI, semua file sekaligus | Dialog CDR muncul setelah 1,2 detik. Semua file selesai dimuat dan disusun 3,0 detik setelah start (2,5–4,0 detik pada 3 kali jalan). Status, peringatan, pemakaian bahan, dan judul lembar sama dengan harapan di atas. Aplikasi tetap responsif. RAM (private working set) 136–170 MB. Bukti: [ui-semua-input](../04-evidence/2026-10-18-ui-semua-input.txt), [tangkapan layar](../04-evidence/2026-10-18-semua-input-printech.png) |
 | File original | 15/15 `sama` setelah semua uji. Tujuh file lama juga sama dengan hash sebelum file baru dibuat. |
 | Kasus khusus (2026-10-19) | `ui-file-khusus.ps1`: 4 dialog "Gagal memuat", 1 desain masuk, status "1 stiker di 1 lembar.", aplikasi responsif. Pesan error masih teknis (temuan D9). **`pdf-encrypted.pdf` GAGAL:** dimuat sebagai vektor, tetapi export PDF melempar error dan seluruh export layout gagal (temuan D8). Bukti: [ui-file-khusus](../04-evidence/2026-10-19-ui-file-khusus.txt), [pdf-terenkripsi](../04-evidence/2026-10-19-pdf-terenkripsi.txt) |
+| Latar PNG (2026-10-21) | Sebelum perbaikan: latar abu muda dan pink pastel hilang, tinggal 5 % berupa cincin selebar offset kiss, dan logo jadi ±4× lebih besar (temuan D10). Sesudah perbaikan: kedua latar utuh di PDF export (102 % terukur) dan di layar; latar putih tetap dibuang. Bukti: [png-latar](../04-evidence/2026-10-21-png-latar.txt), [sebelum](../04-evidence/2026-10-21-png-latar-sebelum.png), [sesudah](../04-evidence/2026-10-21-png-latar-sesudah.png), [UI](../04-evidence/2026-10-21-png-latar-ui.png) |
 | Validasi garis potong, nesting, dan export | Lihat [validasi-garis-potong-nesting.md](validasi-garis-potong-nesting.md) |

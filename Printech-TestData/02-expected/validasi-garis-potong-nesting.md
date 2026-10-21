@@ -9,7 +9,7 @@ Kriteria di dokumen ini ditetapkan sebelum validasi dijalankan. Kesalahan garis 
 
 Penilai tidak memakai kode Printech. Bentuk artwork yang benar diambil dari file asli di `01-input`:
 - **PDF/AI:** path vektor, dibaca dengan PyMuPDF.
-- **PNG/JPG:** piksel, dengan aturan latar yang sama seperti Printech (alpha > 16, atau bukan putih < 240).
+- **PNG/JPG:** piksel, dengan aturan latar yang sama seperti Printech (alpha > 16; tanpa alpha: bukan putih < 240 bila minimal separuh tepi gambar putih ≥ 250, selain itu seluruh gambar).
 - **SVG:** bentuk dari isi file.
 
 Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak tiap titik diukur tepat ke tepi artwork.

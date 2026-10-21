@@ -270,6 +270,13 @@ public static class SelfCheck
                 $"bleed salah: 1,5 mm di luar tepi tanpa bleed {noBleed}, bleed 2 mm {bleedNear}; 4 mm {bleedFar}; vektor {(vecBleed.BleedPng == null ? "tanpa bleed" : "ikut bleed")}");
             log.Add($"bleed: 1,5 mm di luar tepi lingkaran: tanpa bleed {noBleed}, bleed 2 mm {bleedNear}; 4 mm (di luar bleed) {bleedFar}; logo.pdf vektor tidak di-bleed");
 
+            // D10: latar PNG warna muda ikut tercetak (artwork 300x200 px = 60x40 mm); latar hampir putih (252) tetap dibuang (kotak biru 60x60 mm).
+            foreach (var (bg, wantH) in new[] { (Color.FromRgb(242, 242, 242), 40.0), (Color.FromRgb(255, 240, 245), 40.0), (Color.FromRgb(252, 252, 252), 60.0) })
+            {
+                var lt = Png(Draw(dc => { dc.DrawRectangle(new SolidColorBrush(bg), null, new Rect(0, 0, 300, 200)); dc.DrawRectangle(Brushes.SteelBlue, null, new Rect(100, 50, 100, 100)); }, 300, 200), 60, kiss, none);
+                Check(Math.Abs(lt.ArtH - wantH) < 0.5, $"latar {bg}: artwork {lt.ArtW:F1}x{lt.ArtH:F1} mm, harapan 60x{wantH:F0}");
+            }
+
             var sheets = Nest.Run(items, A4W, A4H, Margin, Gap, out int tooBig);
             Check(tooBig == 0, $"{tooBig} stiker tidak muat");
             Check(sheets.Count >= 2, "tidak meluap ke lembar kedua");

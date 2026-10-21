@@ -1,0 +1,44 @@
+Temuan D10: latar PNG warna muda hilang (2026-10-21)
+
+Laporan tim: PNG dimasukkan, latarnya langsung hilang.
+
+Cara uji: PNG 600 x 400 px (persegi biru membulat 300 x 200 px + lingkaran oranye) dengan latar berbeda dimuat lewat
+Loader Printech build Release (lebar 60 mm, kiss offset 2 mm halus 1 mm, die mati), diexport dengan Export.Pdf, lalu PDF
+dirender MuPDF 10 px/mm. Dihitung luas warna latar (toleransi +-8) dibanding luas logo. Di file asli rasionya 3,0.
+File: 01-input/latar/png-latar-*.png (byte sama dengan bg-*.png yang dipakai pada uji "sebelum").
+
+SEBELUM perbaikan (kode 0cc6446):
+Latar per luas artwork (logo biru+oranye). File asli = 3,0 untuk semua PNG uji.
+bg-abu-muda.png      (242, 242, 242)  asli 3.02 -> PDF 0.14  (  5% latar tersisa; latar   333 mm2, logo  2349 mm2)
+bg-biru-muda.png     (220, 235, 250)  asli 3.02 -> PDF 3.07  (102% latar tersisa; latar  1808 mm2, logo   589 mm2)
+bg-krem.png          (255, 248, 235)  asli 3.02 -> PDF 3.07  (102% latar tersisa; latar  1808 mm2, logo   589 mm2)
+bg-kuning.png        (255, 230, 80)   asli 3.02 -> PDF 3.07  (102% latar tersisa; latar  1808 mm2, logo   589 mm2)
+bg-pink-pastel.png   (255, 240, 245)  asli 3.02 -> PDF 0.14  (  5% latar tersisa; latar   330 mm2, logo  2350 mm2)
+Kontrol putih (255) dan transparan juga dibuang (memang benar: printer tidak mencetak putih).
+Efek samping: lebar 60 mm dipakai untuk logo saja, bukan seluruh gambar, jadi logo tercetak +-4x lebih besar
+(luas logo 2349 vs 589 mm2). Sisa latar 5 % = cincin warna muda selebar offset kiss di sekeliling logo.
+Gambar: 2026-10-21-png-latar-sebelum.png
+
+Penyebab: Loader.Fg (StickerLayout/Core.cs) menganggap piksel opak dengan R, G, B >= 240 sebagai latar putih. Abu 242 dan
+pink pastel 255,240,245 lolos sebagai "putih", lalu ContentBox membuangnya dan ArtClip memotong artwork di garis kiss.
+
+Perbaikan: latar opak hanya dibuang bila latarnya putih, yaitu minimal separuh piksel tepi gambar R, G, B >= 250
+(Loader.WhiteBorder). Selain itu seluruh gambar = artwork. Batas 240 untuk noise JPG tidak diubah.
+Percobaan pertama (batas putih 250 untuk semua piksel) ditolak: S1 selfcheck gagal, karena noise tepi JPG kasar ikut
+jadi artwork (node die turun 59 %, target 60 %).
+
+SESUDAH perbaikan:
+Sesudah perbaikan D10. Latar per luas logo (biru+oranye); file asli = 3,0.
+png-latar-abu-muda.png     latar (242, 242, 242)  -> PDF 3.07 (102% latar tersisa; latar  1808 mm2, logo   589 mm2)
+png-latar-pink-pastel.png  latar (255, 240, 245)  -> PDF 3.07 (102% latar tersisa; latar  1810 mm2, logo   589 mm2)
+png-latar-putih.png        latar putih dibuang, garis kiss mengikuti logo (logo  2350 mm2)
+Gambar: 2026-10-21-png-latar-sesudah.png
+
+Regresi:
+- dotnet build Release dan Debug: 0 warning, 0 error.
+- Selfcheck Release dan Debug: 4/4 sesuai harapan, 15/15 skenario LULUS. Cek baru: latar 242 dan 255,240,245 -> artwork
+  60 x 40 mm (seluruh gambar), latar 252 -> 60 x 60 mm (latar dibuang).
+- validasi.ps1: 1144 nilai garis kiss/die, ukuran, dan posisi stiker identik dengan hasil 2026-10-19 (0 beda).
+- validasi.py (aturan latar disamakan): laporan identik dengan 2026-10-19-validasi-garis-potong-nesting.txt
+  (A2b, A4, A5 tetap GAGAL seperti sebelumnya, tidak terkait temuan ini).
+Belum diuji: UI Printech dengan file ini (tampilan layar), cetak Develop dan potong Graphtec.

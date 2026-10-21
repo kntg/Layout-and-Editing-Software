@@ -2,7 +2,8 @@
 
 Pemakaian: python validasi.py [folder hasil validasi.ps1]   (default: 03-exports/validasi)
 Geometri artwork diambil dari file asli di 01-input, bukan dari Printech: PyMuPDF untuk PDF/AI, piksel untuk PNG/JPG
-(aturan latar sama dengan Printech: alpha > 16, atau bukan putih < 240), bentuk SVG dari isi file. Garis potong dan
+(aturan latar sama dengan Printech: alpha > 16; tanpa alpha: bukan putih < 240 bila minimal separuh tepi gambar putih >= 250,
+selain itu seluruh gambar), bentuk SVG dari isi file. Garis potong dan
 posisi stiker dari validasi.json; PDF export dicek ulang supaya yang dinilai sama dengan yang dikirim ke CorelDRAW.
 Kriteria: 02-expected/validasi-garis-potong-nesting.md. Exit code 0 = semua lulus, 1 = ada yang gagal.
 Laporan dan gambar bukti ditulis ke 04-evidence.
@@ -166,7 +167,11 @@ def rounded(w, h, r, n=90):
 def raster_edges(source):
     """Tepi piksel artwork (koordinat piksel) dan ukuran gambar. Aturan latar sama dengan Printech."""
     im = np.array(Image.open(IN / source).convert("RGBA"))
-    fg = im[..., 3] > 16 if (im[..., 3] < 250).any() else (im[..., :3] < 240).any(2)
+    if (im[..., 3] < 250).any():
+        fg = im[..., 3] > 16
+    else:  # latar putih hanya bila minimal separuh tepi gambar putih (>= 250); selain itu seluruh gambar artwork
+        edge = np.concatenate([im[0], im[-1], im[:, 0], im[:, -1]])[:, :3].min(1)
+        fg = (im[..., :3] < 240).any(2) if (edge >= 250).mean() >= 0.5 else np.ones(im.shape[:2], bool)
     p = np.pad(fg, 1)
     ys, xs = np.nonzero(p[1:-1, 1:] != p[1:-1, :-1])
     ys2, xs2 = np.nonzero(p[1:, 1:-1] != p[:-1, 1:-1])

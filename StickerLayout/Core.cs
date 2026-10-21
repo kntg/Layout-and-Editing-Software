@@ -153,6 +153,9 @@ public static class Loader
         var (px, fw, fh) = Pixels(full);
         bool alpha = false;
         for (int i = 3; i < px.Length; i += 4) if (px[i] < 250) { alpha = true; break; }
+        // Gambar opak berlatar warna, termasuk warna muda yang tetap tercetak (abu 242, pink pastel 255,240,245): seluruh
+        // gambar = artwork (alpha 255 semua). Hanya latar putih yang dibuang (temuan D10).
+        alpha |= !WhiteBorder(px, fw, fh);
         var bb = ContentBox(px, fw, fh, alpha) ?? throw new InvalidOperationException(Lang.T("Empty"));
         var crop = new CroppedBitmap(full, bb);
         crop.Freeze();
@@ -356,9 +359,19 @@ public static class Loader
         return (px, f.PixelWidth, f.PixelHeight);
     }
 
-    // Foreground = alpha (jika ada transparansi) atau "bukan putih".
+    // Foreground = alpha (jika ada transparansi) atau "bukan putih" (< 240, toleransi noise JPG).
     static bool Fg(byte[] px, int i, bool alpha) =>
         alpha ? px[i * 4 + 3] > 16 : px[i * 4] < 240 || px[i * 4 + 1] < 240 || px[i * 4 + 2] < 240;
+
+    // Latar putih = minimal separuh piksel tepi gambar putih (R, G, B >= 250).
+    static bool WhiteBorder(byte[] px, int w, int h)
+    {
+        int white = 0, n = 0;
+        void At(int x, int y) { int i = (y * w + x) * 4; n++; if (px[i] >= 250 && px[i + 1] >= 250 && px[i + 2] >= 250) white++; }
+        for (int x = 0; x < w; x++) { At(x, 0); At(x, h - 1); }
+        for (int y = 1; y < h - 1; y++) { At(0, y); At(w - 1, y); }
+        return 2 * white >= n;
+    }
 
     static Int32Rect? ContentBox(byte[] px, int w, int h, bool alpha)
     {

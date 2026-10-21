@@ -162,4 +162,14 @@ save("khusus/pdf-encrypted.pdf", lambda p: enc.save(p, encryption=fitz.PDF_ENCRY
 for ext in ("png", "jpg", "svg"):
     save(f"khusus/invalid-file.{ext}", lambda p: p.write_text(f"Ini bukan file {ext.upper()}. Dipakai untuk menguji pesan error.\n", encoding="utf-8"))
 
+# Latar PNG opak (01-input/latar, temuan D10): 600 x 400 px, persegi biru membulat 300 x 200 px (radius 30) dan
+# lingkaran oranye diameter 80 px di tengah. Latar abu muda dan pink pastel tercetak, jadi harus ikut; latar putih dibuang.
+(OUT / "latar").mkdir(exist_ok=True)
+for name, bg in (("abu-muda", (242, 242, 242)), ("pink-pastel", (255, 240, 245)), ("putih", (255, 255, 255))):
+    img = Image.new("RGB", (600, 400), bg)
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((150, 100, 450, 300), 30, fill=(0, 112, 192))
+    d.ellipse((260, 160, 340, 240), fill=(240, 130, 30))
+    save(f"latar/png-latar-{name}.png", lambda p: img.save(p))
+
 print("selesai:", ", ".join(sorted(p.name for p in OUT.iterdir() if p.is_file())))
