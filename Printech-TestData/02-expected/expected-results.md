@@ -5,8 +5,9 @@ Angka di dokumen ini berasal dari cara file dibuat ([make-testdata.py](../make-t
 Validasi mesin garis potong dan nesting yang lebih teliti (jarak garis ke artwork diukur per titik, tabrakan, jarak antar stiker, margin, rotasi, pemakaian bahan) ada di [validasi-garis-potong-nesting.md](validasi-garis-potong-nesting.md).
 
 ## Skenario uji dan file
+
 | Skenario | File | Yang diperiksa | Hasil benar | Cara cek |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | PDF satu halaman | `pdf-single-page.pdf` | Artwork dan dimensi | Vektor 60,0 × 30,0 mm. Garis kiss 64 × 34 mm. | Panel Desain, export |
 | PDF beberapa halaman | `pdf-multi-page.pdf`, `pdf-irregular-shapes.pdf` | Setiap halaman jadi desain terpisah | 3 desain (`p1`–`p3`) dan 4 desain (`p1`–`p4`), ukuran per halaman sesuai tabel di bawah | Panel Desain |
 | AI dan SVG | `ai-compatible.ai`, `svg-vector.svg` | Kontur, ukuran, dan artwork terbaca benar | 50,0 × 25,0 mm, 1 kontur kiss dan 1 kontur die. Lingkaran putih di dalam SVG tidak dipotong. | Panel Desain, export |
@@ -18,26 +19,30 @@ Validasi mesin garis potong dan nesting yang lebih teliti (jarak garis ke artwor
 | Artwork besar atau bentuk tidak beraturan | `pdf-large-a3.pdf`, `pdf-oversize.pdf`, `jpg-large-24mp.jpg`, `pdf-irregular-shapes.pdf`, `png-rough-edge.png` | Pemrosesan stabil; tidak memotong elemen secara keliru | Tiap file dimuat < 5 detik tanpa crash. `pdf-oversize.pdf` tidak dipasang dan masuk peringatan "1 lebih besar dari kertas". Cincin C: celah tertutup, lubang tidak dipotong. Garis tipis 0,2 mm tetap dikelilingi garis. Lingkaran bercelah 4 mm menyatu; bercelah 15 mm punya garis sendiri. | Panel Desain, validasi A/B |
 
 ## Kasus khusus (`01-input/khusus/`)
+
 File di folder ini diuji terpisah. Jangan ikut ditambahkan dalam uji "semua file sekaligus".
 
 | File | Hasil benar |
-|---|---|
+| --- | --- |
 | `ai-postscript.ai` (AI lama tanpa PDF-compatible) | Dialog "Gagal memuat" berisi nama file; aplikasi tidak crash |
 | `invalid-file.png`, `invalid-file.jpg`, `invalid-file.svg` (teks biasa) | Masing-masing memunculkan dialog "Gagal memuat"; aplikasi tidak crash |
 | `pdf-encrypted.pdf` (hanya kata sandi pemilik) | Dimuat, artwork 60,0 × 30,0 mm. Bila PDFsharp bisa membacanya, desain tetap vektor. Bila tidak, desain ditempel sebagai gambar dan muncul peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" (PRD §8). Export PDF tetap jadi, tanpa error. |
 | Kelima file ditambahkan sekaligus | 4 dialog, ditutup satu per satu; 1 desain masuk; status "1 stiker di 1 lembar."; aplikasi tetap responsif |
 
 ## Latar PNG (`01-input/latar/`, temuan D10)
+
 PNG opak 600 × 400 px: persegi biru membulat 300 × 200 px dan lingkaran oranye di tengah. Latar putih dibuang karena printer tidak mencetak putih. Latar berwarna, termasuk warna muda, ikut tercetak.
 
 | File | Hasil benar (lebar 50 mm) |
-|---|---|
+| --- | --- |
 | `png-latar-abu-muda.png` (latar 242, 242, 242) | Seluruh gambar = artwork 50 × 33,3 mm, 305 dpi; latar abu tampil di layar dan PDF; garis kiss mengelilingi kotak gambar |
 | `png-latar-pink-pastel.png` (latar 255, 240, 245) | Sama dengan abu muda |
 | `png-latar-putih.png` (latar putih) | Latar dibuang: artwork = persegi biru 50 × 33,4 mm, 153 dpi; garis kiss mengikuti persegi |
 
 ## Pengaturan saat menguji
+
 Pakai nilai bawaan aplikasi:
+
 - kertas A3+ (320 × 480 mm), margin 10 mm, jarak antar stiker 2 mm, bleed 0;
 - lebar awal PNG/JPG/SVG 50 mm;
 - kiss-cut aktif dengan offset 2 mm, halus 1 mm;
@@ -46,8 +51,9 @@ Pakai nilai bawaan aplikasi:
 Ukuran garis potong = lebar × tinggi kotak terluar garis. Garis kiss = artwork + 2 × 2 mm, garis die = artwork + 2 × 4 mm.
 
 ## Per file
+
 | File | Desain yang muncul | Jenis | Ukuran artwork (mm) | dpi | Garis kiss (mm) | Garis die (mm) |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | `pdf-single-page.pdf` | 1: `pdf-single-page.pdf` | vektor | 60,0 × 30,0 | tidak tampil | 64 × 34 | 68 × 38 |
 | `pdf-multi-page.pdf` | 3: `pdf-multi-page.pdf p1`, `p2`, `p3` | vektor | p1 30,0 × 30,0; p2 80,0 × 20,0; p3 40,0 × 35,0 | tidak tampil | 34 × 34; 84 × 24; 44 × 39 | 38 × 38; 88 × 28; 48 × 43 |
 | `pdf-irregular-shapes.pdf` | 4: p1 bintang, p2 cincin C (celah 5 mm), p3 lingkaran + garis tipis 0,2 mm, p4 tiga lingkaran (celah 4 dan 15 mm) | vektor | p1 38,0 × 36,2; p2 40,0 × 40,0; p3 45,0 × 30,0; p4 79,0 × 20,0 | tidak tampil | p1 42,0 × 40,2; p2 44 × 44; p3 49 × 34; p4 83 × 24, **2 kontur** | p1 46,0 × 44,2; p2 48 × 48; p3 53 × 38; p4 87 × 28, **2 kontur** |
@@ -66,6 +72,7 @@ Ukuran garis potong = lebar × tinggi kotak terluar garis. Garis kiss = artwork 
 | `invalid-file.cdr` | 0 | — | — | — | — | — |
 
 Toleransi:
+
 - **Ukuran artwork:**
   - ±0,2 mm untuk vektor, PNG, dan SVG;
   - ±0,5 mm untuk JPG, karena tepi JPG tidak tajam;
@@ -78,6 +85,7 @@ Toleransi:
 - **Garis tipis (p3):** ujung garis tipis adalah satu sudut lancip, jadi lebar boleh kurang sampai 0,5 mm.
 
 ## Hal lain yang harus benar
+
 - **Hanya kontur luar yang dipotong.** Setiap desain punya tepat 1 garis kiss dan 1 garis die. Pengecualian: `pdf-irregular-shapes.pdf p4` punya 2 + 2, karena lingkaran ketiga berjarak 15 mm, lebih dari 2 × (offset + halus).
   - Lubang transparan di tengah `png-transparent.png` tidak dipotong.
   - Lingkaran di dalam `pdf-single-page.pdf` dan `svg-vector.svg` tidak dipotong.
@@ -111,16 +119,20 @@ Toleransi:
 - **File original tidak berubah** setelah diuji. Jalankan `powershell -ExecutionPolicy Bypass -File cek-original.ps1`: semua baris `sama`, exit code 0.
 
 ## Cara mengecek
+
 - **Ukuran artwork, jumlah desain, dan dpi:** lihat panel Desain (nama, lebar × tinggi, angka dpi). Status bar dan peringatan ada di bawah.
 - **Ukuran garis potong:** export PDF, buka di CorelDRAW, klik garis magenta atau cyan, lalu baca ukuran W × H di property bar.
 - Simpan hasil export di [03-exports](../03-exports) dan bukti (tangkapan layar, log, foto) di [04-evidence](../04-evidence).
 
 ## Hasil 2026-10-18 (build Release)
+
 | Pengecekan | Hasil |
-|---|---|
+| --- | --- |
 | Ukuran tiap file lewat Loader Printech | 19/19 desain benar. Bukti: [verifikasi-loader](../04-evidence/2026-10-18-verifikasi-loader.txt) |
 | UI, semua file sekaligus | Dialog CDR muncul setelah 1,2 detik. Semua file selesai dimuat dan disusun 3,0 detik setelah start (2,5–4,0 detik pada 3 kali jalan). Status, peringatan, pemakaian bahan, dan judul lembar sama dengan harapan di atas. Aplikasi tetap responsif. RAM (private working set) 136–170 MB. Bukti: [ui-semua-input](../04-evidence/2026-10-18-ui-semua-input.txt), [tangkapan layar](../04-evidence/2026-10-18-semua-input-printech.png) |
 | File original | 15/15 `sama` setelah semua uji. Tujuh file lama juga sama dengan hash sebelum file baru dibuat. |
 | Kasus khusus (2026-10-19) | `ui-file-khusus.ps1`: 4 dialog "Gagal memuat", 1 desain masuk, status "1 stiker di 1 lembar.", aplikasi responsif. Pesan error masih teknis (temuan D9). **`pdf-encrypted.pdf` GAGAL:** dimuat sebagai vektor, tetapi export PDF melempar error dan seluruh export layout gagal (temuan D8). Bukti: [ui-file-khusus](../04-evidence/2026-10-19-ui-file-khusus.txt), [pdf-terenkripsi](../04-evidence/2026-10-19-pdf-terenkripsi.txt) |
 | Latar PNG (2026-10-21) | Sebelum perbaikan: latar abu muda dan pink pastel hilang, tinggal 5 % berupa cincin selebar offset kiss, dan logo jadi ±4× lebih besar (temuan D10). Sesudah perbaikan: kedua latar utuh di PDF export (102 % terukur) dan di layar; latar putih tetap dibuang. Bukti: [png-latar](../04-evidence/2026-10-21-png-latar.txt), [sebelum](../04-evidence/2026-10-21-png-latar-sebelum.png), [sesudah](../04-evidence/2026-10-21-png-latar-sesudah.png), [UI](../04-evidence/2026-10-21-png-latar-ui.png) |
+| PDF terenkripsi (2026-10-21) | Sesudah perbaikan D8: `pdf-encrypted.pdf` dimuat sebagai gambar 60,0 × 30,0 mm dengan peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)"; export PDF jadi tanpa error (validasi X3 lulus). Bukti: [pdf-terenkripsi](../04-evidence/2026-10-21-pdf-terenkripsi.txt), [UI](../04-evidence/2026-10-21-pdf-terenkripsi-ui.png) |
+| RAM file besar (2026-10-21) | Sesudah perbaikan D4 (Task Manager): JPG 24 MP 41 MB, dua PDF besar 53 MB, semua 19 desain 84 MB. Target ±120 MB tercapai. Bukti: [ram-profil](../04-evidence/2026-10-21-ram-profil.txt) |
 | Validasi garis potong, nesting, dan export | Lihat [validasi-garis-potong-nesting.md](validasi-garis-potong-nesting.md) |

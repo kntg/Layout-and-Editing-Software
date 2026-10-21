@@ -3,6 +3,7 @@
 Status: Draf 4 · Tanggal: 2026-10-17 · Nama sementara: "Printech" (dikonfirmasi 2026-10-13).
 
 ## 1. Tujuan
+
 Ini alat internal toko. Operator mengubah file dari customer menjadi layout stiker yang siap dicetak dan dipotong. Layout harus hemat bahan dan warnanya akurat.
 
 Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "production" tercapai bila tidak ada error lagi.
@@ -14,10 +15,12 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 **Cakupan:** stiker saja (kiss-cut dan die-cut). Nametag, kartu, dan dokumen tidak termasuk.
 
 ## 2. Pengguna
+
 - Ada dua peran: operator layout dan operator mesin. Di kantor pusat keduanya dipegang orang berbeda; di cabang bisa dipegang orang yang sama.
 - Software dipakai internal perusahaan. Ini terhitung pemakaian komersial, tetapi software tidak didistribusikan ke luar.
 
 ## 3. Observasi AP 55 (PPT leader proyek, 2026-10-14)
+
 - Cabang AP 55 (Angkasa Putra). Tiga operator memegang semua mesin. Mesin cetak stiker: printer laser **Develop**; mesin potong: **Graphtec**.
 - Alur stiker: file masuk lewat WhatsApp, email, atau flashdisk → operator mengecek file → layout garis potong dan posisi cetak di CorelDRAW → cetak di Develop → kiss-cut di Graphtec.
 - Operator mengirim tampilan file ke customer untuk dikonfirmasi ("apakah sesuai?") sebelum bon dicetak.
@@ -26,6 +29,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - Kertas stiker di Develop: A3+ 32×48 cm.
 
 ## 4. Alur di Printech
+
 1. Customer menyerahkan file: 80% CorelDRAW & PDF, 20% AI & PNG/JPG. SVG jarang. Barang fisik belum diterima untuk cutting.
 2. Operator menambahkan file. Aplikasi membuat garis kiss-cut dan die-cut secara otomatis.
 3. Operator mengatur lebar dan jumlah per desain, ukuran kertas, dan margin tepi, lalu menjalankan "Susun otomatis". Jika satu lembar penuh, lembar berikutnya dibuat otomatis.
@@ -33,8 +37,9 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 5. PDF dibuka di CorelDRAW atau Illustrator. Reg mark dan pengiriman ke mesin potong dilakukan lewat Cutting Master 5 (Graphtec), dengan garis potong dipilih berdasarkan warna.
 
 ## 5. Kebutuhan fungsional
+
 | ID | Kebutuhan | Status v2 |
-|----|-----------|-----------|
+| ---- | ----------- | ----------- |
 | F1 | Input PDF, AI (PDF-compatible), CDR (lewat CorelDRAW yang terpasang, di proses worker terpisah yang dihentikan setelah 30 detik bila CorelDRAW tidak merespons), PNG, JPG, SVG. PDF multi-halaman = satu desain per halaman | Ada. Jalur CDR belum diuji |
 | F2 | Crop otomatis ke batas artwork. PDF memakai ukuran asli. Lebar dan jumlah bisa diatur per desain | Ada |
 | F3 | Garis kiss-cut dan die-cut, masing-masing dengan offset dan penghalus (smooth) sendiri | Ada |
@@ -57,6 +62,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 | F20 | Print Ticket: PDF A4 1 halaman berisi total lembar, total pcs, efisiensi bahan, rincian per lembar dan per desain, serta pengaturan potong, untuk lampiran nota kasir/SPK | Ada |
 
 ## 6. Keputusan
+
 - **Platform:** Windows, C#/.NET 10, WPF.
 - **Reg mark:** tidak dibuat oleh aplikasi. Reg mark dibuat oleh Cutting Master 5 di CorelDRAW/Illustrator, yang mendukung FCX2000 dan CE7000. Aplikasi hanya menyisakan margin tepi kertas (default 10 mm, Unverified).
 - **Batas aplikasi** (keputusan leader proyek, 2026-10-14): aplikasi hanya membuat layout. Pengaturan dan urusan mesin tetap dikerjakan operator; profil mesin dihapus dari aplikasi.
@@ -72,6 +78,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - CPU saat diam 0%.
   - Build operator dikompilasi ReadyToRun, sehingga waktu CPU saat start ±setengahnya.
   - Ganti zoom 0,1–0,4 detik CPU. Layar memakai salinan gambar maksimal 1600 px (export tetap resolusi asli): dengan satu gambar 4000×3000 px RAM 186 MB, jendela Rapikan 310 MB, kembali ke 267 MB setelah ditutup. Hapus latar 4000×3000 px: 0,5 detik.
+  - File besar (temuan D4, diperbaiki 2026-10-21): salinan layar selalu salinan piksel mandiri, dan setiap selesai menyusun aplikasi menjalankan GC penuh (±40 ms) supaya bitmap resolusi penuh hasil muat langsung dilepas. RAM Task Manager: JPG 24 MP 226 → 41 MB, dua PDF besar 326 → 53 MB, semua 19 file uji 279 → 84 MB. Puncak sesaat saat memuat file besar tetap tinggi (JPG 24 MP ±200 MB), karena gambar didecode resolusi penuh.
 - **Aman:** tanpa koneksi jaringan. File asli customer hanya dibaca. Yang ditulis hanya PDF export (lokasi dipilih operator) dan folder temp milik aplikasi (salinan PDF/AI dan hasil konversi CDR), yang dihapus saat aplikasi ditutup. Bila aplikasi dihentikan paksa, folder itu tertinggal di `%TEMP%\Printech`. Error tak terduga tampil sebagai pesan, aplikasi tetap jalan. PDFium versi terbaru (build 8100, 2026) dipakai untuk membaca PDF customer.
 - **Kertas default A3+ 320×480 mm** (kertas stiker Develop di AP 55). F4/folio tidak ditambahkan karena cakupan hanya stiker.
 - **Ambang resolusi 150 dpi** masih tebakan awal (target riset 300 ppi); disesuaikan setelah melihat hasil cetak Develop.
@@ -106,16 +113,18 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - **Tidak dibangun:** hide copy, simpan proyek, reg mark buatan aplikasi, dan mode nametag/kartu.
 
 ## 7. Dependensi dan lisensi
+
 | Paket | Fungsi | Lisensi |
-|---|---|---|
+| --- | --- | --- |
 | SharpVectors.Wpf 1.8.6 | Membaca SVG | BSD-3 |
 | BitmapToVector 1.16.3 | Potrace, untuk garis potong | GPL-3.0. Aman untuk pemakaian internal; jangan didistribusikan ke luar perusahaan |
 | bblanchon.PDFium.Win32 157.0.8100 | Render PDF/AI (PDFium, hanya binary Windows) | Apache-2.0 |
 | PDFsharp 6.2.4 | Menulis PDF | MIT |
 
 ## 8. Batasan yang diketahui
+
 - Jalur CDR lewat COM CorelDRAW belum diuji, karena CorelDRAW tidak terpasang di PC pengembangan.
-- PDF yang diputar (/Rotate) atau tidak bisa dibaca PDFsharp akan ditempel sebagai gambar (±254 dpi, RGB). Aplikasi memberi peringatan di status bar sejak desain dimuat ("… PDF ditempel sebagai gambar"; sebelum 2026-10-18 hanya saat impor PDFsharp gagal ketika export).
+- PDF yang diputar (/Rotate) atau tidak bisa dibaca PDFsharp akan ditempel sebagai gambar (±254 dpi, RGB). Termasuk PDF terenkripsi yang bisa dibuka tetapi gagal ditempel: saat dimuat, halaman dicoba ditempel seperti saat export (temuan D8, 2026-10-21). Aplikasi memberi peringatan di status bar sejak desain dimuat ("… PDF ditempel sebagai gambar"; sebelum 2026-10-18 hanya saat impor PDFsharp gagal ketika export).
 - SVG di-export sebagai gambar ±300 dpi.
 - Hanya kontur luar yang dipotong. Lubang di bagian dalam desain tidak ikut dipotong, termasuk lubang yang terbentuk saat offset menutup celah artwork (misalnya huruf C besar).
 - Nesting belum optimal (greedy).
@@ -129,8 +138,9 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - Bleed: tepi JPG yang sangat kasar (kompresi tinggi) bisa menyisakan garis pucat tipis di area bleed; rapikan gambarnya dulu untuk hasil terbaik. Stiker raster sangat besar (±300 mm) dengan bleed dimuat ±1–2 detik lebih lama.
 
 ## 9. Pertanyaan terbuka
+
 | Pertanyaan | Ditanyakan ke | Default sampai dijawab |
-|---|---|---|
+| --- | --- | --- |
 | Format reg mark milik operator | operator (file menyusul) | margin 10 mm |
 | Offset, jarak antar-stiker, dan bleed standar toko | operator | kiss 2/1 mm, die 4/2 mm, jarak 2 mm |
 | Spesifikasi PC operator | operator | Windows 10/11 64-bit |
@@ -140,6 +150,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 | Nilai preset per bahan (offset, halus, jarak, margin) | operator | nilai awal dari panduan publik (RESEARCH §13) |
 
 ## 10. Checklist uji operator
+
 1. Tambahkan file CDR. Apakah CorelDRAW terbuka dan desainnya ikut masuk? Berapa detik prosesnya, dan apakah Printech tetap bisa dipakai selama menunggu?
 2. Tarik file dari Explorer ke jendela Printech. Coba alat Geser tampilan (H atau tahan Spasi), Zoom (Z), dan shortcut Ctrl+I, F4, R, Delete, panah.
 3. Export preview JPG, kirim ke WhatsApp. Apakah cukup jelas untuk konfirmasi ke customer?
@@ -154,6 +165,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 12. Catat setiap error atau kejanggalan, lalu kirim ke pengembang.
 
 ## 11. Menjalankan
+
 - **Untuk operator (tanpa memasang .NET):**
   1. Salin `Printech-win-x64.zip` (64 MB) ke PC operator.
   2. Klik kanan zip → Properties → centang **Unblock** → OK. Langkah ini mencegah peringatan Windows SmartScreen, karena exe belum ditandatangani.

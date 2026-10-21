@@ -1,0 +1,37 @@
+Temuan D4: RAM file besar (diperbaiki 2026-10-21)
+
+Angka = private working set (angka Task Manager), ram-profil.ps1, build Release, 8 dan 20 detik setelah start.
+
+SEBELUM perbaikan (build dengan D8 dan D10, 2026-10-21):
+tanpa file                                       48 MB (8 s)    48 MB (20 s)
+4 desain kecil (single, ai, png, svg)            67 MB (8 s)    67 MB (20 s)
+jpg-large-24mp.jpg saja                         226 MB (8 s)   226 MB (20 s)
+pdf-large-a3.pdf + pdf-oversize.pdf             326 MB (8 s)   326 MB (20 s)
+semua kecuali 3 file besar (16 desain)           87 MB (8 s)    87 MB (20 s)
+semua file 01-input (19 desain)                 279 MB (8 s)   279 MB (20 s)
+
+SESUDAH perbaikan:
+tanpa file                                       35 MB (8 s)    35 MB (20 s)
+4 desain kecil (single, ai, png, svg)            50 MB (8 s)    50 MB (20 s)
+jpg-large-24mp.jpg saja                          41 MB (8 s)    41 MB (20 s)
+pdf-large-a3.pdf + pdf-oversize.pdf              53 MB (8 s)    53 MB (20 s)
+semua kecuali 3 file besar (16 desain)           50 MB (8 s)    50 MB (20 s)
+semua file 01-input (19 desain)                  84 MB (8 s)    84 MB (20 s)
+
+Penyebab (diukur di mesin Printech lewat pwsh, Loader.LoadAll, lalu GC paksa):
+1. Bitmap decode/render resolusi penuh (JPG 24 MP: 6000 x 4000 = 96 MB native, plus salinan piksel 96 MB di heap .NET)
+   sudah jadi sampah setelah desain dimuat, tetapi GC tidak jalan sendiri saat aplikasi diam. Bitmap WPF dilepas lewat
+   finalizer (butuh GC kedua), dan heap besar .NET baru dikembalikan ke Windows pada GC berikutnya.
+   JPG 24 MP: 205 MB setelah muat -> 134 MB setelah 1x GC -> 43 MB setelah 2x GC, desain tetap dipegang.
+2. Loader.Proxy mengembalikan CroppedBitmap apa adanya bila sisi panjang <= 1600 px. CroppedBitmap memegang render
+   halaman penuh: logo 40 x 30 mm di halaman A3 menahan +-43 MB permanen (68 MB vs 25 MB, tetap setelah 3x GC).
+
+Perbaikan:
+- Loader.Proxy selalu membuat salinan piksel mandiri (BitmapSource.Create). Logo kecil di A3: 68 -> 26 MB.
+- MainWindow.Arrange (dipakai tambah file, Rapikan, ganti lebar/garis potong) diakhiri GC.Collect, finalizer, dan
+  GC.Collect mode Aggressive. 19 desain uji di mesin: 395 MB setelah muat -> 70 MB, +-40 ms.
+
+Regresi: selfcheck Release dan Debug 4/4 (15/15 skenario); validasi.ps1: 1584 nilai garis, ukuran, posisi, dan bleed
+identik dengan sebelum perbaikan; validasi.py: laporan sama (X4 preview JPG: isi sama dengan PDF pada 495/495 stiker).
+Batas: puncak memori sesaat saat memuat file besar tetap tinggi (JPG 24 MP +-200 MB beberapa ratus ms) karena gambar
+didecode resolusi penuh. Bisa diturunkan dengan decode skala kecil untuk mask dan layar bila PC operator kekurangan RAM.

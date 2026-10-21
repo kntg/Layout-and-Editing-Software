@@ -1,0 +1,24 @@
+Temuan D8: PDF terenkripsi menggagalkan seluruh export (diperbaiki 2026-10-21)
+
+File: 01-input/khusus/pdf-encrypted.pdf (AES-256, hanya kata sandi pemilik; isi sama dengan pdf-single-page.pdf).
+
+Penyebab: PdfReader.Open berhasil membuka file, jadi desain dianggap vektor. Saat export, XGraphics.DrawImage(XPdfForm)
+membaca isi halaman dan melempar "The archive entry was compressed using an unsupported compression method."
+Perbaikan: saat dimuat, Loader.RenderPdf menempel halaman ke dokumen percobaan dengan cara yang sama seperti
+Export.Pdf (StickerLayout/Core.cs). Bila gagal, PDF ditempel sebagai gambar dan muncul peringatan PdfAsImage (PRD §8).
+Biaya probe pada file uji: 0-2 ms per halaman.
+
+Mesin Printech (build Release, lewat Loader.LoadAll + Export.Pdf):
+Muat khusus\pdf-encrypted.pdf: vektor False; PdfAsImage True; artwork 60,00 x 30,00 mm
+Muat pdf-single-page.pdf: vektor True; PdfAsImage False; artwork 60,00 x 30,00 mm
+Export.Pdf: jadi, tanpa exception; halaman berisi 1 gambar (PDF terenkripsi) dan 1 Form XObject (PDF biasa)
+
+UI (exe dengan kedua file sebagai argumen):
+status: 2 stiker di 1 lembar.
+peringatan: 1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)
+Tangkapan layar: 2026-10-21-pdf-terenkripsi-ui.png
+
+Validasi (skenario X-pdf-diputar sekarang berisi pdf-encrypted.pdf):
+X3 LULUS: PDF yang jadi gambar hanya pdf-rotated.pdf dan pdf-encrypted.pdf, keduanya ditandai untuk peringatan,
+export tetap jadi. Skenario lain identik dengan sebelum perbaikan (1410 nilai sama, 0 beda).
+Laporan lengkap: 2026-10-21-validasi-garis-potong-nesting.txt

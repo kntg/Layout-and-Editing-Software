@@ -1,0 +1,216 @@
+Validasi garis potong, nesting, dan export Printech, 2026-10-21. Data: C:\Users\skyne\OneDrive\Documents\Prototype Software Layout\Printech-TestData\03-exports\validasi
+Kriteria: 02-expected/validasi-garis-potong-nesting.md. Jarak dalam mm.
+
+A. GARIS POTONG
+skenario        desain                         garis offset halus kontur  node    min median    p95   maks
+A-standar       pdf-single-page.pdf            kiss    2,00  1,00      1     6   1,67   1,92   2,02   2,03
+A-standar       pdf-single-page.pdf            die     4,00  2,00      1     8   3,65   3,88   3,95   3,98
+A-standar       pdf-multi-page.pdf p1          kiss    2,00  1,00      1     3   1,92   2,01   2,04   2,05
+A-standar       pdf-multi-page.pdf p1          die     4,00  2,00      1     3   3,88   3,94   3,98   3,99
+A-standar       pdf-multi-page.pdf p2          kiss    2,00  1,00      1     6   1,69   1,94   2,04   2,16
+A-standar       pdf-multi-page.pdf p2          die     4,00  2,00      1     6   3,60   3,88   3,97   4,08
+A-standar       pdf-multi-page.pdf p3          kiss    2,00  1,00      1     6   1,66   1,99   2,10   2,10
+A-standar       pdf-multi-page.pdf p3          die     4,00  2,00      1     7   3,57   3,98   4,13   4,13
+A-standar       ai-compatible.ai               kiss    2,00  1,00      1     3   1,89   2,02   2,11   2,13
+A-standar       ai-compatible.ai               die     4,00  2,00      1     4   3,83   3,98   4,03   4,04
+A-standar       svg-vector.svg                 kiss    2,00  1,00      1     8   1,71   1,94   2,00   2,01
+A-standar       svg-vector.svg                 die     4,00  2,00      1     8   3,73   3,86   3,95   3,95
+A-standar       png-152dpi.png                 kiss    2,00  1,00      1     3   1,76   1,88   1,99   2,04
+A-standar       png-152dpi.png                 die     4,00  2,00      1     3   3,74   3,84   3,91   3,95
+A-standar       jpg-low-resolution.jpg         kiss    2,00  1,00      1     5   1,64   1,87   2,09   2,16
+A-standar       jpg-low-resolution.jpg         die     4,00  2,00      1     4   3,62   3,81   3,99   4,15
+A-standar       pdf-irregular-shapes.pdf p1    kiss    2,00  1,00      1    16   1,69   2,06   2,48   2,72
+A-standar       pdf-irregular-shapes.pdf p1    die     4,00  2,00      1    15   3,67   4,01   4,87   5,21
+A-standar       pdf-irregular-shapes.pdf p2    kiss    2,00  1,00      1     6   1,79   2,03   2,09   2,76
+A-standar       pdf-irregular-shapes.pdf p2    die     4,00  2,00      1     3   3,84   3,97   4,11   4,73
+A-standar       pdf-irregular-shapes.pdf p3    kiss    2,00  1,00      1     9   1,72   2,01   2,31   2,76
+A-standar       pdf-irregular-shapes.pdf p3    die     4,00  2,00      1     9   3,70   3,96   4,50   5,26
+A-standar       pdf-irregular-shapes.pdf p4    kiss    2,00  1,00      2    10   1,90   1,99   2,07   3,01
+A-standar       pdf-irregular-shapes.pdf p4    die     4,00  2,00      2    10   3,83   3,89   4,18   5,42
+A-standar       png-rough-edge.png             kiss    2,00  1,00      1    39   1,63   1,94   2,38   2,66
+A-standar       png-rough-edge.png             die     4,00  2,00      1    36   3,60   3,88   4,57   5,00
+A-standar       png-transparent.png            kiss    2,00  1,00      1     8   1,67   1,92   2,01   2,02
+A-standar       png-transparent.png            die     4,00  2,00      1     8   3,75   3,85   3,94   3,97
+A-standar       pdf-large-a3.pdf               kiss    2,00  1,00      1     8   1,64   1,99   2,11   2,12
+A-standar       pdf-large-a3.pdf               die     4,00  2,00      1     8   3,77   4,00   4,11   4,11
+A-standar       pdf-oversize.pdf               kiss    2,00  1,00      1     8   1,60   1,93   2,04   2,08
+A-standar       pdf-oversize.pdf               die     4,00  2,00      1     8   3,61   3,95   4,01   4,04
+A-standar       jpg-large-24mp.jpg             kiss    2,00  1,00      1     4   1,93   1,99   2,05   2,07
+A-standar       jpg-large-24mp.jpg             die     4,00  2,00      1     3   3,77   3,93   4,05   4,07
+A-offset-kecil  pdf-single-page.pdf            kiss    1,00  1,00      1     6   0,64   0,88   0,96   0,98
+A-offset-kecil  pdf-single-page.pdf            die     3,00  1,00      1     7   2,65   2,85   2,98   2,98
+A-offset-kecil  pdf-multi-page.pdf p1          kiss    1,00  1,00      1     3   0,93   0,99   1,04   1,05
+A-offset-kecil  pdf-multi-page.pdf p1          die     3,00  1,00      1     3   2,89   3,01   3,05   3,07
+A-offset-kecil  pdf-multi-page.pdf p2          kiss    1,00  1,00      1     6   0,65   0,89   1,01   1,08
+A-offset-kecil  pdf-multi-page.pdf p2          die     3,00  1,00      1     7   2,66   2,88   2,98   3,08
+A-offset-kecil  pdf-multi-page.pdf p3          kiss    1,00  1,00      1     8   0,70   1,00   1,07   1,07
+A-offset-kecil  pdf-multi-page.pdf p3          die     3,00  1,00      1     7   2,62   2,98   3,13   3,14
+A-offset-kecil  ai-compatible.ai               kiss    1,00  1,00      1     3   0,85   1,00   1,10   1,12
+A-offset-kecil  ai-compatible.ai               die     3,00  1,00      1     3   2,85   3,02   3,10   3,12
+A-offset-kecil  svg-vector.svg                 kiss    1,00  1,00      1     8   0,63   0,89   1,02   1,03
+A-offset-kecil  svg-vector.svg                 die     3,00  1,00      1     8   2,70   2,94   3,02   3,03
+A-offset-kecil  png-152dpi.png                 kiss    1,00  1,00      1     3   0,66   0,87   1,01   1,13
+A-offset-kecil  png-152dpi.png                 die     3,00  1,00      1     4   2,76   2,87   2,97   3,01
+A-offset-kecil  jpg-low-resolution.jpg         kiss    1,00  1,00      1     5   0,66   0,86   1,07   1,17
+A-offset-kecil  jpg-low-resolution.jpg         die     3,00  1,00      1     6   2,67   2,87   3,03   3,17
+A-offset-kecil  pdf-irregular-shapes.pdf p1    kiss    1,00  1,00      1    16   0,70   1,04   1,50   1,73
+A-offset-kecil  pdf-irregular-shapes.pdf p1    die     3,00  1,00      1    16   2,71   3,05   3,48   3,72
+A-offset-kecil  pdf-irregular-shapes.pdf p2    kiss    1,00  1,00      1    11   0,69   1,03   1,19   1,27
+A-offset-kecil  pdf-irregular-shapes.pdf p2    die     3,00  1,00      1     5   2,86   3,01   3,13   3,57
+A-offset-kecil  pdf-irregular-shapes.pdf p3    kiss    1,00  1,00      1     9   0,72   0,99   1,39   1,79
+A-offset-kecil  pdf-irregular-shapes.pdf p3    die     3,00  1,00      1    10   2,71   3,01   3,32   3,77
+A-offset-kecil  pdf-irregular-shapes.pdf p4    kiss    1,00  1,00      2    14   0,90   0,97   1,03   2,11
+A-offset-kecil  pdf-irregular-shapes.pdf p4    die     3,00  1,00      2    10   2,88   3,00   3,11   3,95
+A-offset-kecil  png-rough-edge.png             kiss    1,00  1,00      1    41   0,62   0,97   1,43   1,67
+A-offset-kecil  png-rough-edge.png             die     3,00  1,00      1    37   2,63   2,91   3,35   3,65
+A-offset-kecil  png-transparent.png            kiss    1,00  1,00      1     7   0,60   0,90   1,03   1,04
+A-offset-kecil  png-transparent.png            die     3,00  1,00      1     8   2,83   2,93   3,00   3,01
+A-offset-besar  pdf-single-page.pdf            kiss    3,00  1,00      1     7   2,65   2,85   2,98   2,98
+A-offset-besar  pdf-single-page.pdf            die     6,00  2,00      1     8   5,66   5,91   6,01   6,01
+A-offset-besar  pdf-multi-page.pdf p1          kiss    3,00  1,00      1     3   2,89   3,01   3,05   3,07
+A-offset-besar  pdf-multi-page.pdf p1          die     6,00  2,00      1     3   5,90   5,95   6,00   6,00
+A-offset-besar  pdf-multi-page.pdf p2          kiss    3,00  1,00      1     7   2,66   2,88   2,98   3,08
+A-offset-besar  pdf-multi-page.pdf p2          die     6,00  2,00      1     9   5,66   5,89   6,00   6,16
+A-offset-besar  pdf-multi-page.pdf p3          kiss    3,00  1,00      1     7   2,62   2,98   3,13   3,14
+A-offset-besar  pdf-multi-page.pdf p3          die     6,00  2,00      1     6   5,64   5,99   6,14   6,14
+A-offset-besar  ai-compatible.ai               kiss    3,00  1,00      1     3   2,85   3,02   3,10   3,12
+A-offset-besar  ai-compatible.ai               die     6,00  2,00      1     5   5,84   5,99   6,03   6,06
+A-offset-besar  svg-vector.svg                 kiss    3,00  1,00      1     8   2,70   2,94   3,02   3,03
+A-offset-besar  svg-vector.svg                 die     6,00  2,00      1     8   5,74   5,89   6,00   6,01
+A-offset-besar  png-152dpi.png                 kiss    3,00  1,00      1     4   2,76   2,87   2,97   3,01
+A-offset-besar  png-152dpi.png                 die     6,00  2,00      1     3   5,75   5,85   5,91   5,93
+A-offset-besar  jpg-low-resolution.jpg         kiss    3,00  1,00      1     6   2,67   2,87   3,03   3,17
+A-offset-besar  jpg-low-resolution.jpg         die     6,00  2,00      1     3   5,61   5,82   5,96   6,19
+A-offset-besar  pdf-irregular-shapes.pdf p1    kiss    3,00  1,00      1    16   2,71   3,05   3,48   3,72
+A-offset-besar  pdf-irregular-shapes.pdf p1    die     6,00  2,00      1    16   5,66   5,88   6,84   7,22
+A-offset-besar  pdf-irregular-shapes.pdf p2    kiss    3,00  1,00      1     5   2,86   3,01   3,13   3,57
+A-offset-besar  pdf-irregular-shapes.pdf p2    die     6,00  2,00      1     3   5,85   5,98   6,11   6,52
+A-offset-besar  pdf-irregular-shapes.pdf p3    kiss    3,00  1,00      1    10   2,71   3,01   3,32   3,77
+A-offset-besar  pdf-irregular-shapes.pdf p3    die     6,00  2,00      1     7   5,66   5,96   6,45   7,22
+A-offset-besar  pdf-irregular-shapes.pdf p4    kiss    3,00  1,00      2    10   2,88   3,00   3,11   3,95
+A-offset-besar  pdf-irregular-shapes.pdf p4    die     6,00  2,00      1    15   5,73   5,93   6,85   8,01
+A-offset-besar  png-rough-edge.png             kiss    3,00  1,00      1    37   2,63   2,91   3,35   3,65
+A-offset-besar  png-rough-edge.png             die     6,00  2,00      1    32   5,65   5,85   6,49   6,85
+A-offset-besar  png-transparent.png            kiss    3,00  1,00      1     8   2,83   2,93   3,00   3,01
+A-offset-besar  png-transparent.png            die     6,00  2,00      1     8   5,78   5,90   6,00   6,00
+A-halus-0       pdf-irregular-shapes.pdf p1    kiss    2,00  0,00      1    27   1,79   2,01   2,15   2,65
+A-halus-0       pdf-irregular-shapes.pdf p1    die     4,00  0,00      1    21   3,83   4,02   4,13   4,29
+A-halus-0       pdf-irregular-shapes.pdf p2    kiss    2,00  0,00      1    11   1,85   2,02   2,13   2,16
+A-halus-0       pdf-irregular-shapes.pdf p2    die     4,00  0,00      1     6   3,92   4,03   4,06   4,08
+A-halus-0       pdf-irregular-shapes.pdf p3    kiss    2,00  0,00      1     8   1,86   2,01   2,20   2,46
+A-halus-0       pdf-irregular-shapes.pdf p3    die     4,00  0,00      1     8   3,84   4,01   4,18   4,49
+A-halus-0       pdf-irregular-shapes.pdf p4    kiss    2,00  0,00      2    11   1,92   1,99   2,05   2,15
+A-halus-0       pdf-irregular-shapes.pdf p4    die     4,00  0,00      2    12   3,90   4,00   4,06   4,16
+A-halus-0       png-rough-edge.png             kiss    2,00  0,00      1    84   1,74   1,94   2,07   2,19
+A-halus-0       png-rough-edge.png             die     4,00  0,00      1    59   3,75   3,95   4,06   4,15
+A-halus-0       png-transparent.png            kiss    2,00  0,00      1     8   1,71   1,94   2,02   2,02
+A-halus-0       png-transparent.png            die     4,00  0,00      1     9   3,75   3,94   4,08   4,10
+A-halus-0.5     pdf-irregular-shapes.pdf p1    kiss    2,00  0,50      1    19   1,77   2,09   2,32   2,56
+A-halus-0.5     pdf-irregular-shapes.pdf p1    die     4,00  0,50      1    20   3,80   4,05   4,30   4,53
+A-halus-0.5     pdf-irregular-shapes.pdf p2    kiss    2,00  0,50      1     6   1,81   2,05   2,14   2,54
+A-halus-0.5     pdf-irregular-shapes.pdf p2    die     4,00  0,50      1     7   3,96   4,06   4,11   4,34
+A-halus-0.5     pdf-irregular-shapes.pdf p3    kiss    2,00  0,50      1     8   1,75   2,05   2,26   2,55
+A-halus-0.5     pdf-irregular-shapes.pdf p3    die     4,00  0,50      1     9   3,85   4,05   4,25   4,58
+A-halus-0.5     pdf-irregular-shapes.pdf p4    kiss    2,00  0,50      2    11   1,96   2,03   2,12   2,64
+A-halus-0.5     pdf-irregular-shapes.pdf p4    die     4,00  0,50      2    11   3,97   4,04   4,09   4,55
+A-halus-0.5     png-rough-edge.png             kiss    2,00  0,50      1    51   1,73   1,96   2,25   2,42
+A-halus-0.5     png-rough-edge.png             die     4,00  0,50      1    37   3,71   3,96   4,20   4,42
+A-halus-0.5     png-transparent.png            kiss    2,00  0,50      1     8   1,63   1,94   2,01   2,02
+A-halus-0.5     png-transparent.png            die     4,00  0,50      1     8   3,68   3,95   4,02   4,04
+A-halus-1       pdf-irregular-shapes.pdf p1    kiss    2,00  1,00      1    16   1,69   2,06   2,48   2,72
+A-halus-1       pdf-irregular-shapes.pdf p1    die     4,00  1,00      1    16   3,70   4,07   4,49   4,73
+A-halus-1       pdf-irregular-shapes.pdf p2    kiss    2,00  1,00      1     6   1,79   2,03   2,09   2,76
+A-halus-1       pdf-irregular-shapes.pdf p2    die     4,00  1,00      1     6   3,94   4,04   4,11   4,51
+A-halus-1       pdf-irregular-shapes.pdf p3    kiss    2,00  1,00      1     9   1,72   2,01   2,31   2,76
+A-halus-1       pdf-irregular-shapes.pdf p3    die     4,00  1,00      1     7   3,72   4,03   4,30   4,76
+A-halus-1       pdf-irregular-shapes.pdf p4    kiss    2,00  1,00      2    10   1,90   1,99   2,07   3,01
+A-halus-1       pdf-irregular-shapes.pdf p4    die     4,00  1,00      2    10   3,96   4,01   4,07   4,88
+A-halus-1       png-rough-edge.png             kiss    2,00  1,00      1    39   1,63   1,94   2,38   2,66
+A-halus-1       png-rough-edge.png             die     4,00  1,00      1    35   3,68   3,91   4,33   4,64
+A-halus-1       png-transparent.png            kiss    2,00  1,00      1     8   1,67   1,92   2,01   2,02
+A-halus-1       png-transparent.png            die     4,00  1,00      1     8   3,83   3,94   4,02   4,02
+A-halus-2       pdf-irregular-shapes.pdf p1    kiss    2,00  2,00      1    25   1,69   2,06   2,87   3,15
+A-halus-2       pdf-irregular-shapes.pdf p1    die     4,00  2,00      1    15   3,67   4,01   4,87   5,21
+A-halus-2       pdf-irregular-shapes.pdf p2    kiss    2,00  2,00      1     6   1,85   1,96   2,03   2,99
+A-halus-2       pdf-irregular-shapes.pdf p2    die     4,00  2,00      1     3   3,84   3,97   4,11   4,73
+A-halus-2       pdf-irregular-shapes.pdf p3    kiss    2,00  2,00      1     7   1,66   1,95   2,62   3,28
+A-halus-2       pdf-irregular-shapes.pdf p3    die     4,00  2,00      1     9   3,70   3,96   4,50   5,26
+A-halus-2       pdf-irregular-shapes.pdf p4    kiss    2,00  2,00      2    10   1,75   1,86   2,30   3,71
+A-halus-2       pdf-irregular-shapes.pdf p4    die     4,00  2,00      2    10   3,83   3,89   4,18   5,42
+A-halus-2       png-rough-edge.png             kiss    2,00  2,00      1    45   1,62   1,90   2,63   3,23
+A-halus-2       png-rough-edge.png             die     4,00  2,00      1    36   3,60   3,88   4,57   5,00
+A-halus-2       png-transparent.png            kiss    2,00  2,00      1     8   1,66   1,86   2,00   2,00
+A-halus-2       png-transparent.png            die     4,00  2,00      1     8   3,75   3,85   3,94   3,97
+A-tak-biasa     pdf-irregular-shapes.pdf p1    kiss    2,00  3,00      1    15   1,69   2,00   3,46   3,81
+A-tak-biasa     pdf-irregular-shapes.pdf p1    die     4,00  0,00      1    21   3,83   4,02   4,13   4,29
+A-tak-biasa     pdf-irregular-shapes.pdf p2    kiss    2,00  3,00      1     7   1,74   1,87   1,93   3,05
+A-tak-biasa     pdf-irregular-shapes.pdf p2    die     4,00  0,00      1     6   3,92   4,03   4,06   4,08
+A-tak-biasa     pdf-irregular-shapes.pdf p3    kiss    2,00  3,00      1     8   1,70   1,86   2,83   3,61
+A-tak-biasa     pdf-irregular-shapes.pdf p3    die     4,00  0,00      1     8   3,84   4,01   4,18   4,49
+A-tak-biasa     pdf-irregular-shapes.pdf p4    kiss    2,00  3,00      2    10   1,73   1,84   2,58   4,25
+A-tak-biasa     pdf-irregular-shapes.pdf p4    die     4,00  0,00      2    14   3,91   4,00   4,07   4,33
+A-tak-biasa     png-rough-edge.png             kiss    2,00  3,00      1    53   1,65   1,88   2,72   3,37
+A-tak-biasa     png-rough-edge.png             die     4,00  0,00      1    59   3,75   3,95   4,06   4,15
+A-tak-biasa     png-transparent.png            kiss    2,00  3,00      1     8   1,66   1,86   1,98   1,99
+A-tak-biasa     png-transparent.png            die     4,00  0,00      1     9   3,75   3,94   4,08   4,10
+A-hanya-kiss    pdf-multi-page.pdf p1          kiss    2,00  1,00      1     3   1,92   2,01   2,04   2,05
+A-hanya-kiss    pdf-multi-page.pdf p2          kiss    2,00  1,00      1     6   1,69   1,94   2,04   2,16
+A-hanya-kiss    pdf-multi-page.pdf p3          kiss    2,00  1,00      1     6   1,66   1,99   2,10   2,10
+A-hanya-kiss    png-rough-edge.png             kiss    2,00  1,00      1    39   1,63   1,94   2,38   2,66
+A-hanya-die     pdf-multi-page.pdf p1          die     4,00  2,00      1     3   3,88   3,94   3,98   3,99
+A-hanya-die     pdf-multi-page.pdf p2          die     4,00  2,00      1     6   3,60   3,88   3,97   4,08
+A-hanya-die     pdf-multi-page.pdf p3          die     4,00  2,00      1     7   3,57   3,98   4,13   4,13
+A-hanya-die     png-rough-edge.png             die     4,00  2,00      1    36   3,60   3,88   4,57   5,00
+
+A1 LULUS: offset sesuai nilai pada 48 garis bentuk sederhana (offset 1/2/3 kiss, 3/4/6 die): median - offset -0,19 s.d. 0,02 (batas ±0,25), maks - offset terbesar 0,19 (batas 0,50)
+A2a LULUS: Halus mengubah kontur: makin besar Halus, garis makin pendek (lekukan kecil ditutup), node berkurang. png-rough-edge.png kiss halus 0/0,5/1/2: node 84/51/39/45, panjang 182,71/176,61/172,52/170,57, jarak maks 2,19/2,42/2,66/3,23; png-rough-edge.png die halus 0/0,5/1/2: node 59/37/35/36, panjang 189,66/186,58/183,92/182,00, jarak maks 4,15/4,42/4,64/5,00; pdf-irregular-shapes.pdf p1 kiss halus 0/0,5/1/2: node 27/19/16/25, panjang 151,73/150,13/147,57/145,02, jarak maks 2,65/2,56/2,72/3,15; pdf-irregular-shapes.pdf p1 die halus 0/0,5/1/2: node 21/20/16/15, panjang 162,89/161,11/158,96/155,74, jarak maks 4,29/4,53/4,73/5,21
+A2b GAGAL: node kiss logo kasar turun 54% dari Halus 0 ke Halus 1 (target PRD/S1 >= 60%)
+A3 LULUS: die membungkus kiss pada 75 desain x pengaturan (termasuk kiss halus 3 + die halus 0): titik kiss di luar die 0, jarak kiss-die terkecil 0,11
+A4 GAGAL: jarak garis ke artwork tidak kurang dari offset - 0,3 mm pada 158 garis. Paling dekat: A-standar pdf-multi-page.pdf p3 die 3,57 mm (offset 4,00, batas 3,70); 63 garis di bawah batas: A-standar pdf-single-page.pdf kiss 1,67/1,70, A-standar pdf-single-page.pdf die 3,65/3,70, A-standar pdf-multi-page.pdf p2 kiss 1,69/1,70, A-standar pdf-multi-page.pdf p2 die 3,60/3,70, A-standar pdf-multi-page.pdf p3 kiss 1,66/1,70, A-standar pdf-multi-page.pdf p3 die 3,57/3,70, A-standar jpg-low-resolution.jpg kiss 1,64/1,70, A-standar jpg-low-resolution.jpg die 3,62/3,70, A-standar pdf-irregular-shapes.pdf p1 kiss 1,69/1,70, A-standar pdf-irregular-shapes.pdf p1 die 3,67/3,70, A-standar png-rough-edge.png kiss 1,63/1,70, A-standar png-rough-edge.png die 3,60/3,70
+A5 GAGAL: bentuk tetap benar setelah reduksi node: 0 garis lurus/sudut di 158 garis; jumlah kontur salah 0; lubang salah 0; bentuk sederhana keluar pita [offset - 0,3; offset + 0,5]: 25 (batas bawah pita = A4). A-standar pdf-irregular-shapes.pdf p2 kiss: lubang tidak dipotong; A-standar pdf-irregular-shapes.pdf p2 die: lubang tidak dipotong; A-standar png-transparent.png kiss: lubang tidak dipotong; A-standar png-transparent.png die: lubang tidak dipotong; A-offset-kecil pdf-irregular-shapes.pdf p2 kiss: lubang ikut dikelilingi garis (celah terbuka); A-halus-0 pdf-irregular-shapes.pdf p2 kiss: lubang ikut dikelilingi garis (celah terbuka)
+A6 LULUS: garis sesuai pilihan: A-standar: 17 stiker, garis magenta 17, cyan 17, warna lain 0; A-hanya-kiss: 4 stiker, garis magenta 4, cyan 0, warna lain 0; A-hanya-die: 4 stiker, garis magenta 0, cyan 4, warna lain 0; keduanya mati: 'Aktifkan minimal satu garis potong.'
+
+E. PDF EXPORT = DATA YANG DINILAI
+E1 LULUS: 17 PDF export: garis potong dan artwork berada tepat di posisi/rotasi data (selisih kotak terbesar 0,020 mm, batas 0,05); jumlah garis/gambar/path sesuai
+
+B. NESTING
+B-sedikit: 3 stiker di 1 lembar (diminta 3, tidak muat 0); pasangan dicek 2, berdekatan < 5 mm 2; jarak ke tetangga terdekat min 3,01, median 3,01, maks 3,09; margin terkecil 10,47; rotasi 0/90/180/270: 3/0/0/0
+   lembar 1: 3 pcs, pemakaian bahan dihitung ulang 4,8%, Printech 4,8%, ditandai merah oleh Printech 0
+B-campuran: 160 stiker di 4 lembar (diminta 160, tidak muat 0); pasangan dicek 325, berdekatan < 5 mm 263; jarak ke tetangga terdekat min 2,72, median 3,19, maks 4,19; margin terkecil 10,47; rotasi 0/90/180/270: 133/5/17/5
+   lembar 1: 47 pcs, pemakaian bahan dihitung ulang 69,5%, Printech 69,9%, ditandai merah oleh Printech 0
+   lembar 2: 39 pcs, pemakaian bahan dihitung ulang 66,2%, Printech 66,4%, ditandai merah oleh Printech 0
+   lembar 3: 63 pcs, pemakaian bahan dihitung ulang 60,6%, Printech 60,7%, ditandai merah oleh Printech 0
+   lembar 4: 11 pcs, pemakaian bahan dihitung ulang 54,4%, Printech 54,5%, ditandai merah oleh Printech 0
+B-tidak-beraturan: 150 stiker di 3 lembar (diminta 150, tidak muat 0); pasangan dicek 308, berdekatan < 5 mm 260; jarak ke tetangga terdekat min 2,50, median 3,27, maks 4,28; margin terkecil 10,44; rotasi 0/90/180/270: 107/3/35/5
+   lembar 1: 47 pcs, pemakaian bahan dihitung ulang 59,5%, Printech 59,6%, ditandai merah oleh Printech 0
+   lembar 2: 79 pcs, pemakaian bahan dihitung ulang 57,7%, Printech 57,8%, ditandai merah oleh Printech 0
+   lembar 3: 24 pcs, pemakaian bahan dihitung ulang 16,6%, Printech 16,7%, ditandai merah oleh Printech 0
+B-banyak-lembar: 152 stiker di 4 lembar (diminta 153, tidak muat 1); pasangan dicek 335, berdekatan < 5 mm 254; jarak ke tetangga terdekat min 2,94, median 2,94, maks 3,84; margin terkecil 10,47; rotasi 0/90/180/270: 152/0/0/0
+   lembar 1: 2 pcs, pemakaian bahan dihitung ulang 87,6%, Printech 87,7%, ditandai merah oleh Printech 0
+   lembar 2: 2 pcs, pemakaian bahan dihitung ulang 87,6%, Printech 87,7%, ditandai merah oleh Printech 0
+   lembar 3: 95 pcs, pemakaian bahan dihitung ulang 62,5%, Printech 62,8%, ditandai merah oleh Printech 0
+   lembar 4: 53 pcs, pemakaian bahan dihitung ulang 34,9%, Printech 35,0%, ditandai merah oleh Printech 0
+B-rotasi: 12 stiker di 1 lembar (diminta 12, tidak muat 0); pasangan dicek 0, berdekatan < 5 mm 0; jarak ke tetangga terdekat - (tidak ada tetangga < 5 mm); margin terkecil 14,47; rotasi 0/90/180/270: 3/3/3/3
+   lembar 1: 12 pcs, pemakaian bahan dihitung ulang 14,3%, Printech 14,3%, ditandai merah oleh Printech 0
+B-ui: 18 stiker di 2 lembar (diminta 19, tidak muat 1); pasangan dicek 27, berdekatan < 5 mm 24; jarak ke tetangga terdekat min 2,81, median 3,11, maks 4,08; margin terkecil 10,47; rotasi 0/90/180/270: 15/2/1/0
+   lembar 1: 5 pcs, pemakaian bahan dihitung ulang 91,0%, Printech 91,1%, ditandai merah oleh Printech 0
+   lembar 2: 13 pcs, pemakaian bahan dihitung ulang 15,9%, Printech 16,0%, ditandai merah oleh Printech 0
+
+B1 LULUS: jumlah stiker: B-sedikit 3 + tidak muat 0 = diminta 3; B-campuran 160 + tidak muat 0 = diminta 160; B-tidak-beraturan 150 + tidak muat 0 = diminta 150; B-banyak-lembar 152 + tidak muat 1 = diminta 153; B-rotasi 12 + tidak muat 0 = diminta 12; B-ui 18 + tidak muat 1 = diminta 19
+B2 LULUS: tabrakan: 0 dari 997 pasangan stiker yang dicek (803 pasangan berjarak < 5 mm)
+B3 LULUS: jarak antar garis potong terluar >= 2 mm: terkecil 2,50, median jarak ke tetangga terdekat 3,11, maks 4,28
+B4 LULUS: margin 10 mm (stiker dengan bleed: garis + bleed): terkecil 10,44
+B5 LULUS: 4 arah rotasi dipakai tanpa merusak geometri (diukur dari PDF export): pdf-irregular-shapes.pdf p3 rotasi 0/90/180/270: jarak garis kiss ke artwork di PDF min 1,72/1,72/1,72/1,72, median 2,01/2,01/2,01/2,01 (selisih antar rotasi 0,000; vs tanpa rotasi 0,001); png-rough-edge.png rotasi 0/90/180/270: jarak garis kiss ke artwork di PDF min 1,63/1,63/1,63/1,63, median 1,94/1,94/1,94/1,94 (selisih antar rotasi 0,000; vs tanpa rotasi 0,000); pdf-multi-page.pdf p3 rotasi 0/90/180/270: jarak garis kiss ke artwork di PDF min 1,65/1,65/1,65/1,65, median 1,99/1,99/1,99/1,99 (selisih antar rotasi 0,000; vs tanpa rotasi 0,000). Susun otomatis memakai rotasi 0/90/180/270: 410/10/53/10
+B6 LULUS: lembar tambahan hanya bila perlu: B-campuran 4 lembar (batas bawah luas 3), lembar terakhir 11 stiker, yang masih muat di lembar sebelumnya 0; B-tidak-beraturan 3 lembar (batas bawah luas 2), lembar terakhir 24 stiker, yang masih muat di lembar sebelumnya 0; B-banyak-lembar 4 lembar (batas bawah luas 3), lembar terakhir 53 stiker, yang masih muat di lembar sebelumnya 0; B-ui 2 lembar (batas bawah luas 2), lembar terakhir 13 stiker, yang masih muat di lembar sebelumnya 0; tidak ada lembar kosong
+B7 LULUS: pemakaian bahan Printech = luas di dalam garis potong terluar / area cetak, dihitung ulang dari garis: selisih terbesar 0,41 poin persen (batas 0,5); jumlah pcs per lembar = jumlah garis di PDF
+Angka untuk dicocokkan dengan layar (uji UI, semua file 01-input): status '18 stiker di 2 lembar.', tidak muat 1, pemakaian bahan total 54%, per lembar 5 pcs 91%, 13 pcs 16%
+
+X. HASIL EXPORT (dicek dari file, bukan dari tampilan canvas)
+X1 LULUS: 17 PDF produksi: jumlah dan ukuran halaman sesuai lembar (termasuk lembar yang dipadatkan); posisi artwork = E1; 677 artwork diukur ulang dari PDF: ukuran sama dengan file asli/lebar yang diminta (batas 0,05 mm)
+X2 LULUS: preflight 26 halaman: garis di-stroke dengan 0 1 0 0 K sebanyak 577, 1 0 0 0 K sebanyak 254, warna stroke lain 0; operator RGB/ICC/Separation 0; OutputIntent 0. Separasi CMYK (render MuPDF, tanpa antialias): kiss 625/625 titik tepat C0 M100 Y0 K0, die 375/375 titik tepat C100 M0 Y0 K0
+X3 LULUS: 459 penempatan PDF/AI tetap vektor (Form XObject, tanpa gambar), warna isi CMYK sama persis dengan file input; PDF yang jadi gambar hanya pdf-rotated.pdf (/Rotate 90) dan pdf-encrypted.pdf (terenkripsi, gagal ditempel PDFsharp, D8), keduanya ditandai untuk peringatan dan export tetap jadi: 3 penempatan; SVG ditempel sebagai gambar sesuai PRD
+X4 LULUS: 15 preview JPG untuk 15 lembar: JPEG, sisi panjang 2000 px, proporsi = ukuran lembar; isi di posisi stiker sama dengan PDF pada 495/495 stiker
+X5 LULUS: 6 Print Ticket: 1 halaman A4; total lembar, total stiker, efisiensi bahan, rincian per lembar dan per desain, serta pengaturan potong sesuai layout (efisiensi dibanding hitung ulang dari garis, toleransi pembulatan 1 poin)
+
+Gambar bukti: sama byte per byte dengan 04-evidence/2026-10-19-validasi-garis-potong.png, 2026-10-19-validasi-halus.png, 2026-10-19-validasi-B-*-lembar1.png, 2026-10-19-validasi-separasi-cmyk.png (file 2026-10-21 tidak disimpan ulang).
+RINGKAS: 3 kriteria GAGAL

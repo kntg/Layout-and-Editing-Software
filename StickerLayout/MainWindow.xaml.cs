@@ -259,6 +259,10 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
         finally { Mouse.OverrideCursor = null; }
+        // Bitmap resolusi penuh dari Loader.Load sudah jadi sampah, tetapi GC tidak jalan sendiri saat aplikasi diam
+        // (JPG 24 MP: RAM tetap ±220 MB). Bitmap WPF dilepas lewat finalizer; Aggressive mengembalikan memori heap besar
+        // ke Windows saat itu juga. 19 desain uji: 395 -> 70 MB, ±40 ms (D4).
+        GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(2, GCCollectionMode.Aggressive, true, true);
     }
 
     void Compact_Click(object s, RoutedEventArgs e)

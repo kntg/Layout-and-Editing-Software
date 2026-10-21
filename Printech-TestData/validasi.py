@@ -753,11 +753,13 @@ for sc in SCN:
                     x3.append(f"{sc['name']} {d['name']}: warna isi {sorted(want - form)} hilang")
             elif ext in (".pdf", ".ai", ".cdr"):
                 ras_pdf.append(f"{sc['name']} {d['name']}")
-                if not d["pdfAsImage"] or d["source"] != "pdf-rotated.pdf":
+                if not d["pdfAsImage"] or pathlib.Path(d["source"]).name not in ("pdf-rotated.pdf", "pdf-encrypted.pdf"):
                     x3.append(f"{sc['name']} {d['name']}: PDF jadi gambar tanpa alasan/peringatan")
-rot_ok = any(d["source"] == "pdf-rotated.pdf" and d["pdfAsImage"] for d in SC["X-pdf-diputar"]["designs"])
-verdict("X3", not x3 and rot_ok, f"{vec_n} penempatan PDF/AI tetap vektor (Form XObject, tanpa gambar), warna isi CMYK sama persis dengan file input; "
-        f"PDF yang jadi gambar hanya pdf-rotated.pdf (/Rotate 90) dan ditandai untuk peringatan: {len(ras_pdf)} penempatan; SVG ditempel sebagai gambar sesuai PRD"
+ras_ok = all(any(pathlib.Path(d["source"]).name == f and d["pdfAsImage"] for d in SC["X-pdf-diputar"]["designs"])
+             for f in ("pdf-rotated.pdf", "pdf-encrypted.pdf"))
+verdict("X3", not x3 and ras_ok, f"{vec_n} penempatan PDF/AI tetap vektor (Form XObject, tanpa gambar), warna isi CMYK sama persis dengan file input; "
+        f"PDF yang jadi gambar hanya pdf-rotated.pdf (/Rotate 90) dan pdf-encrypted.pdf (terenkripsi, gagal ditempel PDFsharp, D8), "
+        f"keduanya ditandai untuk peringatan dan export tetap jadi: {len(ras_pdf)} penempatan; SVG ditempel sebagai gambar sesuai PRD"
         + "".join(f"; {t}" for t in x3[:10]))
 
 # X4 preview JPG

@@ -3,11 +3,13 @@
 Kriteria di dokumen ini ditetapkan sebelum validasi dijalankan. Kesalahan garis potong dan nesting langsung membuang bahan, jadi setiap kriteria diukur dengan angka, bukan hanya dilihat.
 
 ## Cara menjalankan
+
 1. Build Release: `dotnet build -c Release` di folder `StickerLayout`.
 2. `pwsh validasi.ps1`. Skrip ini menjalankan mesin Printech (Loader, Nest, Export) untuk setiap skenario. Hasil mentahnya disimpan di `03-exports/validasi/`: `validasi.json` dan satu PDF export per skenario.
 3. `python validasi.py`. Skrip ini menilai hasil dan menulis laporan serta gambar bukti ke `04-evidence/`. Exit code 0 berarti semua lulus; 1 berarti ada yang gagal.
 
 Penilai tidak memakai kode Printech. Bentuk artwork yang benar diambil dari file asli di `01-input`:
+
 - **PDF/AI:** path vektor, dibaca dengan PyMuPDF.
 - **PNG/JPG:** piksel, dengan aturan latar yang sama seperti Printech (alpha > 16; tanpa alpha: bukan putih < 240 bila minimal separuh tepi gambar putih ≥ 250, selain itu seluruh gambar).
 - **SVG:** bentuk dari isi file.
@@ -17,16 +19,18 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 ## A. Garis potong
 
 ### Artwork yang diuji
+
 | Jenis | File |
-|---|---|
+| --- | --- |
 | Sederhana (lingkaran, persegi) | `pdf-multi-page.pdf` p1 (lingkaran) dan p2 (persegi panjang), `pdf-single-page.pdf`, `ai-compatible.ai`, `svg-vector.svg`, `png-152dpi.png`, `jpg-low-resolution.jpg`; besar: `pdf-large-a3.pdf`, `pdf-oversize.pdf`, `jpg-large-24mp.jpg` |
 | Tepi tidak beraturan | `png-rough-edge.png` (logo bertepi bergelombang), `pdf-irregular-shapes.pdf` p1 (bintang), p3 (garis tipis 0,2 mm), `pdf-multi-page.pdf` p3 (segitiga lancip) |
 | Berlubang | `png-transparent.png` (lubang tertutup), `pdf-irregular-shapes.pdf` p2 (cincin C, celah 5 mm) |
 | Elemen berdekatan | `pdf-irregular-shapes.pdf` p4 (tiga lingkaran, celah 4 mm dan 15 mm) |
 
 ### Pengaturan
+
 | Skenario | Kiss offset/halus | Die offset/halus |
-|---|---|---|
+| --- | --- | --- |
 | A-standar | 2 / 1 | 4 / 2 |
 | A-offset-kecil | 1 / 1 | 3 / 1 |
 | A-offset-besar | 3 / 1 | 6 / 2 |
@@ -34,9 +38,10 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 | A-tak-biasa | 2 / 3 | 4 / 0 |
 | A-hanya-kiss, A-hanya-die, A-tanpa-garis | satu garis saja, atau keduanya mati | |
 
-### Kriteria
+### Kriteria garis potong
+
 | ID | Pemeriksaan | Lulus bila |
-|---|---|---|
+| --- | --- | --- |
 | A1 | Offset sesuai nilai yang dipilih | Pada bentuk sederhana dengan offset kiss 1/2/3 dan die 3/4/6: median jarak garis ke artwork = offset ± 0,25 mm, dan jarak terjauh tidak lebih dari offset + 0,5 mm. Toleransi ini menampung resolusi mask 6 px/mm (0,17 mm) dan piksel gambar sumber. |
 | A2a | Halus benar-benar mengubah kontur | Pada logo bertepi kasar dan bintang (kiss dan die): panjang garis selalu turun dari Halus 0 → 0,5 → 1 → 2, karena lekukan kecil ditutup. Node Halus 1 dan 2 lebih sedikit dari Halus 0. |
 | A2b | Target reduksi node | Kiss logo kasar: node Halus 1 ≤ 40% dari Halus 0 (target PRD dan S1: turun ≥ 60%). |
@@ -49,8 +54,9 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 ## B. Nesting (A3+ 320 × 480 mm, margin 10 mm, jarak 2 mm)
 
 ### Skenario
+
 | Skenario | Isi |
-|---|---|
+| --- | --- |
 | B-sedikit | 3 stiker (2 desain) |
 | B-campuran | 160 stiker dari 16 desain berukuran campuran, kiss + die |
 | B-tidak-beraturan | 150 stiker bentuk tidak beraturan (bintang, cincin, garis tipis, tiga lingkaran, logo kasar, segitiga), bleed 1 mm |
@@ -58,9 +64,10 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 | B-rotasi | 3 desain tidak simetris, masing-masing di 0°, 90°, 180°, 270°, diletakkan manual |
 | B-ui | Semua file `01-input` dengan pengaturan bawaan aplikasi. Angkanya dicocokkan dengan layar Printech. |
 
-### Kriteria
+### Kriteria nesting
+
 | ID | Pemeriksaan | Lulus bila |
-|---|---|---|
+| --- | --- | --- |
 | B1 | Jumlah stiker | Per desain, jumlah terpasang = jumlah salinan, kecuali desain yang memang lebih besar dari area cetak (0 terpasang, dihitung "tidak muat"). Terpasang + tidak muat = diminta. |
 | B2 | Tabrakan | Tidak ada pasangan garis potong terluar yang bersinggungan atau saling memuat. Setiap pasangan yang kotaknya berjarak < 5 mm dicek dengan geometri asli garis. |
 | B3 | Jarak antarelemen | Jarak terdekat antar garis potong terluar stiker berbeda ≥ 2,0 mm. |
@@ -70,33 +77,38 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 | B7 | Efisiensi bahan | Pemakaian bahan per lembar dari Printech sama dengan luas di dalam garis potong terluar ÷ area cetak, dihitung ulang dari garis (selisih ≤ 0,5 poin persen). Jumlah pcs per lembar sama dengan jumlah garis di PDF. |
 
 ## X. Hasil export (tahap keempat)
+
 Semua dicek dari file hasil export (PDF produksi, preview JPG, Print Ticket), bukan dari tampilan canvas. Warna diperiksa dengan dua cara:
+
 - **Preflight isi PDF:** membaca operator warna langsung dari content stream.
 - **Separasi CMYK:** halaman dirender MuPDF ke CMYK tanpa antialias, lalu nilai pelat C/M/Y/K dibaca di titik-titik garis potong.
 
-Skenario: semua PDF di atas. Preview dan Print Ticket dibuat untuk skenario B-*. Lembar terakhir B-campuran dipadatkan ("Compact lembar terakhir"). Tambahan **X-pdf-diputar** berisi `pdf-rotated.pdf` (halaman /Rotate 90) dan `pdf-single-page.pdf`.
+Skenario: semua PDF di atas. Preview dan Print Ticket dibuat untuk skenario B-*. Lembar terakhir B-campuran dipadatkan ("Compact lembar terakhir"). Tambahan **X-pdf-diputar** berisi `pdf-rotated.pdf` (halaman /Rotate 90), `pdf-single-page.pdf`, dan `khusus/pdf-encrypted.pdf` (sejak 2026-10-21, temuan D8).
 
 | ID | Output | Lulus bila |
-|---|---|---|
+| --- | --- | --- |
 | X1 | PDF produksi | Jumlah halaman = jumlah lembar. Ukuran halaman = lebar kertas × tinggi lembar (termasuk lembar yang dipadatkan), ±0,01 mm. Posisi artwork sesuai layout (E1, ±0,05 mm). Ukuran desain di PDF sesuai file asli, ±0,05 mm: path vektor sama dengan path di file input; gambar = lebar yang diminta (50 mm). |
 | X2 | Warna garis potong | Preflight: setiap garis yang di-stroke memakai DeviceCMYK `0 1 0 0 K` (kiss) atau `1 0 0 0 K` (die); jumlahnya = jumlah garis kiss/die per lembar; tidak ada operator RGB, ICC, Separation, atau `CS`/`SCN`; tidak ada OutputIntent. Separasi: di setiap titik sampel, garis kiss tepat C 0 M 100 Y 0 K 0, dan garis die tepat C 100 M 0 Y 0 K 0. |
-| X3 | Vektor | Desain PDF/AI tetap vektor: digambar sebagai Form XObject, warna isi CMYK sama persis dengan file input, tanpa gambar. Gambar hanya untuk PNG/JPG/SVG, dan untuk PDF yang memang tidak bisa vektor (halaman diputar). PDF yang jadi gambar wajib memunculkan peringatan, sesuai PRD. |
+| X3 | Vektor | Desain PDF/AI tetap vektor: digambar sebagai Form XObject, warna isi CMYK sama persis dengan file input, tanpa gambar. Gambar hanya untuk PNG/JPG/SVG, dan untuk PDF yang memang tidak bisa vektor (halaman diputar, atau PDF terenkripsi yang gagal ditempel PDFsharp). PDF yang jadi gambar wajib memunculkan peringatan, sesuai PRD, dan export tetap jadi. |
 | X4 | Preview JPG | Satu file JPEG per lembar. Sisi panjang 2000 px (±1). Perbandingan sisi = ukuran lembar (±1 px). Di setiap posisi stiker, preview dan PDF sama-sama berisi artwork (cocok ≥ 95%). |
 | X5 | Print Ticket | PDF 1 halaman A4 (210 × 297 mm, ±0,5). Isinya: total lembar, total stiker, efisiensi bahan (±1 poin dari hitung ulang), rincian per lembar (pcs dan bahan) dan per desain (pcs), serta pengaturan potong (kiss/die, jarak, bleed). Semua angka sesuai layout. |
 
 ## Catatan dokumentasi
+
 - **Ukuran grid:** kode memakai grid nesting 1 mm (`Nest.Cell = 1`, [Core.cs](../../StickerLayout/Core.cs)). Angka "grid 2 mm" berasal dari versi sebelum 2026-10-18.
 - **Uji tabrakan sebelumnya:** `Printech-Deskripsi.pdf` versi sekarang (di luar repo) menulis "grid 1 mm" dan "0 tabrakan dari 236 pasangan".
 
 ## Hasil 2026-10-18 (build Release)
+
 Laporan lengkap: [2026-10-18-validasi-garis-potong-nesting.txt](../04-evidence/2026-10-18-validasi-garis-potong-nesting.txt). Gambar bukti:
+
 - [overlay garis potong](../04-evidence/2026-10-18-validasi-garis-potong.png): artwork abu-abu, kiss magenta, die cyan;
 - [pengaruh Halus](../04-evidence/2026-10-18-validasi-halus.png);
 - [lembar 1 B-campuran](../04-evidence/2026-10-18-validasi-B-campuran-lembar1.png);
 - [lembar 1 B-tidak-beraturan](../04-evidence/2026-10-18-validasi-B-tidak-beraturan-lembar1.png).
 
 | ID | Hasil | Angka |
-|---|---|---|
+| --- | --- | --- |
 | A1 | Lulus | 48 garis bentuk sederhana: median − offset −0,19 s.d. +0,02 mm; jarak terjauh maksimal offset + 0,19 mm |
 | A2a | Lulus | Panjang garis selalu turun seiring Halus naik. Node pada Halus 0 → 1: logo kasar kiss 84 → 39, die 59 → 35; bintang kiss 27 → 16, die 21 → 16 |
 | A2b | **Gagal** | Kiss logo kasar turun 54% (target ≥ 60%). `rough.jpg` di selfcheck S1 tetap turun 74%. Logo uji baru punya gelombang nyata 0,9 mm setiap ±7,6 mm yang memang harus diikuti garis, jadi node tidak bisa turun sebanyak itu. Target PRD bergantung pada jenis logo. |
@@ -119,6 +131,7 @@ Laporan lengkap: [2026-10-18-validasi-garis-potong-nesting.txt](../04-evidence/2
 | X5 | Lulus | 6 Print Ticket: 1 halaman A4. Total lembar, total stiker, efisiensi, per lembar, per desain, dan pengaturan potong sesuai layout. |
 
 ### Perbaikan mesin dari validasi ini ([Core.cs](../../StickerLayout/Core.cs))
+
 1. **Jari-jari penjaga jarak dibulatkan ke atas, bukan ke bawah.** Dibulatkan ke bawah, penjaga sudah 0,03 mm lebih dekat dari aturan sebelum kurva Potrace. A4 terburuk membaik dari −0,29 menjadi −0,13 mm. Selfcheck tetap 15/15. Node `rough.jpg` S1: kiss 16 → 17, die 13 → 16.
 2. **Die minimal 1 piksel (0,17 mm) di luar kiss.** Setelah perbaikan 1, pada pengaturan tak biasa (kiss halus 3, die halus 0), garis kiss menembus die 0,023 mm. Di area itu bentuk die sama persis dengan kiss, dan Potrace mencocokkan kurvanya sedikit berbeda. Sekarang 0 titik di luar.
 3. **Peringatan PDF yang ditempel sebagai gambar** (`Sticker.PdfAsImage`, [MainWindow.xaml.cs](../../StickerLayout/MainWindow.xaml.cs), [Strings.cs](../../StickerLayout/Strings.cs)).
@@ -127,6 +140,7 @@ Laporan lengkap: [2026-10-18-validasi-garis-potong-nesting.txt](../04-evidence/2
    - Sekarang status bar menampilkan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)". Dicek di uji UI.
 
 ### Perlu keputusan
+
 - **A4: sisa ≤ 0,13 mm berasal dari resolusi mask 6 px/mm dan penghalusan kurva Potrace, bukan dari penjaga.**
   - Penjaga dicoba sama dengan offset penuh. Hasilnya: A4 tetap gagal (−0,08 mm, karena piksel JPG 0,25 mm), dan reduksi node turun ke 40–45% sehingga S1 dan S2 gagal.
   - Pilihan:

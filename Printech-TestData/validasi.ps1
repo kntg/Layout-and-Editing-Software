@@ -77,7 +77,7 @@ function Run([string]$name, $designs, [double]$cw, [double]$ch, [double]$margin 
     lastSheet = LastSheet $sheets $cw $ch $margin $gap
     previews = $prev; ticket = $ticket; ticketLines = @($tlines)
     designs = @($designs | ForEach-Object { [ordered]@{
-      id = $ids[$_]; name = $_.Name; source = (Split-Path $_.Source -Leaf); page = $_.Page; copies = $_.Copies; vector = $null -ne $_.Pdf
+      id = $ids[$_]; name = $_.Name; source = [IO.Path]::GetRelativePath($in, $_.Source); page = $_.Page; copies = $_.Copies; vector = $null -ne $_.Pdf
       artW = $_.ArtW; artH = $_.ArtH; off = $_.Off; W = $_.W; H = $_.H; full = @($_.Full.X, $_.Full.Y, $_.Full.Width, $_.Full.Height)
       kissCut = @($_.LoadedKiss.On, $_.LoadedKiss.Off, $_.LoadedKiss.Smooth); dieCut = @($_.LoadedDie.On, $_.LoadedDie.Off, $_.LoadedDie.Smooth)
       kiss = $_.Kiss; die = $_.Die; areaMm2 = $_.AreaMm2; dpi = $_.Dpi; lowDpi = $_.LowDpi; loadMs = $script:ms[$_]
@@ -134,8 +134,9 @@ foreach ($s in $rd | Where-Object { $_.Name -in $rotated }) {
 $sheets = [System.Collections.Generic.List[System.Collections.Generic.List[StickerLayout.Placed]]]::new(); $sheets.Add($sheet)
 Run 'B-rotasi' $rd @A3 -sheets $sheets
 
-# Vektor vs gambar: PDF ber-/Rotate ditempel sebagai gambar (dengan peringatan), PDF biasa tetap vektor.
-Run 'X-pdf-diputar' (Load 'pdf-rotated.pdf', 'pdf-single-page.pdf' (Cut 2 1) (Cut 4 2)) @A3
+# Vektor vs gambar: PDF ber-/Rotate dan PDF terenkripsi yang gagal ditempel PDFsharp (D8) ditempel sebagai gambar
+# (dengan peringatan), PDF biasa tetap vektor. Export harus tetap jadi.
+Run 'X-pdf-diputar' (Load 'pdf-rotated.pdf', 'pdf-single-page.pdf', 'khusus\pdf-encrypted.pdf' (Cut 2 1) (Cut 4 2)) @A3
 
 # Sama dengan uji UI: semua file 01-input sekaligus (urutan nama), pengaturan bawaan aplikasi (kiss 2/1, die mati).
 # invalid-file.cdr tidak ikut karena gagal dimuat.

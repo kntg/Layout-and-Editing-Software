@@ -301,6 +301,14 @@ public static class Loader
             var pg = doc.Pages[page];
             if (pg.Rotate % 360 == 0)
             {
+                // Tempel seperti Export.Pdf. PDF yang bisa dibuka tetapi gagal ditempel (mis. terenkripsi, D8) jadi gambar.
+                using (var form = PdfSharp.Drawing.XPdfForm.FromFile(pdf))
+                using (var probe = new PdfSharp.Pdf.PdfDocument())
+                using (var g = PdfSharp.Drawing.XGraphics.FromPdfPage(probe.AddPage()))
+                {
+                    form.PageIndex = page;
+                    g.DrawImage(form, 0, 0, 1, 1);
+                }
                 var mb = pg.MediaBox;
                 var cb = pg.EffectiveCropBoxReadOnly;
                 return (bmp, 1 / pxMm, new Rect((mb.X1 - cb.X1) * scale, (cb.Y2 - mb.Y2) * scale, mb.Width * scale, mb.Height * scale), true);
@@ -333,13 +341,17 @@ public static class Loader
     // Export dan garis potong tetap memakai resolusi asli.
     const int ViewMax = 1600;
 
+    // Selalu salinan piksel mandiri. WriteableBitmap(TransformedBitmap) dan CroppedBitmap ikut memegang bitmap sumber
+    // resolusi penuh (JPG 24 MP: ±96 MB native per desain, temuan D4).
     static BitmapSource Proxy(BitmapSource b)
     {
-        double k = (double)ViewMax / Math.Max(b.PixelWidth, b.PixelHeight);
-        if (k >= 1) return b;
-        var w = new WriteableBitmap(new TransformedBitmap(b, new ScaleTransform(k, k))); // salinan: gambar asli bisa dibuang
-        w.Freeze();
-        return w;
+        double k = Math.Min(1, (double)ViewMax / Math.Max(b.PixelWidth, b.PixelHeight));
+        var t = new FormatConvertedBitmap(new TransformedBitmap(b, new ScaleTransform(k, k)), PixelFormats.Pbgra32, null, 0);
+        var px = new byte[t.PixelWidth * t.PixelHeight * 4];
+        t.CopyPixels(px, t.PixelWidth * 4, 0);
+        var copy = BitmapSource.Create(t.PixelWidth, t.PixelHeight, t.DpiX, t.DpiY, PixelFormats.Pbgra32, null, px, t.PixelWidth * 4);
+        copy.Freeze();
+        return copy;
     }
 
     public static byte[] Png(BitmapSource b)
