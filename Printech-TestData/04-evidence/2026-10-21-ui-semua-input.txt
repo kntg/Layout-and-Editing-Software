@@ -1,0 +1,16 @@
+Uji UI semua file 01-input (ui-semua-input.ps1), build Release, 2026-10-21, diulang setelah masukan leader tahap 4
+(tahap 1: latar gambar opak tidak dibuang otomatis, Compact = penuhi lembar; tahap 2-4: undo/redo, garis dalam donat, editor garis potong)
+
+file: 15 (ai-compatible.ai, invalid-file.cdr, jpg-large-24mp.jpg, jpg-low-resolution.jpg, pdf-irregular-shapes.pdf, pdf-large-a3.pdf, pdf-multi-page.pdf, pdf-oversize.pdf, pdf-rotated.pdf, pdf-single-page.pdf, png-147dpi.png, png-152dpi.png, png-rough-edge.png, png-transparent.png, svg-vector.svg)
+dialog 'Gagal memuat' setelah 1.9 s: invalid-file.cdr: CorelDRAW tidak terpasang. Export file CDR ke PDF dulu, lalu tambahkan PDF-nya.
+semua file selesai dimuat dan disusun 5.7 s setelah start
+status: 18 stiker di 2 lembar.
+peringatan: 1 lebih besar dari kertas   2 desain resolusi rendah   1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)
+pemakaian bahan: 54% · sisa 46%
+judul lembar: 5 pcs / lembar A3+ · 92% | 13 pcs / lembar A3+ · 16%
+tangkapan layar: 2026-10-21-semua-input-printech.png
+RAM private working set (Task Manager): 81 MB; responding: True
+
+Dibanding 2026-10-18: status, peringatan, dan pemakaian bahan sama. Judul lembar 1 naik 91% -> 92% karena JPG kini
+dipakai utuh (kotak gambar). RAM 136-170 -> 81 MB (perbaikan D4). Dibanding run tahap 1 hari ini: angka sama, RAM 87 -> 81 MB.
+Daftar desain kini punya 3 ikon per baris (Rapikan, Edit garis potong, Hapus).

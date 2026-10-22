@@ -144,6 +144,71 @@ public partial class MainWindow : Window
         Redraw("");
     }
 
+    // ---- Undo/redo global: satu langkah = keadaan dokumen setelah satu aksi operator ----
+    sealed record Doc(List<(Sticker S, int Copies, double WidthMm, string Name)> Items, List<List<(Sticker S, double X, double Y, int Rot)>> Sheets,
+        List<double> SheetH, double SheetW, int TooBig, string[] Settings);
+    const int UndoMax = 30; // snapshot memegang Sticker lama beserta pratinjaunya; batas ini menjaga RAM
+    readonly List<Doc> undo = [], redo = [];
+    Doc? saved;
+    bool restoring;
+
+    string[] Settings() => [PaperBox.SelectedItem as string ?? "", PresetBox.SelectedIndex.ToString(CultureInfo.InvariantCulture), CanvasW.Text,
+        CanvasH.Text, MarginBox.Text, GapBox.Text, $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text,
+        BleedBox.Text, WidthBox.Text];
+
+    Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name))],
+        [.. sheets.Select(sh => sh.Select(p => (p.S, p.X, p.Y, p.Rot)).ToList())], [.. sheetH], sheetW, tooBig, Settings());
+
+    static bool Same(Doc a, Doc b) => a.SheetW == b.SheetW && a.TooBig == b.TooBig && a.Settings.SequenceEqual(b.Settings)
+        && a.Items.SequenceEqual(b.Items) && a.SheetH.SequenceEqual(b.SheetH)
+        && a.Sheets.Count == b.Sheets.Count && a.Sheets.Zip(b.Sheets).All(x => x.First.SequenceEqual(x.Second));
+
+    // Dipanggil di akhir setiap aksi yang mengubah dokumen. Tidak berubah = bukan langkah baru.
+    void Commit()
+    {
+        var now = Capture();
+        if (saved != null && !Same(now, saved))
+        {
+            undo.Add(saved);
+            if (undo.Count > UndoMax) undo.RemoveAt(0);
+            redo.Clear();
+        }
+        saved = now;
+    }
+
+    void Step(List<Doc> from, List<Doc> to)
+    {
+        if (from.Count == 0 || saved == null || Mouse.OverrideCursor != null) return; // tidak saat file sedang dimuat
+        to.Add(saved);
+        var d = saved = from[^1];
+        from.RemoveAt(from.Count - 1);
+        restoring = true; // kertas dan preset tidak boleh memicu susun ulang
+        try
+        {
+            var v = d.Settings;
+            PaperBox.SelectedItem = v[0];
+            PresetBox.SelectedIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
+            (CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text) = (v[2], v[3], v[4], v[5]);
+            (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[6] == "True", v[7], v[8]);
+            (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[9] == "True", v[10], v[11]);
+            (BleedBox.Text, WidthBox.Text) = (v[12], v[13]);
+        }
+        finally { restoring = false; }
+        items.Clear();
+        foreach (var (s, copies, width, name) in d.Items) { (s.Copies, s.WidthMm, s.Name) = (copies, width, name); items.Add(s); }
+        List.Items.Refresh();
+        sheets = [.. d.Sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList())];
+        (sheetH, sheetW, tooBig) = ([.. d.SheetH], d.SheetW, d.TooBig);
+        sel = drag = null;
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
+        Redraw(sheets.Count > 0 ? Summary() : "");
+    }
+
+    void Undo() => Step(undo, redo);
+    void Redo() => Step(redo, undo);
+    void Undo_Click(object s, RoutedEventArgs e) => Undo();
+    void Redo_Click(object s, RoutedEventArgs e) => Redo();
+
     void DropEmpty()
     {
         for (int i = sheets.Count - 1; i >= 0; i--)
@@ -193,6 +258,7 @@ public partial class MainWindow : Window
         sel = null;
         if (items.Count == 0) tooBig = 0;
         Redraw(sheets.Count > 0 ? Summary() : "");
+        Commit();
     }
 
     // Rapikan gambar (pengganti langkah Photoshop). Hanya desain yang ditempel sebagai gambar.
@@ -227,6 +293,39 @@ public partial class MainWindow : Window
         Redraw(Lang.T("Cleaned", it.Name));
     }
 
+    // Editor garis potong: polygon kiss/die yang titiknya bisa digeser, ditambah, dihapus. Berlaku untuk semua salinan desain.
+    void CutItem_Click(object s, RoutedEventArgs e)
+    {
+        if ((s as FrameworkElement)?.DataContext is not Sticker it || !CutsValid()) return;
+        double k = it.WidthMm / it.LoadedW;
+        CutEditWindow? w;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            // Garis otomatis pada pengaturan sekarang: dasar polygon baru, slider Simplify, dan Reset otomatis.
+            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, loadedPdf: it.Pdf);
+            w = new CutEditWindow(auto, Loader.Scale(it.ManualKiss, k), Loader.Scale(it.ManualDie, k), it.Name) { Owner = this };
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
+        finally { Mouse.OverrideCursor = null; }
+        bool ok = w.ShowDialog() == true;
+        var (mk, md) = (w.ManualKiss, w.ManualDie);
+        w = null;
+        FreeMemory(); // desain otomatis untuk editor memuat ulang gambar penuh
+        if (!ok) return;
+        try
+        {
+            var n = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
+                manualKiss: mk, manualDie: md);
+            n.Copies = it.Copies;
+            n.Name = it.Name;
+            items[items.IndexOf(it)] = n;
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
+        Arrange();
+        Redraw(Lang.T("CutSaved", it.Name));
+    }
+
     void Nest_Click(object s, RoutedEventArgs e) => Arrange();
 
     void Arrange()
@@ -244,7 +343,10 @@ public partial class MainWindow : Window
                 if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != kiss || it.LoadedDie != die
                     || (it.Pdf == null && it.LoadedBleed != bleed)))
                 {
-                    var n = Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf);
+                    // Garis manual tidak ikut offset/Halus; lebar berubah: polygon diskala bersama artwork.
+                    double k = it.WidthMm / it.LoadedW;
+                    var n = Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
+                        manualKiss: Loader.Scale(it.ManualKiss, k), manualDie: Loader.Scale(it.ManualDie, k));
                     n.Copies = it.Copies;
                     n.Name = it.Name;
                     items[i] = n;
@@ -259,19 +361,25 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
         finally { Mouse.OverrideCursor = null; }
-        // Bitmap resolusi penuh dari Loader.Load sudah jadi sampah, tetapi GC tidak jalan sendiri saat aplikasi diam
-        // (JPG 24 MP: RAM tetap ±220 MB). Bitmap WPF dilepas lewat finalizer; Aggressive mengembalikan memori heap besar
-        // ke Windows saat itu juga. 19 desain uji: 395 -> 70 MB, ±40 ms (D4).
-        GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(2, GCCollectionMode.Aggressive, true, true);
+        Commit();
+        FreeMemory();
     }
 
+    // Bitmap resolusi penuh dari Loader.Load sudah jadi sampah, tetapi GC tidak jalan sendiri saat aplikasi diam
+    // (JPG 24 MP: RAM tetap ±220 MB). Bitmap WPF dilepas lewat finalizer; Aggressive mengembalikan memori heap besar
+    // ke Windows saat itu juga. 19 desain uji: 395 -> 70 MB, ±40 ms (D4).
+    static void FreeMemory() { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(2, GCCollectionMode.Aggressive, true, true); }
+
+    // Penuhi lembar: jumlah per desain ikut hasil, supaya daftar desain, Print Ticket, dan susun ulang memakai angka yang sama.
     void Compact_Click(object s, RoutedEventArgs e)
     {
         if (sheets.Count == 0) return;
-        int i = sheets.Count - 1;
-        sheetH[i] = Nest.Compact(sheets[i], sheetH[i], MarginMm);
-        Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
-        Redraw(Summary());
+        int added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm);
+        foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
+        List.Items.Refresh();
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
+        Redraw(Lang.T("Filled", added) + "  " + Summary());
+        Commit();
     }
 
     void EditSel(Action<Placed> act)
@@ -280,6 +388,7 @@ public partial class MainWindow : Window
         act(sel);
         Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm);
         Redraw(Summary());
+        Commit();
     }
 
     void DeleteSel()
@@ -290,6 +399,7 @@ public partial class MainWindow : Window
         DropEmpty();
         for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
         Redraw(sheets.Count > 0 ? Summary() : "");
+        Commit();
     }
 
     // Putar 90°, lalu snap ke posisi kosong terdekat (tidak menabrak, jarak antar stiker tetap).
@@ -299,7 +409,7 @@ public partial class MainWindow : Window
     // Preset bahan mengisi garis potong, margin, dan jarak, lalu langsung menyusun ulang.
     void Preset_Changed(object s, SelectionChangedEventArgs e)
     {
-        if (PresetBox.SelectedItem is not string k || !Presets.Material.TryGetValue(k, out var m)) return;
+        if (restoring || PresetBox.SelectedItem is not string k || !Presets.Material.TryGetValue(k, out var m)) return;
         KissOn.IsChecked = m.Kiss.On; KissOff.Text = F(m.Kiss.Off); KissSm.Text = F(m.Kiss.Smooth);
         DieOn.IsChecked = m.Die.On; DieOff.Text = F(m.Die.Off); DieSm.Text = F(m.Die.Smooth);
         MarginBox.Text = F(m.Margin); GapBox.Text = F(m.Gap);
@@ -362,6 +472,7 @@ public partial class MainWindow : Window
 
     void Paper_Changed(object s, SelectionChangedEventArgs e)
     {
+        if (restoring) return;
         if (PaperBox.SelectedItem is string k && Paper.Sizes.TryGetValue(k, out var sz)) { CanvasW.Text = F(sz.W); CanvasH.Text = F(sz.H); }
         ClearLayout();
         if (IsLoaded && items.Count > 0) Arrange();
@@ -387,6 +498,7 @@ public partial class MainWindow : Window
     {
         Redraw();
         Fit();
+        Commit(); // keadaan awal (kosong) untuk undo
         if (startFiles.Length > 0) AddFiles(startFiles);
     }
 
@@ -505,9 +617,12 @@ public partial class MainWindow : Window
     // ---- Keyboard, gaya Photoshop ----
     void Window_KeyDown(object s, KeyEventArgs e)
     {
-        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.E)
+        bool typing = Keyboard.FocusedElement is TextBox; // Ctrl+Z/Y di kotak teks = undo teks bawaan
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
-            Preview_Click(s, e);
+            if (e.Key == Key.E) Preview_Click(s, e);
+            else if (e.Key == Key.Z && !typing) Redo();
+            else return;
             e.Handled = true;
             return;
         }
@@ -515,6 +630,8 @@ public partial class MainWindow : Window
         {
             switch (e.Key)
             {
+                case Key.Z when !typing: Undo(); break;
+                case Key.Y when !typing: Redo(); break;
                 case Key.O: case Key.I: Add_Click(s, e); break; // Ctrl+I = Import di CorelDRAW
                 case Key.E: Export_Click(s, e); break;
                 case Key.L: Arrange(); break;
@@ -598,5 +715,6 @@ public partial class MainWindow : Window
         Sheets.ReleaseMouseCapture();
         Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm);
         Redraw(Summary());
+        Commit();
     }
 }

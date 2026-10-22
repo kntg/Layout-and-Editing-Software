@@ -1,0 +1,10 @@
+Probe D7 setelah masukan leader 2026-10-21 (latar tidak dibuang otomatis), build Release, Loader.LoadAll, kiss 2 mm halus 1 mm.
+PDF 100 x 100 mm berisi lingkaran CMYK diameter 40 mm di atas kotak putih (dibuat PyMuPDF di scratchpad).
+
+putih-penuh.pdf (kotak putih memenuhi halaman): artwork 100,0 x 100,0 mm, garis kiss 104,1 x 104,0 mm
+kotak-putih.pdf (kotak putih 84 x 84 mm, tidak memenuhi halaman): artwork 84,0 x 84,0 mm, garis kiss 88,0 x 88,0 mm
+
+Keputusan: kotak putih dipertahankan dan garis mengelilingi kotak. Sebelumnya (2026-10-19) halaman putih penuh
+menghasilkan garis yang mengikuti logo (44 mm), sedangkan kotak yang tidak memenuhi halaman menghasilkan kotak 84 mm.
+Sekarang keduanya konsisten. Untuk garis yang mengikuti logo, operator mengatur titik garis potong (editor) atau
+mengirim ulang PDF tanpa kotak putih.

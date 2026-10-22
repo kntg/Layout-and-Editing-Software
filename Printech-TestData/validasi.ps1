@@ -53,13 +53,17 @@ function LastSheet($sheets, [double]$cw, [double]$ch, [double]$margin, [double]$
   [ordered]@{ stickers = $sheets[$sheets.Count - 1].Count; movable = $moved }
 }
 # $sheets: null = susun otomatis dengan Nest.Run; atau daftar lembar berisi Placed buatan sendiri.
-# -compact: lembar terakhir dipadatkan seperti tombol "Compact lembar terakhir". Skenario B-* juga membuat preview JPG
-# dan Print Ticket dengan isi pengaturan yang sama seperti MainWindow.Ticket_Click.
-function Run([string]$name, $designs, [double]$cw, [double]$ch, [double]$margin = 10, [double]$gap = 2, $sheets = $null, [switch]$compact) {
+# -fill: ruang kosong diisi salinan desain bergiliran seperti tombol "Penuhi lembar"; jumlah per desain ikut hasil
+# (MainWindow.Compact_Click). Skenario B-* juga membuat preview JPG dan Print Ticket dengan isi pengaturan yang sama
+# seperti MainWindow.Ticket_Click.
+function Run([string]$name, $designs, [double]$cw, [double]$ch, [double]$margin = 10, [double]$gap = 2, $sheets = $null, [switch]$fill) {
   $tb = 0
   if (-not $sheets) { $sheets = [StickerLayout.Nest]::Run($designs, $cw, $ch, $margin, $gap, [ref]$tb) }
+  if ($fill -and $sheets.Count) {
+    [StickerLayout.Nest]::Fill($sheets, $designs, $cw, $ch, $margin, $gap) | Out-Null
+    foreach ($d in $designs) { $n = @($sheets | ForEach-Object { $_ } | Where-Object { $_.S -eq $d }).Count; if ($n -gt 0) { $d.Copies = $n } }
+  }
   $h = [System.Collections.Generic.List[double]]::new(); foreach ($s in $sheets) { $h.Add($ch) }
-  if ($compact -and $sheets.Count) { $h[$h.Count - 1] = [StickerLayout.Nest]::Compact($sheets[$sheets.Count - 1], $ch, $margin) }
   $warn = [StickerLayout.Export]::Pdf("$Out\$name.pdf", $sheets, $cw, $h)
   $prev = @(); $ticket = $null; $tlines = @()
   if ($name -like 'B-*') {
@@ -113,7 +117,7 @@ Run 'B-campuran' (Load ($simple + $special + 'png-147dpi.png', 'jpg-large-24mp.j
   'pdf-single-page.pdf' = 10; 'pdf-multi-page.pdf p1' = 20; 'pdf-multi-page.pdf p2' = 10; 'pdf-multi-page.pdf p3' = 15; 'ai-compatible.ai' = 10
   'svg-vector.svg' = 10; 'png-152dpi.png' = 5; 'png-147dpi.png' = 5; 'jpg-low-resolution.jpg' = 8; 'pdf-irregular-shapes.pdf p1' = 15
   'pdf-irregular-shapes.pdf p2' = 10; 'pdf-irregular-shapes.pdf p3' = 10; 'pdf-irregular-shapes.pdf p4' = 6; 'png-rough-edge.png' = 10
-  'png-transparent.png' = 10; 'jpg-large-24mp.jpg' = 6 }) @A3 -compact
+  'png-transparent.png' = 10; 'jpg-large-24mp.jpg' = 6 }) @A3 -fill
 Run 'B-tidak-beraturan' (Load 'pdf-irregular-shapes.pdf', 'png-rough-edge.png', 'pdf-multi-page.pdf' (Cut 2 1) $off 1 @{
   'pdf-irregular-shapes.pdf p1' = 40; 'pdf-irregular-shapes.pdf p2' = 25; 'pdf-irregular-shapes.pdf p3' = 25; 'pdf-irregular-shapes.pdf p4' = 15
   'png-rough-edge.png' = 25; 'pdf-multi-page.pdf p1' = 0; 'pdf-multi-page.pdf p2' = 0; 'pdf-multi-page.pdf p3' = 20 }) @A3

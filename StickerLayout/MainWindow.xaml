@@ -22,6 +22,9 @@
                         <MenuItem Header="{DynamicResource Exit}" Click="Exit_Click"/>
                     </MenuItem>
                     <MenuItem Header="{DynamicResource MEdit}">
+                        <MenuItem Header="{DynamicResource Undo}" InputGestureText="Ctrl+Z" Click="Undo_Click"/>
+                        <MenuItem Header="{DynamicResource Redo}" InputGestureText="Ctrl+Y" Click="Redo_Click"/>
+                        <Separator/>
                         <MenuItem Header="{DynamicResource Nest}" InputGestureText="Ctrl+L" Click="Nest_Click"/>
                         <MenuItem Header="{DynamicResource Compact}" Click="Compact_Click"/>
                         <Separator/>
@@ -156,6 +159,19 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{DynamicResource CutManual}" Margin="6,0,0,0">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Small}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource AccentText}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Manual}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
                                                 </DockPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
@@ -167,7 +183,7 @@
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Top">
                                                 <Button Content="&#xE75C;" Click="CleanItem_Click" IsEnabled="{Binding CanClean}" ToolTipService.ShowOnDisabled="True"
-                                                        AutomationProperties.Name="{DynamicResource Clean}">
+                                                        Height="20" AutomationProperties.Name="{DynamicResource Clean}">
                                                     <Button.Style>
                                                         <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
                                                             <Setter Property="ToolTip" Value="{DynamicResource CleanTip}"/>
@@ -179,7 +195,9 @@
                                                         </Style>
                                                     </Button.Style>
                                                 </Button>
-                                                <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" Click="RemoveItem_Click"
+                                                <Button Style="{StaticResource IconBtn}" Content="&#xE70F;" Click="CutItem_Click" Height="20"
+                                                        ToolTip="{DynamicResource CutTip}" AutomationProperties.Name="{DynamicResource CutEdit}"/>
+                                                <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" Click="RemoveItem_Click" Height="20"
                                                         ToolTip="{DynamicResource Remove}" AutomationProperties.Name="{DynamicResource Remove}"/>
                                             </StackPanel>
                                         </Grid>

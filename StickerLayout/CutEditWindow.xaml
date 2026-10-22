@@ -1,0 +1,88 @@
+<Window x:Class="StickerLayout.CutEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="1180" Height="780" MinWidth="820" MinHeight="560" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource Ink0}" Foreground="{StaticResource Text}"
+        FontFamily="{StaticResource UiFont}" FontSize="12" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
+        PreviewKeyDown="Window_KeyDown" SourceInitialized="Window_SourceInitialized">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="14,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="{DynamicResource Cancel}" IsCancel="True" MinWidth="88"/>
+                    <Button x:Name="SaveBtn" Style="{StaticResource Primary}" Content="{DynamicResource Save}" IsDefault="True" MinWidth="88" Margin="8,0,0,0" Click="Save_Click"/>
+                </StackPanel>
+                <TextBlock x:Name="Info" Style="{StaticResource Label}" Typography.NumeralAlignment="Tabular"/>
+            </DockPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Left" Width="272" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+            <StackPanel Margin="16">
+                <TextBlock Text="{DynamicResource CutLine}" Style="{StaticResource Label}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <RadioButton x:Name="EditKiss" GroupName="Line" Checked="Line_Checked" Foreground="{StaticResource Text}" AutomationProperties.Name="{DynamicResource Kiss}">
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="16" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="{StaticResource KissBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource Kiss}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="EditDie" GroupName="Line" Checked="Line_Checked" Foreground="{StaticResource Text}" Margin="18,0,0,0" AutomationProperties.Name="{DynamicResource Die}">
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="16" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="{StaticResource DieBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource Die}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+
+                <DockPanel Margin="0,20,0,0">
+                    <TextBlock x:Name="EpsText" DockPanel.Dock="Right" TextAlignment="Right" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="{DynamicResource Simplify}" Style="{StaticResource Label}"/>
+                </DockPanel>
+                <Slider x:Name="Eps" Minimum="0.05" Maximum="0.5" Value="0.2" SmallChange="0.05" LargeChange="0.1" Margin="0,6,0,0"
+                        ValueChanged="Eps_Changed" AutomationProperties.Name="{DynamicResource Simplify}"/>
+                <DockPanel Margin="0,2,0,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{DynamicResource Simple}" Style="{StaticResource Small}"/>
+                    <TextBlock Text="{DynamicResource Complex}" Style="{StaticResource Small}"/>
+                </DockPanel>
+
+                <TextBlock Text="{DynamicResource CutHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,18,0,0"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
+                    <Button x:Name="UndoBtn" Click="Undo_Click" ToolTip="Ctrl+Z" AutomationProperties.Name="{DynamicResource Undo}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE7A7;" FontSize="12"/>
+                            <TextBlock Text="{DynamicResource Undo}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="RedoBtn" Click="Redo_Click" ToolTip="Ctrl+Y" Margin="6,0,0,0" AutomationProperties.Name="{DynamicResource Redo}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE7A6;" FontSize="12"/>
+                            <TextBlock Text="{DynamicResource Redo}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <Button x:Name="ResetBtn" Style="{StaticResource Ghost}" Click="Reset_Click" Margin="0,8,0,0" HorizontalAlignment="Left"
+                        AutomationProperties.Name="{DynamicResource ResetAuto}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE777;" FontSize="12" Foreground="{StaticResource Dim}"/>
+                        <TextBlock Text="{DynamicResource ResetAuto}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+
+                <TextBlock x:Name="Warn" Text="{DynamicResource KissOutside}" Foreground="{StaticResource Warn}" TextWrapping="Wrap" Margin="0,18,0,0"
+                           Visibility="Collapsed"/>
+            </StackPanel>
+        </Border>
+
+        <Canvas x:Name="Board" Background="{StaticResource Ink0}" ClipToBounds="True" Cursor="Cross" SizeChanged="Board_Size"
+                MouseLeftButtonDown="Board_Down" MouseMove="Board_Move" MouseLeftButtonUp="Board_Up">
+            <Rectangle x:Name="ArtBg" Fill="{StaticResource Checker}"/>
+            <Image x:Name="Art" Stretch="Fill"/>
+            <Rectangle x:Name="Box" Stroke="{StaticResource Dim}" StrokeThickness="1" StrokeDashArray="4 3"/>
+            <Path x:Name="DiePath" Stroke="{StaticResource DieBrush}" StrokeThickness="1.5"/>
+            <Path x:Name="KissPath" Stroke="{StaticResource KissBrush}" StrokeThickness="1.5"/>
+            <Path x:Name="Handles" Fill="White" StrokeThickness="1"/>
+            <Path x:Name="SelHandle" Stroke="White" StrokeThickness="1.5"/>
+        </Canvas>
+    </DockPanel>
+</Window>

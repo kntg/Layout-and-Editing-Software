@@ -1,0 +1,16 @@
+Uji UI editor garis potong (ui-editor-garis.ps1), build Release, 2026-10-21, masukan leader tahap 4.
+Tanpa mouse dan keyboard: UI Automation (Toggle, Invoke, RangeValue) dan tangkapan layar PrintWindow. Input: 01-input/png-transparent.png,
+kiss 2/1 dan die 4/2 (die diaktifkan lewat checkbox). Geser, tambah, dan hapus titik dengan mouse tidak dijalankan di sini
+(PC dipakai); logikanya diuji selfcheck S12 (docs/UJI-GARIS-POTONG.md).
+
+awal: 1 stiker di 1 lembar.
+EDIT-01 LULUS: editor terbuka: 'Kiss 31 titik · die 21 titik · garis otomatis'
+EDIT-02 LULUS: Simplify 0,5 mm: kiss 31 -> 22 titik, die 21 -> 21 titik, 'garis manual'
+EDIT-03 LULUS: tombol Urungkan: kiss 31 titik, 'garis otomatis'; Ulangi: kiss 22 titik, 'garis manual'
+EDIT-04 LULUS: Simpan: status 'Garis potong png-transparent.png disimpan.', tanda 'garis manual' 1
+EDIT-05 LULUS: Edit > Urungkan: tanda 'garis manual' 0 (harapan 0), status '1 stiker di 1 lembar.'
+responding: True
+RINGKAS: 5 uji, 0 GAGAL
+
+Tangkapan layar: 2026-10-21-editor-garis-potong.png (editor saat dibuka: kiss aktif dengan titik, die redup, kotak desain
+putus-putus), 2026-10-21-editor-garis-manual.png (jendela utama setelah Simpan: tanda 'garis manual' di daftar desain).

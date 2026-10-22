@@ -28,8 +28,11 @@ public static class SelfCheck
             Samples(dir);
             Cut kiss = new(true, 2, 1), die = new(true, 4, 2);
             var files = new[] { ("circle.png", 6), ("star.jpg", 6), ("badge.svg", 4), ("logo.pdf", 6), ("logo.ai", 4) };
-            List<Sticker> Load() => files.SelectMany(f => Loader.LoadAll(Path.Combine(dir, f.Item1), 40, kiss, die)
-                .Select(s => { s.Copies = f.Item2; return s; })).ToList();
+            // Latar opak tidak dibuang otomatis: JPG berlatar putih dirapikan dulu (Hapus latar), seperti alur operator.
+            IEnumerable<Sticker> Open(string f, double w, Cut k, Cut d) => f.EndsWith(".jpg")
+                ? [Loader.Load(Path.Combine(dir, f), 0, w, k, d, edited: NoBackground(Path.Combine(dir, f)))]
+                : Loader.LoadAll(Path.Combine(dir, f), w, k, d);
+            List<Sticker> Load() => files.SelectMany(f => Open(f.Item1, 40, kiss, die).Select(s => { s.Copies = f.Item2; return s; })).ToList();
 
             // Ukur sel grid 2 mm vs 1 mm pada job ±130 stiker (waktu vs pemakaian bahan).
             double cell0 = Nest.Cell;
@@ -58,7 +61,7 @@ public static class SelfCheck
             foreach (var f in new[] { "circle.png", "star.jpg", "badge.svg", "logo.pdf", "rough.jpg" })
             {
                 var nsw = Stopwatch.StartNew();
-                var ns = Loader.Load(Path.Combine(dir, f), 0, f.EndsWith(".pdf") ? 0 : 40, kiss, die);
+                var ns = Open(f, f.EndsWith(".pdf") ? 0 : 40, kiss, die).First();
                 log.Add($"node {f}: kiss {Nodes(ns.Kiss)} ({Corners(ns.Kiss)} sudut), die {Nodes(ns.Die)} ({Corners(ns.Die)} sudut), {nsw.ElapsedMilliseconds} ms");
             }
 
@@ -100,7 +103,7 @@ public static class SelfCheck
             Check(wide.LowDpi, $"circle 80 mm ({wide.Dpi:0} dpi) harus ditandai resolusi rendah");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah)");
 
-            // Skenario uji garis potong S1-S9 dan S11 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9, S11, dan S12 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -111,7 +114,7 @@ public static class SelfCheck
             void S(int n, string title, bool ok, string detail) => Report($"S{n}", title, ok, detail);
             void P(int n, string title, bool ok, string detail) => Report($"P{n}", title, ok, detail);
             var none = new Cut(false, 0, 0);
-            Sticker FromFile(string f, double w, Cut k, Cut d) => Loader.Load(Path.Combine(dir, f), 0, w, k, d);
+            Sticker FromFile(string f, double w, Cut k, Cut d) => Open(f, w, k, d).First();
             Sticker Png(BitmapSource b, double w, Cut k, Cut d) => Loader.Load("uji.png", 0, w, k, d, edited: Loader.Png(b));
 
             // S1: logo JPG bertepi kasar.
@@ -181,16 +184,96 @@ public static class SelfCheck
                 for (int i = 0; i < 12; i++) dc.DrawEllipse(Brushes.Black, null, new Point(150 + 110 * Math.Cos(i * Math.PI / 6), 150 + 110 * Math.Sin(i * Math.PI / 6)), 22, 22);
                 dc.DrawEllipse(Brushes.Black, null, new Point(150, 150), 40, 40);
             });
+            // Donat (masukan leader 2026-10-21): lubang asli yang tetap terbuka setelah offset dapat garis dalam kiss dan die,
+            // die tetap membungkus kiss. Lubang kecil yang tertutup offset tidak dipotong.
+            BitmapSource Donut(double inner) => Draw(dc => dc.DrawGeometry(Brushes.DarkOrange, null, new CombinedGeometry(GeometryCombineMode.Exclude,
+                new EllipseGeometry(new Point(150, 150), 130, 130), new EllipseGeometry(new Point(150, 150), inner, inner))));
             var holes = new List<string>();
             bool solid = true;
-            foreach (var (name, img) in new[] { ("cincin C", cRing), ("titik melingkar + tengah", dots) })
+            foreach (var (name, img, want) in new[] { ("cincin C", cRing, 1), ("titik melingkar + tengah", dots, 1), ("donat lubang Ø 21,5 mm", Donut(70), 2), ("donat lubang Ø 4,6 mm", Donut(15), 1) })
             {
                 var hs = Png(img, 40, kiss, die);
                 int kissN = hs.Kiss.Count(ch => ch == 'M'), dieN = hs.Die.Count(ch => ch == 'M');
-                solid &= kissN == 1 && dieN == 1;
-                holes.Add($"{name}: kiss {kissN}, die {dieN} kontur");
+                double outside = Geometry.Combine(hs.KissGeo!, hs.DieGeo!, GeometryCombineMode.Exclude, null).GetArea();
+                solid &= kissN == want && dieN == want && outside < 0.5;
+                holes.Add($"{name}: kiss {kissN}, die {dieN} kontur, kiss di luar die {outside:F2} mm2");
             }
-            S(11, "hanya kontur luar: lubang yang tertutup offset tidak dipotong", solid, string.Join("; ", holes));
+            S(11, "lubang: lubang asli yang tetap terbuka dipotong (donat), rongga dari celah tertutup dan lubang kecil tidak", solid, string.Join("; ", holes));
+
+            // S12: editor garis potong (masukan leader 2026-10-21). Polygon dari kurva otomatis; garis manual dipakai apa adanya.
+            var cPath = Path.Combine(dir, "circle.png");
+            var pk = Loader.ToPolygons(circle40.Kiss, circle40.Off, 0.2);
+            var pd = Loader.ToPolygons(circle40.Die, circle40.Off, 0.2);
+            double dev = Deviation(circle40.Kiss, circle40.Off, pk);
+            int nFine = Loader.ToPolygons(circle40.Kiss, circle40.Off, 0.05).Sum(c => c.Length), nMid = pk.Sum(c => c.Length),
+                nCoarse = Loader.ToPolygons(circle40.Kiss, circle40.Off, 0.5).Sum(c => c.Length);
+            var man = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: pk, manualDie: pd);
+            bool straight = !(man.Kiss + man.Die).Contains('C') && man.Kiss.StartsWith('M') && man.Die.EndsWith('Z');
+            double areaDiff = Math.Abs(man.AreaMm2 - circle40.AreaMm2) / circle40.AreaMm2;
+            // Titik die terkanan digeser 1,5 mm keluar: grid nesting ikut berubah.
+            var pd2 = pd.Select(c => (Point[])c.Clone()).ToList();
+            pd2[0][Array.FindIndex(pd2[0], q => q.X == pd2[0].Max(r => r.X))].X += 1.5;
+            var man2 = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: pk, manualDie: pd2);
+            // Lebar 40 -> 80 mm: polygon diskala. Offset kiss 2 -> 1 mm: garis manual tidak berubah.
+            var man80 = Loader.Load(cPath, 0, 80, kiss, die, manualKiss: Loader.Scale(pk, 2), manualDie: Loader.Scale(pd, 2));
+            var manOff = Loader.Load(cPath, 0, 40, new Cut(true, 1, 1), die, manualKiss: pk, manualDie: pd);
+            static Rect Rel(Sticker s) { var b = s.KissGeo!.Bounds; b.Offset(-s.Off, -s.Off); return b; }
+            double scaleErr = Math.Abs(Rel(man80).Width - 2 * Rel(man).Width);
+            double lockErr = (Rel(manOff).TopLeft - Rel(man).TopLeft).Length + Math.Abs(Rel(manOff).Width - Rel(man).Width);
+            // Die manual rapat (di posisi garis kiss) dengan kiss otomatis: kiss dipangkas ke dalam die.
+            var tight = Loader.Load(cPath, 0, 40, kiss, die, manualDie: pk);
+            double tightOut = Geometry.Combine(tight.KissGeo!, tight.DieGeo!, GeometryCombineMode.Exclude, null).GetArea();
+            // Export: garis manual = garis lurus, warna CMYK sama.
+            var manPdf = Path.Combine(dir, "export-manual.pdf");
+            Check(Export.Pdf(manPdf, [[new Placed { S = man, X = Margin, Y = Margin }]], A4W, [A4H]).Count == 0, "peringatan export garis manual");
+            string mc;
+            using (var mdoc = PdfReader.Open(manPdf, PdfDocumentOpenMode.Import)) mc = Content(mdoc.Pages[0]);
+            int mLines = Regex.Matches(mc, @"(?<=\s)l(?=\s)").Count, mCurves = Regex.Matches(mc, @"(?<=\s)c(?=\s)").Count;
+            bool mExport = mLines > 0 && mCurves == 0 && mc.Contains("0 1 0 0 K") && mc.Contains("1 0 0 0 K");
+
+            // Editor tanpa mouse: tambah titik di tengah segmen lalu seret, undo/redo, hapus, kiss keluar die, Simplify, reset.
+            var ed = new CutEditWindow(circle40, null, null, "uji");
+            var mid = pk[0][0] + (pk[0][1] - pk[0][0]) / 2;
+            ed.Press(mid, 0.3);
+            ed.DragTo(mid + (new Point(circle40.ArtW / 2, circle40.ArtH / 2) - mid) * 0.05);
+            ed.Release();
+            int Pts(List<Point[]>? p) => p?.Sum(c => c.Length) ?? -1;
+            var edLog = new List<string> { $"tambah {Pts(ed.ManualKiss)}" };
+            bool edOk = Pts(ed.ManualKiss) == nMid + 1 && ed.CanSave;
+            ed.Undo();
+            edOk &= ed.ManualKiss == null;
+            ed.Redo();
+            edOk &= Pts(ed.ManualKiss) == nMid + 1;
+            ed.Press(pk[0][2], 0.3);
+            ed.Release();
+            ed.DeletePoint();
+            edOk &= Pts(ed.ManualKiss) == nMid;
+            edLog.Add($"undo/redo/hapus {Pts(ed.ManualKiss)}");
+            ed.Press(pk[0][3], 0.3);
+            ed.DragTo(new Point(-100, -100));
+            ed.Release();
+            edOk &= !ed.CanSave && !ed.KissInside;
+            ed.Undo();
+            edOk &= ed.CanSave;
+            ed.Eps.Value = 0.5;
+            edOk &= Pts(ed.ManualKiss) == nCoarse;
+            edLog.Add($"Simplify 0,5 {Pts(ed.ManualKiss)}");
+            ed.Reset();
+            edOk &= ed.ManualKiss == null && ed.ManualDie == null && ed.CanSave;
+            // Donat: garis dalam yang tidak diinginkan dihapus titik demi titik sampai konturnya hilang.
+            var dn = Png(Donut(70), 40, kiss, die);
+            var dk = Loader.ToPolygons(dn.Kiss, dn.Off, 0.2);
+            var hole = dk.MinBy(c => c.Max(q => q.X) - c.Min(q => q.X))!;
+            var ed2 = new CutEditWindow(dn, null, null, "donat");
+            foreach (var q in hole.Take(hole.Length - 2)) { ed2.Press(q, 0.01); ed2.Release(); ed2.DeletePoint(); }
+            edOk &= ed2.ManualKiss?.Count == 1 && ed2.ManualKiss[0].Length == dk.First(c => c != hole).Length;
+            edLog.Add($"donat: kontur kiss {dk.Count} -> {ed2.ManualKiss?.Count}");
+            S(12, "editor garis potong: polygon, garis manual, skala, kunci offset, export garis lurus, edit titik",
+                dev <= 0.21 && nCoarse < nMid && nMid < nFine && straight && areaDiff < 0.02 && man2.Area > man.Area && scaleErr < 0.05 && lockErr < 0.01
+                && tightOut < 0.5 && mExport && edOk,
+                $"simpangan {dev:F3} mm (eps 0,2); titik eps 0,05/0,2/0,5 = {nFine}/{nMid}/{nCoarse}; M/L/Z {straight}; luas {areaDiff:P1}; "
+                + $"grid {man.Area} -> {man2.Area} sel; skala {scaleErr:F3} mm; kunci offset {lockErr:F3} mm; die rapat: kiss di luar die {tightOut:F2} mm2; "
+                + $"export {mLines} garis lurus, {mCurves} kurva; editor {string.Join(", ", edLog)} ({(edOk ? "benar" : "SALAH")})");
 
             // S9: stiker besar 300 mm (gambar 3000 px), kiss + die.
             var bigImg = Draw(dc => dc.DrawEllipse(Brushes.Black, null, new Point(1500, 1500), 1400, 1400), 3000, 3000);
@@ -270,11 +353,12 @@ public static class SelfCheck
                 $"bleed salah: 1,5 mm di luar tepi tanpa bleed {noBleed}, bleed 2 mm {bleedNear}; 4 mm {bleedFar}; vektor {(vecBleed.BleedPng == null ? "tanpa bleed" : "ikut bleed")}");
             log.Add($"bleed: 1,5 mm di luar tepi lingkaran: tanpa bleed {noBleed}, bleed 2 mm {bleedNear}; 4 mm (di luar bleed) {bleedFar}; logo.pdf vektor tidak di-bleed");
 
-            // D10: latar PNG warna muda ikut tercetak (artwork 300x200 px = 60x40 mm); latar hampir putih (252) tetap dibuang (kotak biru 60x60 mm).
-            foreach (var (bg, wantH) in new[] { (Color.FromRgb(242, 242, 242), 40.0), (Color.FromRgb(255, 240, 245), 40.0), (Color.FromRgb(252, 252, 252), 60.0) })
+            // Latar opak tidak dibuang otomatis (D10, masukan leader 2026-10-21): putih, abu muda, dan pastel tetap ikut,
+            // artwork = seluruh gambar 300x200 px = 60x40 mm (bukan kotak biru 60x60 mm).
+            foreach (var bg in new[] { Colors.White, Color.FromRgb(242, 242, 242), Color.FromRgb(255, 240, 245) })
             {
                 var lt = Png(Draw(dc => { dc.DrawRectangle(new SolidColorBrush(bg), null, new Rect(0, 0, 300, 200)); dc.DrawRectangle(Brushes.SteelBlue, null, new Rect(100, 50, 100, 100)); }, 300, 200), 60, kiss, none);
-                Check(Math.Abs(lt.ArtH - wantH) < 0.5, $"latar {bg}: artwork {lt.ArtW:F1}x{lt.ArtH:F1} mm, harapan 60x{wantH:F0}");
+                Check(Math.Abs(lt.ArtH - 40) < 0.5, $"latar {bg} dibuang: artwork {lt.ArtW:F1}x{lt.ArtH:F1} mm, harapan 60x40");
             }
 
             var sheets = Nest.Run(items, A4W, A4H, Margin, Gap, out int tooBig);
@@ -396,17 +480,14 @@ public static class SelfCheck
             log.Add($"PDF diganti lalu dihapus setelah dimuat: muat ulang {reload.ArtW:F1} mm dan export tetap dari salinan ({first.ArtW:F1} mm); "
                 + $"tambah ulang memakai isi baru ({readd.ArtW:F1} mm)");
 
-            // Compact lembar terakhir: tinggi turun, lembar penuh tidak melebihi kertas, stiker tetap di dalam margin,
-            // halaman PDF ikut tinggi baru.
-            double hLast = Nest.Compact(sheets[^1], A4H, Margin), hFull = Nest.Compact(sheets[0], A4H, Margin);
-            var cpdf = Path.Combine(dir, "compact.pdf");
-            Export.Pdf(cpdf, sheets, A4W, sheets.Select((_, i) => i == sheets.Count - 1 ? hLast : A4H).ToList());
-            double pageH;
-            using (var cdoc = PdfReader.Open(cpdf, PdfDocumentOpenMode.Import)) pageH = cdoc.Pages[cdoc.PageCount - 1].Height.Millimeter;
-            Check(hLast < A4H && hFull <= A4H && Nest.Check(sheets[^1], A4W, hLast, Margin) == 0 && Math.Abs(pageH - hLast) < 0.5,
-                $"compact salah: lembar terakhir {hLast} mm (kertas {A4H}), lembar penuh {hFull} mm, halaman PDF {pageH:F1} mm");
-            Nest.Check(sheets[^1], A4W, A4H, Margin);
-            log.Add($"compact: lembar terakhir {A4H} -> {hLast} mm, halaman PDF {pageH:F1} mm; lembar penuh tetap {hFull} mm");
+            // Penuhi lembar (Compact): stiker bertambah bergiliran, jumlah lembar tetap, tidak ada tabrakan atau keluar margin,
+            // dan setelah penuh tidak ada lagi yang muat.
+            var fs = sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList()).ToList();
+            int before = fs.Sum(x => x.Count), added = Nest.Fill(fs, items, A4W, A4H, Margin, Gap), again = Nest.Fill(fs, items, A4W, A4H, Margin, Gap);
+            var grew = items.Count(s => fs.Sum(x => x.Count(p => p.S == s)) > sheets.Sum(x => x.Count(p => p.S == s)));
+            Check(added > 0 && again == 0 && fs.Count == sheets.Count && fs.All(x => Nest.Check(x, A4W, A4H, Margin) == 0) && grew >= 2,
+                $"penuhi lembar salah: +{added} stiker, isi ulang +{again}, lembar {sheets.Count} -> {fs.Count}, desain bertambah {grew}");
+            log.Add($"penuhi lembar: {before} -> {before + added} stiker di {fs.Count} lembar A4, {grew} desain bertambah, isi ulang +{again}");
 
             // Isi Print Ticket: total lembar, total pcs, efisiensi bahan, baris per lembar dan per desain, pengaturan.
             var tl = Export.TicketLines("A4", sheets, A4W, heights, Margin, ["uji pengaturan"]).Select(l => l.Text).ToList();
@@ -516,6 +597,21 @@ public static class SelfCheck
     {
         static Geometry G(Sticker s) { var g = s.KissGeo!.Clone(); g.Transform = new TranslateTransform(-s.Off, -s.Off); return g; }
         return Geometry.Combine(G(a), G(b), GeometryCombineMode.Exclude, null).GetArea();
+    }
+
+    static byte[] NoBackground(string path) { var c = new CleanImage(File.ReadAllBytes(path)); c.EraseFromBorder(32); return c.ToPng(0); }
+
+    // Simpangan maksimal kurva (dipecah 0,01 mm) dari polygon (mm relatif artwork).
+    static double Deviation(string path, double off, List<Point[]> polys)
+    {
+        double worst = 0;
+        foreach (var f in Geometry.Parse(path).GetFlattenedPathGeometry(0.01, ToleranceType.Absolute).Figures)
+            foreach (var q0 in f.Segments.SelectMany(s => s is PolyLineSegment pl ? pl.Points : s is LineSegment l ? [l.Point] : []).Prepend(f.StartPoint))
+            {
+                var q = new Point(q0.X - off, q0.Y - off);
+                worst = Math.Max(worst, polys.Min(c => c.Select((a, i) => (q - Loader.Nearest(q, a, c[(i + 1) % c.Length])).Length).Min()));
+            }
+        return worst;
     }
 
     static BitmapSource Draw(Action<DrawingContext> paint, int w = 300, int h = 300)

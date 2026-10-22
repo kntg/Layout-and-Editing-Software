@@ -163,7 +163,7 @@ for ext in ("png", "jpg", "svg"):
     save(f"khusus/invalid-file.{ext}", lambda p: p.write_text(f"Ini bukan file {ext.upper()}. Dipakai untuk menguji pesan error.\n", encoding="utf-8"))
 
 # Latar PNG opak (01-input/latar, temuan D10): 600 x 400 px, persegi biru membulat 300 x 200 px (radius 30) dan
-# lingkaran oranye diameter 80 px di tengah. Latar abu muda dan pink pastel tercetak, jadi harus ikut; latar putih dibuang.
+# lingkaran oranye diameter 80 px di tengah. Latar opak tidak dibuang otomatis (termasuk putih): seluruh gambar = artwork.
 (OUT / "latar").mkdir(exist_ok=True)
 for name, bg in (("abu-muda", (242, 242, 242)), ("pink-pastel", (255, 240, 245)), ("putih", (255, 255, 255))):
     img = Image.new("RGB", (600, 400), bg)

@@ -49,6 +49,9 @@ public class Sticker
     public string DpiText => Dpi is { } d ? $"{d:0} dpi" : "";
     public bool LowDpi => Dpi < MinDpi;
     public string Kiss = "", Die = "";           // path SVG garis potong (mm, koordinat kotak)
+    // Garis potong hasil editor (polygon, mm relatif terhadap pojok kiri-atas artwork); null = garis otomatis.
+    public List<Point[]>? ManualKiss, ManualDie;
+    public bool Manual => ManualKiss != null || ManualDie != null;
     public bool[,] Grid = null!;                 // hunian sel nesting dari garis terluar [x,y]
     public int Area;
     Geometry? kg, dg, clip;
@@ -124,9 +127,10 @@ public static class Loader
 
     // Semua input -> bitmap penuh -> crop ke konten -> mask -> garis kiss/die (dilasi + closing) -> Potrace.
     // loadedPdf: PDF yang dipakai saat desain pertama dimuat (muat ulang saat Susun): isi desain tidak berubah diam-diam
-    // dan CorelDRAW tidak dibuka lagi.
+    // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: polygon dari editor garis potong, dipakai apa adanya
+    // (offset dan Halus tidak mengubahnya).
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
-        string? loadedPdf = null)
+        string? loadedPdf = null, List<Point[]>? manualKiss = null, List<Point[]>? manualDie = null)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -151,12 +155,7 @@ public static class Loader
         else throw new NotSupportedException(Lang.T("Unsupported"));
 
         var (px, fw, fh) = Pixels(full);
-        bool alpha = false;
-        for (int i = 3; i < px.Length; i += 4) if (px[i] < 250) { alpha = true; break; }
-        // Gambar opak berlatar warna, termasuk warna muda yang tetap tercetak (abu 242, pink pastel 255,240,245): seluruh
-        // gambar = artwork (alpha 255 semua). Hanya latar putih yang dibuang (temuan D10).
-        alpha |= !WhiteBorder(px, fw, fh);
-        var bb = ContentBox(px, fw, fh, alpha) ?? throw new InvalidOperationException(Lang.T("Empty"));
+        var bb = ContentBox(px, fw, fh) ?? throw new InvalidOperationException(Lang.T("Empty"));
         var crop = new CroppedBitmap(full, bb);
         crop.Freeze();
         s.PxW = bb.Width;
@@ -173,23 +172,53 @@ public static class Loader
         s.ArtW = widthMm;
         s.ArtH = bb.Height * k;
 
+        // Garis manual milik garis yang aktif. Titik yang lebih jauh dari jangkauan otomatis memperbesar kotak dan bleed.
+        s.ManualKiss = manualKiss;
+        s.ManualDie = manualDie;
+        var mk = kiss.On ? manualKiss : null;
+        var md = die.On ? manualDie : null;
+        double over = 0;
+        foreach (var q in (mk ?? []).Concat(md ?? []).SelectMany(c => c))
+            over = Math.Max(over, Math.Max(Math.Max(-q.X, q.X - s.ArtW), Math.Max(-q.Y, q.Y - s.ArtH)));
+
         var small = new TransformedBitmap(crop, new ScaleTransform(s.ArtW * PxMm / bb.Width, s.ArtH * PxMm / bb.Height));
-        var mask = Silhouette(small, alpha, out int mw, out int mh);
+        var mask = Silhouette(small, out int mw, out int mh);
         static int Reach(Cut c) => c.On ? (int)Math.Ceiling((c.Off + c.Smooth) * PxMm) : 0;
-        int pad = Math.Max(Reach(kiss), Reach(die)) + (bled ? (int)Math.Ceiling(bleed * PxMm) : 0) + 3, W = mw + 2 * pad, H = mh + 2 * pad;
+        int pad = Math.Max(Math.Max(Reach(kiss), Reach(die)), (int)Math.Ceiling(over * PxMm)) + (bled ? (int)Math.Ceiling(bleed * PxMm) : 0) + 3,
+            W = mw + 2 * pad, H = mh + 2 * pad;
         var m = new bool[W, H];
         for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) m[x + pad, y + pad] = mask[x, y];
 
+        // Lubang asli artwork (latar yang tidak terhubung ke tepi gambar), misalnya tengah stiker donat.
+        var holes = Solid(m);
+        foreach (var (x, y) in Cells(holes)) holes[x, y] &= !m[x, y];
         bool[,]? outer = null, kissMask = null;
-        if (kiss.On) { outer = kissMask = Solid(Smooth(Close(m, kiss), m, kiss)); s.Kiss = Trace(outer); }
+        var dieMan = md == null ? null : Raster(md, pad / PxMm, W, H);
+        if (kiss.On)
+        {
+            if (mk != null) { kissMask = Raster(mk, pad / PxMm, W, H); s.Kiss = PathOf(mk, pad / PxMm); }
+            else
+            {
+                kissMask = KeepHoles(Smooth(Close(m, kiss), m, kiss), holes);
+                // Die manual dengan kiss otomatis: kiss dipangkas ke dalam die (minimal 1 px), supaya die tetap membungkus kiss.
+                if (dieMan != null) { var inside = Not(Dilate(Not(dieMan), 1)); foreach (var (x, y) in Cells(kissMask)) kissMask[x, y] &= inside[x, y]; }
+                s.Kiss = Trace(kissMask);
+            }
+            outer = kissMask;
+        }
         if (die.On)
         {
-            outer = Smooth(Close(m, die), m, die);
-            // Die selalu membungkus kiss, minimal 1 px di luarnya: bila sama persis, kurva Potrace keduanya bisa bersilangan.
-            if (kissMask != null) { var near = Dilate(kissMask, 1); foreach (var (x, y) in Cells(outer)) outer[x, y] |= near[x, y]; }
-            outer = Solid(outer);
-            s.Die = Trace(outer);
+            if (dieMan != null) { outer = dieMan; s.Die = PathOf(md!, pad / PxMm); }
+            else
+            {
+                outer = Smooth(Close(m, die), m, die);
+                // Die selalu membungkus kiss, minimal 1 px di luarnya: bila sama persis, kurva Potrace keduanya bisa bersilangan.
+                if (kissMask != null) { var near = Dilate(kissMask, 1); foreach (var (x, y) in Cells(outer)) outer[x, y] |= near[x, y]; }
+                outer = KeepHoles(outer, holes);
+                s.Die = Trace(outer);
+            }
         }
+        if (outer != null) outer = Solid(outer); // grid nesting memakai bentuk padat: tidak ada stiker di dalam lubang
         if (outer == null) throw new InvalidOperationException(Lang.T("NeedCut"));
 
         s.Off = pad / PxMm;
@@ -204,44 +233,24 @@ public static class Loader
         if (bled)
         {
             var b = kiss.On ? kiss : die; // bleed diukur dari garis kiss; tanpa kiss dari garis die
-            (s.BleedPng, s.BleedView, s.BleedRect) = Bleed(crop, alpha, s.ArtW, s.ArtH, b.Off + b.Smooth + bleed + 1, s.Off);
+            (s.BleedPng, s.BleedView, s.BleedRect) = Bleed(crop, s.ArtW, s.ArtH, Math.Max(b.Off + b.Smooth, over) + bleed + 1, s.Off);
         }
         return s;
     }
 
     const double BleedPxMm = 300 / 25.4; // resolusi maksimal gambar bleed: 300 dpi
-    const int BleedChoke = 2;            // px tepi luar JPG yang diganti warna dari dalam (buang tepi pucat)
-
-    // Erosi 1 px (8 arah); tepi gambar dianggap latar.
-    static bool[,] Shrink(bool[,] m)
-    {
-        int w = m.GetLength(0), h = m.GetLength(1);
-        var r = new bool[w, h];
-        for (int y = 1; y < h - 1; y++)
-            for (int x = 1; x < w - 1; x++)
-                r[x, y] = m[x, y] && m[x - 1, y - 1] && m[x, y - 1] && m[x + 1, y - 1] && m[x - 1, y] && m[x + 1, y]
-                    && m[x - 1, y + 1] && m[x, y + 1] && m[x + 1, y + 1];
-        return r;
-    }
-
-    static int Count(bool[,] m) { int n = 0; foreach (bool v in m) if (v) n++; return n; }
 
     // Auto-bleed untuk raster: warna tepi artwork diperluas keluar (dilasi warna, 8 arah) sejauh d mm, supaya
     // pergeseran pisau tidak menyisakan tepi putih. Lubang di dalam artwork tetap warna aslinya. Saat digambar,
     // hasilnya di-clip ke garis potong + bleed (Sticker.ArtClip).
     // ponytail: gambar bleed dibuat ulang penuh (maks 300 dpi); stiker raster ±300 mm jadi ±1-2 detik lebih lambat.
     // Ganti dengan lapisan bawah beresolusi rendah bila operator merasakan lambat.
-    static (byte[] png, BitmapSource view, Rect rect) Bleed(BitmapSource crop, bool alpha, double artW, double artH, double d, double off)
+    static (byte[] png, BitmapSource view, Rect rect) Bleed(BitmapSource crop, double artW, double artH, double d, double off)
     {
         double k = Math.Min(crop.PixelWidth / artW, BleedPxMm);
         var src = new TransformedBitmap(crop, new ScaleTransform(artW * k / crop.PixelWidth, artH * k / crop.PixelHeight));
-        var fg = Silhouette(src, alpha, out int w, out int h);
+        var core = Silhouette(src, out int w, out int h);
         var (px, _, _) = Pixels(src);
-        // JPG berlatar putih: tepi luar artwork berupa campuran warna + putih (pucat). Tepi itu diganti warna dari
-        // dalam supaya bleed tidak bergaris pucat. PNG transparan tidak perlu: warna tepinya asli.
-        var core = fg;
-        if (!alpha)
-            for (int pass = 0; pass < BleedChoke; pass++) { var c = Shrink(core); if (Count(c) == 0) break; core = c; }
         double kx = w / artW, ky = h / artH;
         int p = (int)Math.Ceiling(d * Math.Max(kx, ky)), W = w + 2 * p, H = h + 2 * p;
         var o = new byte[W * H * 4];
@@ -257,7 +266,7 @@ public static class Loader
             }
         // Lapis demi lapis keluar: piksel baru = rata-rata tetangga yang sudah berwarna (8 arah), jadi satu piksel
         // tepi yang menyimpang tidak membentuk garis panjang.
-        for (int layer = 0; layer < p + BleedChoke && front.Count > 0; layer++)
+        for (int layer = 0; layer < p && front.Count > 0; layer++)
         {
             var next = new List<int>();
             foreach (int i in front)
@@ -371,40 +380,59 @@ public static class Loader
         return (px, f.PixelWidth, f.PixelHeight);
     }
 
-    // Foreground = alpha (jika ada transparansi) atau "bukan putih" (< 240, toleransi noise JPG).
-    static bool Fg(byte[] px, int i, bool alpha) =>
-        alpha ? px[i * 4 + 3] > 16 : px[i * 4] < 240 || px[i * 4 + 1] < 240 || px[i * 4 + 2] < 240;
+    // Artwork = piksel tidak transparan. Latar opak (termasuk putih) tidak dibuang otomatis: gambar opak dipakai utuh
+    // dan garis mengelilingi kotak gambar. Latar dibuang operator lewat Rapikan atau editor garis potong (masukan leader 2026-10-21).
+    static bool Fg(byte[] px, int i) => px[i * 4 + 3] > 16;
 
-    // Latar putih = minimal separuh piksel tepi gambar putih (R, G, B >= 250).
-    static bool WhiteBorder(byte[] px, int w, int h)
-    {
-        int white = 0, n = 0;
-        void At(int x, int y) { int i = (y * w + x) * 4; n++; if (px[i] >= 250 && px[i + 1] >= 250 && px[i + 2] >= 250) white++; }
-        for (int x = 0; x < w; x++) { At(x, 0); At(x, h - 1); }
-        for (int y = 1; y < h - 1; y++) { At(0, y); At(w - 1, y); }
-        return 2 * white >= n;
-    }
-
-    static Int32Rect? ContentBox(byte[] px, int w, int h, bool alpha)
+    static Int32Rect? ContentBox(byte[] px, int w, int h)
     {
         int x0 = w, y0 = h, x1 = -1, y1 = -1;
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
-                if (Fg(px, y * w + x, alpha)) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
+                if (Fg(px, y * w + x)) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
         return x1 < 0 ? null : new Int32Rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     }
 
-    static bool[,] Silhouette(BitmapSource b, bool alpha, out int w, out int h)
+    static bool[,] Silhouette(BitmapSource b, out int w, out int h)
     {
         var (px, W, H) = Pixels(b);
         var m = new bool[W, H];
-        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) m[x, y] = Fg(px, y * W + x, alpha);
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) m[x, y] = Fg(px, y * W + x);
         w = W; h = H;
-        return Solid(m);
+        return m;
     }
 
-    // Lubang (latar yang tidak terhubung ke tepi) diisi: hanya kontur luar yang dipotong.
-    // Berlaku juga untuk lubang baru yang terbentuk saat offset menutup celah artwork (huruf C besar, teks melingkar).
+    // Rongga garis potong dipertahankan (garis dalam, stiker donat) hanya bila seluruhnya berada di lubang asli artwork.
+    // Rongga dari celah yang tertutup offset (huruf C besar, teks melingkar) diisi: di situ hanya kontur luar yang dipotong.
+    static bool[,] KeepHoles(bool[,] cut, bool[,] holes)
+    {
+        var solid = Solid(cut);
+        int W = cut.GetLength(0), H = cut.GetLength(1);
+        var seen = new bool[W, H];
+        var st = new Stack<(int, int)>();
+        var comp = new List<(int, int)>();
+        for (int y0 = 0; y0 < H; y0++)
+            for (int x0 = 0; x0 < W; x0++)
+            {
+                if (seen[x0, y0] || cut[x0, y0] || !solid[x0, y0]) continue;
+                bool inHole = true;
+                comp.Clear();
+                seen[x0, y0] = true;
+                st.Push((x0, y0));
+                while (st.Count > 0)
+                {
+                    var (x, y) = st.Pop();
+                    comp.Add((x, y));
+                    inHole &= holes[x, y];
+                    void Push(int u, int v) { if (u >= 0 && v >= 0 && u < W && v < H && !seen[u, v] && !cut[u, v] && solid[u, v]) { seen[u, v] = true; st.Push((u, v)); } }
+                    Push(x - 1, y); Push(x + 1, y); Push(x, y - 1); Push(x, y + 1);
+                }
+                if (inHole) foreach (var (x, y) in comp) solid[x, y] = false;
+            }
+        return solid;
+    }
+
+    // Isi semua rongga (latar yang tidak terhubung ke tepi).
     static bool[,] Solid(bool[,] m)
     {
         int W = m.GetLength(0), H = m.GetLength(1);
@@ -523,6 +551,85 @@ public static class Loader
             sb.Append('Z');
         }
         return sb.ToString();
+    }
+
+    // ---- Polygon editor garis potong (masukan leader 2026-10-21) ----
+
+    // Kurva Potrace -> polygon: dipecah rapat (0,01 mm), lalu disederhanakan Ramer-Douglas-Peucker dengan toleransi eps mm
+    // (slider Simplify). Titik polygon selalu di kurva, jadi polygon menyimpang dari kurva maksimal eps.
+    public static List<Point[]> ToPolygons(string path, double off, double eps)
+    {
+        var res = new List<Point[]>();
+        if (path == "") return res;
+        foreach (var f in Geometry.Parse(path).GetFlattenedPathGeometry(0.01, ToleranceType.Absolute).Figures)
+        {
+            var p = new List<Point> { f.StartPoint };
+            foreach (var seg in f.Segments)
+                if (seg is PolyLineSegment pl) p.AddRange(pl.Points);
+                else if (seg is LineSegment l) p.Add(l.Point);
+            for (int i = 0; i < p.Count; i++) p[i] = new Point(p[i].X - off, p[i].Y - off);
+            p.Add(p[0]); // kontur tertutup: RDP pertama memecah di titik terjauh dari titik awal
+            var keep = new bool[p.Count];
+            keep[0] = keep[^1] = true;
+            var st = new Stack<(int, int)>();
+            st.Push((0, p.Count - 1));
+            while (st.Count > 0)
+            {
+                var (a, b) = st.Pop();
+                int far = -1;
+                double max = eps;
+                for (int i = a + 1; i < b; i++)
+                    if ((p[i] - Nearest(p[i], p[a], p[b])).Length is var d && d > max) (max, far) = (d, i);
+                if (far < 0) continue;
+                keep[far] = true;
+                st.Push((a, far));
+                st.Push((far, b));
+            }
+            var c = p.Where((_, i) => keep[i] && i < p.Count - 1).ToArray();
+            int n = p.Count - 1;
+            if (c.Length < 3 && n >= 3) c = [p[0], p[n / 3], p[2 * n / 3]]; // kontur kecil tidak boleh hilang (tidak terpotong)
+            if (c.Length >= 3) res.Add(c);
+        }
+        return res;
+    }
+
+    // Titik terdekat ke q pada segmen a-b.
+    public static Point Nearest(Point q, Point a, Point b)
+    {
+        var ab = b - a;
+        return ab.LengthSquared == 0 ? a : a + Math.Clamp((q - a) * ab / ab.LengthSquared, 0, 1) * ab;
+    }
+
+    // Polygon (mm relatif artwork) -> path garis lurus M/L/Z di koordinat kotak.
+    public static string PathOf(List<Point[]> polys, double off)
+    {
+        var sb = new StringBuilder();
+        foreach (var c in polys)
+        {
+            for (int i = 0; i < c.Length; i++) sb.Append(i == 0 ? 'M' : 'L').Append(F(c[i].X + off)).Append(' ').Append(F(c[i].Y + off));
+            sb.Append('Z');
+        }
+        return sb.ToString();
+    }
+
+    // Lebar desain berubah: polygon diskala bersama artwork.
+    public static List<Point[]>? Scale(List<Point[]>? polys, double k) => polys?.Select(c => c.Select(q => new Point(q.X * k, q.Y * k)).ToArray()).ToList();
+
+    // Polygon -> mask 6 px/mm (grid nesting, luas, batas kiss/die), seperti mask garis otomatis.
+    static bool[,] Raster(List<Point[]> polys, double off, int W, int H)
+    {
+        var v = new DrawingVisual();
+        using (var dc = v.RenderOpen())
+        {
+            dc.PushTransform(new ScaleTransform(PxMm, PxMm));
+            dc.DrawGeometry(Brushes.Black, null, Geometry.Parse(PathOf(polys, off)));
+        }
+        var rt = new RenderTargetBitmap(W, H, 96, 96, PixelFormats.Pbgra32);
+        rt.Render(v);
+        var (px, _, _) = Pixels(rt);
+        var m = new bool[W, H];
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) m[x, y] = px[(y * W + x) * 4 + 3] >= 128;
+        return m;
     }
 
     static string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
@@ -787,10 +894,25 @@ public static class Nest
         return true;
     }
 
-    // Tinggi lembar setelah dipadatkan: jejak garis potong terbawah (bleed ikut) + margin, tidak pernah lebih
-    // tinggi dari lembar sekarang. Memakai jejak, bukan kotak: kotak boleh masuk margin sejak margin dicek per jejak.
-    public static double Compact(List<Placed> ps, double ch, double margin) =>
-        ps.Count == 0 ? ch : Math.Min(ch, Math.Ceiling(ps.Max(p => { var f = FootOf(p.S, p.Rot); return p.Y + (f.MaxY + 1 + f.Bleed) * Cell; }) + margin));
+    // Penuhi lembar (tombol Compact): customer membayar per lembar, jadi ruang kosong di semua lembar diisi salinan desain
+    // (jumlah > 0) bergiliran sampai tidak ada yang muat. Grid hunian dan TryPlace sama dengan susun otomatis.
+    // Mengembalikan jumlah stiker yang ditambahkan.
+    public static int Fill(List<List<Placed>> sheets, IEnumerable<Sticker> designs, double cw, double ch, double margin, double gap)
+    {
+        int cols = Math.Max(0, (int)((cw - 2 * margin) / Cell)), rows = Math.Max(0, (int)((ch - 2 * margin) / Cell));
+        int gc = (int)Math.Ceiling(gap / Cell - 1e-9), added = 0;
+        var cache = new Dictionary<(Sticker, int), Foot>();
+        foreach (var ps in sheets)
+        {
+            var occ = new bool[cols, rows];
+            foreach (var q in ps) Stamp(occ, FootOf(q.S, q.Rot), (int)Math.Round((q.X - margin) / Cell), (int)Math.Round((q.Y - margin) / Cell), gc);
+            var turn = designs.Where(s => s.Copies > 0).ToList();
+            for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
+                if (TryPlace(occ, turn[i], cache, gc, margin, ps)) { added++; i++; }
+                else turn.RemoveAt(i); // desain ini tidak muat lagi di lembar ini
+        }
+        return added;
+    }
 
     static bool Fits(bool[,] occ, List<(int X, int Y)> cells, int x, int y)
     {

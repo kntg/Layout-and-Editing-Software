@@ -1,0 +1,8 @@
+Uji UI undo/redo global (ui-undo.ps1), build Release, 2026-10-21. File: pdf-single-page.pdf, ai-compatible.ai, png-transparent.png, svg-vector.svg.
+
+awal: 4 stiker di 1 lembar.
+UNDO-01 LULUS: Penuhi lembar: 4 -> 58 stiker (54 stiker ditambahkan ke ruang kosong.  58 stiker di 1 lembar.)
+UNDO-02 LULUS: menu Edit > Urungkan: kembali ke 4 stiker (harapan 4)
+UNDO-03 LULUS: Ctrl+Y 58, Ctrl+Z 4, Ctrl+Shift+Z 58 stiker (harapan 58/4/58); alat Zoom terpilih: False
+responding: True
+RINGKAS: 3 uji, 0 GAGAL

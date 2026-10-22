@@ -11,7 +11,7 @@ Kriteria di dokumen ini ditetapkan sebelum validasi dijalankan. Kesalahan garis 
 Penilai tidak memakai kode Printech. Bentuk artwork yang benar diambil dari file asli di `01-input`:
 
 - **PDF/AI:** path vektor, dibaca dengan PyMuPDF.
-- **PNG/JPG:** piksel, dengan aturan latar yang sama seperti Printech (alpha > 16; tanpa alpha: bukan putih < 240 bila minimal separuh tepi gambar putih ≥ 250, selain itu seluruh gambar).
+- **PNG/JPG:** piksel, dengan aturan latar yang sama seperti Printech (artwork = alpha > 16, jadi gambar opak = seluruh gambar; latar tidak dibuang otomatis sejak 2026-10-21).
 - **SVG:** bentuk dari isi file.
 
 Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak tiap titik diukur tepat ke tepi artwork.
@@ -24,7 +24,7 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 | --- | --- |
 | Sederhana (lingkaran, persegi) | `pdf-multi-page.pdf` p1 (lingkaran) dan p2 (persegi panjang), `pdf-single-page.pdf`, `ai-compatible.ai`, `svg-vector.svg`, `png-152dpi.png`, `jpg-low-resolution.jpg`; besar: `pdf-large-a3.pdf`, `pdf-oversize.pdf`, `jpg-large-24mp.jpg` |
 | Tepi tidak beraturan | `png-rough-edge.png` (logo bertepi bergelombang), `pdf-irregular-shapes.pdf` p1 (bintang), p3 (garis tipis 0,2 mm), `pdf-multi-page.pdf` p3 (segitiga lancip) |
-| Berlubang | `png-transparent.png` (lubang tertutup), `pdf-irregular-shapes.pdf` p2 (cincin C, celah 5 mm) |
+| Berlubang | `png-transparent.png` (lubang asli Ø 10 mm, tertutup penuh oleh artwork), `pdf-irregular-shapes.pdf` p2 (cincin C, celah 5 mm) |
 | Elemen berdekatan | `pdf-irregular-shapes.pdf` p4 (tiga lingkaran, celah 4 mm dan 15 mm) |
 
 ### Pengaturan
@@ -47,7 +47,7 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 | A2b | Target reduksi node | Kiss logo kasar: node Halus 1 ≤ 40% dari Halus 0 (target PRD dan S1: turun ≥ 60%). |
 | A3 | Die membungkus kiss | Tidak ada titik garis kiss di luar garis die pada semua desain dan pengaturan, termasuk kiss halus 3 + die halus 0. |
 | A4 | Jarak minimum ke artwork | Pada setiap garis: jarak terdekat ke artwork ≥ offset − 0,3 mm. Tanpa toleransi tambahan. |
-| A5 | Reduksi node tidak merusak bentuk | Garis hanya berisi kurva, tanpa garis lurus atau sudut tajam. Jumlah kontur benar: 1 per desain; untuk elemen berdekatan, bagian dengan celah < 2 × (offset + halus) menyatu. Lubang tertutup tidak dipotong. Cincin C: celahnya ditutup bila 5 mm < 2 × (offset + halus). Garis bentuk sederhana tetap di dalam pita [offset − 0,3; offset + 0,5]. Gambar overlay disimpan untuk dicek mata. |
+| A5 | Reduksi node tidak merusak bentuk | Garis hanya berisi kurva, tanpa garis lurus atau sudut tajam. Jumlah kontur benar: 1 per desain; untuk elemen berdekatan, bagian dengan celah < 2 × (offset + halus) menyatu. Lubang asli yang tetap terbuka setelah offset + halus dipotong (garis dalam, sejak 2026-10-21), dan lubang die ikut tertutup bila lubang kiss tertutup (die membungkus kiss). Cincin C: celahnya ditutup bila 5 mm < 2 × (offset + halus). Garis bentuk sederhana tetap di dalam pita [offset − 0,3; offset + 0,5]. Gambar overlay disimpan untuk dicek mata. |
 | A6 | Opsi sesuai pilihan operator | Kiss saja: hanya garis magenta (CMYK 0 1 0 0). Die saja: hanya garis cyan (1 0 0 0). Keduanya: dua garis per stiker. Keduanya mati: muncul pesan, tidak ada desain. Dicek di data dan di PDF export. |
 | E1 | PDF export = data yang dinilai | Di setiap PDF export, garis potong, gambar, dan path artwork berada di posisi dan rotasi yang sama dengan data (selisih ≤ 0,05 mm). Jumlahnya juga sama. |
 
@@ -83,11 +83,11 @@ Semua dicek dari file hasil export (PDF produksi, preview JPG, Print Ticket), bu
 - **Preflight isi PDF:** membaca operator warna langsung dari content stream.
 - **Separasi CMYK:** halaman dirender MuPDF ke CMYK tanpa antialias, lalu nilai pelat C/M/Y/K dibaca di titik-titik garis potong.
 
-Skenario: semua PDF di atas. Preview dan Print Ticket dibuat untuk skenario B-*. Lembar terakhir B-campuran dipadatkan ("Compact lembar terakhir"). Tambahan **X-pdf-diputar** berisi `pdf-rotated.pdf` (halaman /Rotate 90), `pdf-single-page.pdf`, dan `khusus/pdf-encrypted.pdf` (sejak 2026-10-21, temuan D8).
+Skenario: semua PDF di atas. Preview dan Print Ticket dibuat untuk skenario B-*. Lembar B-campuran dipenuhi dengan tombol Compact ("Penuhi lembar", sejak 2026-10-21; sebelumnya lembar terakhir dipadatkan). Tambahan **X-pdf-diputar** berisi `pdf-rotated.pdf` (halaman /Rotate 90), `pdf-single-page.pdf`, dan `khusus/pdf-encrypted.pdf` (sejak 2026-10-21, temuan D8).
 
 | ID | Output | Lulus bila |
 | --- | --- | --- |
-| X1 | PDF produksi | Jumlah halaman = jumlah lembar. Ukuran halaman = lebar kertas × tinggi lembar (termasuk lembar yang dipadatkan), ±0,01 mm. Posisi artwork sesuai layout (E1, ±0,05 mm). Ukuran desain di PDF sesuai file asli, ±0,05 mm: path vektor sama dengan path di file input; gambar = lebar yang diminta (50 mm). |
+| X1 | PDF produksi | Jumlah halaman = jumlah lembar. Ukuran halaman = lebar kertas × tinggi lembar, ±0,01 mm. Posisi artwork sesuai layout (E1, ±0,05 mm). Ukuran desain di PDF sesuai file asli, ±0,05 mm: path vektor sama dengan path di file input; gambar = lebar yang diminta (50 mm). |
 | X2 | Warna garis potong | Preflight: setiap garis yang di-stroke memakai DeviceCMYK `0 1 0 0 K` (kiss) atau `1 0 0 0 K` (die); jumlahnya = jumlah garis kiss/die per lembar; tidak ada operator RGB, ICC, Separation, atau `CS`/`SCN`; tidak ada OutputIntent. Separasi: di setiap titik sampel, garis kiss tepat C 0 M 100 Y 0 K 0, dan garis die tepat C 100 M 0 Y 0 K 0. |
 | X3 | Vektor | Desain PDF/AI tetap vektor: digambar sebagai Form XObject, warna isi CMYK sama persis dengan file input, tanpa gambar. Gambar hanya untuk PNG/JPG/SVG, dan untuk PDF yang memang tidak bisa vektor (halaman diputar, atau PDF terenkripsi yang gagal ditempel PDFsharp). PDF yang jadi gambar wajib memunculkan peringatan, sesuai PRD, dan export tetap jadi. |
 | X4 | Preview JPG | Satu file JPEG per lembar. Sisi panjang 2000 px (±1). Perbandingan sisi = ukuran lembar (±1 px). Di setiap posisi stiker, preview dan PDF sama-sama berisi artwork (cocok ≥ 95%). |

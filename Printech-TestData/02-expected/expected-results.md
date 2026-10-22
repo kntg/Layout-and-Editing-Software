@@ -13,8 +13,8 @@ Validasi mesin garis potong dan nesting yang lebih teliti (jarak garis ke artwor
 | AI dan SVG | `ai-compatible.ai`, `svg-vector.svg` | Kontur, ukuran, dan artwork terbaca benar | 50,0 × 25,0 mm, 1 kontur kiss dan 1 kontur die. Lingkaran putih di dalam SVG tidak dipotong. | Panel Desain, export |
 | CDR valid | `cdr-normal.cdr` (dibuat operator, [cdr-normal.BACA.txt](../01-input/cdr-normal.BACA.txt)) | Konversi berhasil; aplikasi utama tidak terhenti | Sama dengan `pdf-single-page.pdf` | Operator, PC dengan CorelDRAW ([UJI-STABILITAS.md](../../docs/UJI-STABILITAS.md) P7) |
 | CDR rusak atau proses macet | `invalid-file.cdr`; macet: [UJI-STABILITAS.md](../../docs/UJI-STABILITAS.md) P9 | Kegagalan terkendali, termasuk batas waktu CDR 30 detik | Dialog "Gagal memuat" dengan pesan jelas; file lain tetap masuk; aplikasi tidak crash. Macet: setelah 30 detik muncul `CorelDRAW tidak merespons dalam 30 detik. …`; proses worker dihentikan; CorelDRAW tidak ditutup paksa. | UI; selfcheck P1–P2 (jalur batas waktu); operator P9 |
-| PNG transparan dan JPG | `png-transparent.png`, `jpg-low-resolution.jpg`, `png-rough-edge.png` | Batas artwork, crop, transparansi, garis potong | Crop ke konten. Lubang transparan tidak dipotong. 1 kontur. | Panel Desain, validasi A |
-| Gambar di bawah 150 dpi | `jpg-low-resolution.jpg` (±102), `png-147dpi.png` (147), `png-152dpi.png` (152) | Peringatan resolusi sesuai spesifikasi: merah bila < 150 dpi | ±102 dan 147 merah; 152 tidak merah | Panel Desain, peringatan |
+| PNG transparan dan JPG | `png-transparent.png`, `jpg-low-resolution.jpg`, `png-rough-edge.png` | Batas artwork, crop, transparansi, garis potong | PNG transparan: crop ke konten. Lubang transparan Ø 10 mm tetap terbuka setelah offset kiss 2 + halus 1, jadi ada garis kiss dalam (2 kontur); die 4 + halus 2 menutup lubang (1 kontur). Aturan donat, masukan leader 2026-10-21. JPG (opak): seluruh gambar dipakai, latar putih tidak dibuang, garis mengelilingi kotak gambar (masukan leader 2026-10-21). | Panel Desain, validasi A |
+| Gambar di bawah 150 dpi | `jpg-low-resolution.jpg` (±122), `png-147dpi.png` (147), `png-152dpi.png` (152) | Peringatan resolusi sesuai spesifikasi: merah bila < 150 dpi | ±122 dan 147 merah; 152 tidak merah | Panel Desain, peringatan |
 | Vektor tetap vektor di export | `pdf-single-page.pdf`, `pdf-rotated.pdf` | Artwork yang seharusnya vektor tidak berubah menjadi gambar tanpa alasan | PDF biasa tetap vektor (warna CMYK sama). PDF dengan halaman /Rotate ditempel sebagai gambar RGB ±254 dpi (batasan di PRD), dan muncul peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)". | Peringatan, validasi X3 |
 | Artwork besar atau bentuk tidak beraturan | `pdf-large-a3.pdf`, `pdf-oversize.pdf`, `jpg-large-24mp.jpg`, `pdf-irregular-shapes.pdf`, `png-rough-edge.png` | Pemrosesan stabil; tidak memotong elemen secara keliru | Tiap file dimuat < 5 detik tanpa crash. `pdf-oversize.pdf` tidak dipasang dan masuk peringatan "1 lebih besar dari kertas". Cincin C: celah tertutup, lubang tidak dipotong. Garis tipis 0,2 mm tetap dikelilingi garis. Lingkaran bercelah 4 mm menyatu; bercelah 15 mm punya garis sendiri. | Panel Desain, validasi A/B |
 
@@ -31,13 +31,13 @@ File di folder ini diuji terpisah. Jangan ikut ditambahkan dalam uji "semua file
 
 ## Latar PNG (`01-input/latar/`, temuan D10)
 
-PNG opak 600 × 400 px: persegi biru membulat 300 × 200 px dan lingkaran oranye di tengah. Latar putih dibuang karena printer tidak mencetak putih. Latar berwarna, termasuk warna muda, ikut tercetak.
+PNG opak 600 × 400 px: persegi biru membulat 300 × 200 px dan lingkaran oranye di tengah. Sejak masukan leader 2026-10-21, latar gambar opak tidak pernah dibuang otomatis, termasuk putih. Latar dibuang operator lewat Rapikan atau editor garis potong.
 
 | File | Hasil benar (lebar 50 mm) |
 | --- | --- |
 | `png-latar-abu-muda.png` (latar 242, 242, 242) | Seluruh gambar = artwork 50 × 33,3 mm, 305 dpi; latar abu tampil di layar dan PDF; garis kiss mengelilingi kotak gambar |
 | `png-latar-pink-pastel.png` (latar 255, 240, 245) | Sama dengan abu muda |
-| `png-latar-putih.png` (latar putih) | Latar dibuang: artwork = persegi biru 50 × 33,4 mm, 153 dpi; garis kiss mengikuti persegi |
+| `png-latar-putih.png` (latar putih) | Sama dengan abu muda: seluruh gambar 50 × 33,3 mm, 305 dpi; garis kiss mengelilingi kotak gambar |
 
 ## Pengaturan saat menguji
 
@@ -66,8 +66,8 @@ Ukuran garis potong = lebar × tinggi kotak terluar garis. Garis kiss = artwork 
 | `png-rough-edge.png` | 1 (logo bertepi bergelombang) | gambar | 50,0 × 48,9 | 366 (tidak merah) | 54,0 × 52,9 | 58,0 × 56,9 |
 | `png-147dpi.png` | 1 | gambar | 50,0 × 50,0 | 147, **merah** | 54 × 54 | 58 × 58 |
 | `png-152dpi.png` | 1 | gambar | 50,0 × 50,0 | 152 (tidak merah) | 54 × 54 | 58 × 58 |
-| `jpg-low-resolution.jpg` | 1 | gambar | 50,0 × 50,0 | ±102 (101–104), **merah** | 54 × 54 | 58 × 58 |
-| `jpg-large-24mp.jpg` | 1 (6000 × 4000 px) | gambar | 50,0 × 32,1 | ±2845 (tidak merah) | 54 × 36,1 | 58 × 40,1 |
+| `jpg-low-resolution.jpg` | 1 | gambar (seluruh 240 × 240 px) | 50,0 × 50,0 | ±122, **merah** | 54 × 54 | 58 × 58 |
+| `jpg-large-24mp.jpg` | 1 (6000 × 4000 px) | gambar (seluruh gambar) | 50,0 × 33,3 | ±3048 (tidak merah) | 54 × 37,3 | 58 × 41,3 |
 | `svg-vector.svg` | 1 | gambar (SVG dirender ±300 dpi) | 50,0 × 25,0 | ±305 (tidak merah) | 54 × 29 | 58 × 33 |
 | `invalid-file.cdr` | 0 | — | — | — | — | — |
 
@@ -86,8 +86,8 @@ Toleransi:
 
 ## Hal lain yang harus benar
 
-- **Hanya kontur luar yang dipotong.** Setiap desain punya tepat 1 garis kiss dan 1 garis die. Pengecualian: `pdf-irregular-shapes.pdf p4` punya 2 + 2, karena lingkaran ketiga berjarak 15 mm, lebih dari 2 × (offset + halus).
-  - Lubang transparan di tengah `png-transparent.png` tidak dipotong.
+- **Kontur luar, ditambah garis dalam untuk lubang asli yang tetap terbuka setelah offset** (stiker donat, sejak 2026-10-21). Setiap desain punya 1 garis kiss dan 1 garis die. Pengecualian: `pdf-irregular-shapes.pdf p4` punya 2 + 2, karena lingkaran ketiga berjarak 15 mm, lebih dari 2 × (offset + halus); `png-transparent.png` punya garis kiss 2 kontur (lubang Ø 10 mm tetap terbuka) dan die 1 kontur (lubang tertutup offset 4 + halus 2).
+  - Rongga yang terbentuk saat offset menutup celah (cincin C) tidak dipotong.
   - Lingkaran di dalam `pdf-single-page.pdf` dan `svg-vector.svg` tidak dipotong.
   - Celah cincin C ditutup offset + halus, dan lubangnya tidak dipotong.
 - **`invalid-file.cdr`:**
@@ -135,4 +135,6 @@ Toleransi:
 | Latar PNG (2026-10-21) | Sebelum perbaikan: latar abu muda dan pink pastel hilang, tinggal 5 % berupa cincin selebar offset kiss, dan logo jadi ±4× lebih besar (temuan D10). Sesudah perbaikan: kedua latar utuh di PDF export (102 % terukur) dan di layar; latar putih tetap dibuang. Bukti: [png-latar](../04-evidence/2026-10-21-png-latar.txt), [sebelum](../04-evidence/2026-10-21-png-latar-sebelum.png), [sesudah](../04-evidence/2026-10-21-png-latar-sesudah.png), [UI](../04-evidence/2026-10-21-png-latar-ui.png) |
 | PDF terenkripsi (2026-10-21) | Sesudah perbaikan D8: `pdf-encrypted.pdf` dimuat sebagai gambar 60,0 × 30,0 mm dengan peringatan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)"; export PDF jadi tanpa error (validasi X3 lulus). Bukti: [pdf-terenkripsi](../04-evidence/2026-10-21-pdf-terenkripsi.txt), [UI](../04-evidence/2026-10-21-pdf-terenkripsi-ui.png) |
 | RAM file besar (2026-10-21) | Sesudah perbaikan D4 (Task Manager): JPG 24 MP 41 MB, dua PDF besar 53 MB, semua 19 desain 84 MB. Target ±120 MB tercapai. Bukti: [ram-profil](../04-evidence/2026-10-21-ram-profil.txt) |
+| Masukan leader tahap 1 (2026-10-21) | Latar gambar opak tidak dibuang otomatis dan Compact diganti "Penuhi lembar". UI semua input: status "18 stiker di 2 lembar.", peringatan sama, pemakaian bahan 54 %, judul lembar 92 % dan 16 %, RAM 87 MB. Validasi: B-campuran dipenuhi jadi 198 stiker di 4 lembar tanpa tabrakan (B2–B4 lulus). Bukti: [ui-semua-input](../04-evidence/2026-10-21-ui-semua-input.txt), [validasi](../04-evidence/2026-10-21-validasi-garis-potong-nesting.txt) |
+| Masukan leader tahap 4 (2026-10-21) | Editor garis potong, `png-transparent.png` dengan kiss 2/1 dan die 4/2: editor terbuka dengan kiss 31 titik dan die 21 titik (garis otomatis); Simplify 0,5 mm membuat kiss 22 titik, die tetap 21; Urungkan/Ulangi di editor benar; Simpan memberi tanda "garis manual"; Edit > Urungkan mengembalikan garis otomatis. UI semua input setelah tahap 4: angka sama dengan tahap 1, RAM 81 MB. Seret titik dengan mouse belum diuji. Bukti: [ui-editor-garis](../04-evidence/2026-10-21-ui-editor-garis.txt), [editor](../04-evidence/2026-10-21-editor-garis-potong.png), [garis manual](../04-evidence/2026-10-21-editor-garis-manual.png), [ui-semua-input](../04-evidence/2026-10-21-ui-semua-input.txt) |
 | Validasi garis potong, nesting, dan export | Lihat [validasi-garis-potong-nesting.md](validasi-garis-potong-nesting.md) |

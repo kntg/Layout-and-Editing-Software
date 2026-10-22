@@ -2,8 +2,7 @@
 
 Pemakaian: python validasi.py [folder hasil validasi.ps1]   (default: 03-exports/validasi)
 Geometri artwork diambil dari file asli di 01-input, bukan dari Printech: PyMuPDF untuk PDF/AI, piksel untuk PNG/JPG
-(aturan latar sama dengan Printech: alpha > 16; tanpa alpha: bukan putih < 240 bila minimal separuh tepi gambar putih >= 250,
-selain itu seluruh gambar), bentuk SVG dari isi file. Garis potong dan
+(aturan sama dengan Printech: artwork = alpha > 16, jadi gambar opak = seluruh gambar), bentuk SVG dari isi file. Garis potong dan
 posisi stiker dari validasi.json; PDF export dicek ulang supaya yang dinilai sama dengan yang dikirim ke CorelDRAW.
 Kriteria: 02-expected/validasi-garis-potong-nesting.md. Exit code 0 = semua lulus, 1 = ada yang gagal.
 Laporan dan gambar bukti ditulis ke 04-evidence.
@@ -167,11 +166,7 @@ def rounded(w, h, r, n=90):
 def raster_edges(source):
     """Tepi piksel artwork (koordinat piksel) dan ukuran gambar. Aturan latar sama dengan Printech."""
     im = np.array(Image.open(IN / source).convert("RGBA"))
-    if (im[..., 3] < 250).any():
-        fg = im[..., 3] > 16
-    else:  # latar putih hanya bila minimal separuh tepi gambar putih (>= 250); selain itu seluruh gambar artwork
-        edge = np.concatenate([im[0], im[-1], im[:, 0], im[:, -1]])[:, :3].min(1)
-        fg = (im[..., :3] < 240).any(2) if (edge >= 250).mean() >= 0.5 else np.ones(im.shape[:2], bool)
+    fg = im[..., 3] > 16  # gambar opak: seluruh gambar (latar tidak dibuang otomatis)
     p = np.pad(fg, 1)
     ys, xs = np.nonzero(p[1:-1, 1:] != p[1:-1, :-1])
     ys2, xs2 = np.nonzero(p[1:, 1:-1] != p[:-1, 1:-1])
@@ -244,9 +239,23 @@ def measure(d):
     return res
 
 
-def expected_parts(name, cut):
-    """Jumlah kontur yang benar menurut aturan offset + halus: bagian berjarak < 2 x (offset + halus) menyatu.
-    None = celah terlalu dekat ke ambang (selisih < 0,5 mm), tidak dinilai."""
+def hole_left(d, kind):
+    """Jari-jari lubang asli dikurangi (offset + halus). Lubang die ikut tertutup bila lubang kiss tertutup (die membungkus
+    kiss). None = desain tanpa lubang asli."""
+    _, _, r = hole_center(d)
+    if r is None:
+        return None
+    cuts = [d["dieCut"]] + ([d["kissCut"]] if d["kissCut"][0] else []) if kind == "die" else [d["kissCut"]]
+    return min(r - (c[1] + c[2]) for c in cuts)
+
+
+def expected_parts(name, kind, d):
+    """Jumlah kontur yang benar menurut aturan offset + halus: bagian berjarak < 2 x (offset + halus) menyatu, dan lubang
+    asli yang tetap terbuka mendapat garis dalam (donat, sejak 2026-10-21).
+    None = celah/lubang terlalu dekat ke ambang (selisih < 0,5 mm), tidak dinilai."""
+    cut, left = d[kind + "Cut"], hole_left(d, kind)
+    if left is not None:
+        return None if abs(left) < 0.5 else 2 if left > 0 else 1
     if not name.endswith("shapes.pdf p4"):
         return 1
     t = 2 * (cut[1] + cut[2])
@@ -255,13 +264,14 @@ def expected_parts(name, cut):
 
 
 def hole_center(d):
-    """Titik tengah lubang (koordinat kotak) untuk desain berlubang, dan lebar celah yang menghubungkannya ke luar."""
+    """Titik tengah lubang (koordinat kotak) untuk desain berlubang, lebar celah yang menghubungkannya ke luar, dan
+    jari-jari lubang asli (mm) bila lubangnya tertutup penuh oleh artwork."""
     fx, fy, fw, fh = d["full"]
     if d["name"] == "pdf-irregular-shapes.pdf p2":
-        return np.array([[fx + fw / 2, fy + fh / 2]]), 5.0  # cincin C, celah 5 mm
+        return np.array([[fx + fw / 2, fy + fh / 2]]), 5.0, None  # cincin C, celah 5 mm: rongganya bukan lubang asli
     if d["name"] == "png-transparent.png":
-        return np.array([[fx + fw * 500 / 1000, fy + fh * 300 / 600]]), None  # lubang tertutup penuh
-    return None, None
+        return np.array([[fx + fw * 500 / 1000, fy + fh * 300 / 600]]), None, fw * 80 / 1000  # lubang asli Ø 160 px
+    return None, None, None
 
 
 data = json.loads((RUN / "validasi.json").read_text(encoding="utf-8-sig"))
@@ -334,22 +344,27 @@ for (s, n), m in M.items():
     for kind in ("kiss", "die"):
         if kind not in m:
             continue
-        e = expected_parts(n, d[kind + "Cut"])
+        e = expected_parts(n, kind, d)
         if e is not None and m[kind]["n"] != e:
             cont_bad.append(f"{s} {n} {kind}: {m[kind]['n']} kontur, harapan {e}")
-        c, gapw = hole_center(d)
+        c, gapw, hole_r = hole_center(d)
         if c is not None:
             t = 2 * (m[kind]["off"] + m[kind]["sm"])
-            want = True if gapw is None or gapw < t - 0.5 else False if gapw > t + 0.5 else None
+            if hole_r is not None:  # lubang asli: tertutup (tengahnya di dalam garis) bila jari-jari < offset + halus
+                left = hole_left(d, kind)
+                want = True if left < -0.5 else False if left > 0.5 else None
+            else:
+                want = True if gapw < t - 0.5 else False if gapw > t + 0.5 else None
             got = bool(inside(c, m[kind]["conts"])[0])
             if want is not None and got != want:
                 hole_bad.append(f"{s} {n} {kind}")
             if s == "A-standar" or want is False:
-                hole_txt.append(f"{s} {n} {kind}: lubang {'tidak dipotong' if got else 'ikut dikelilingi garis (celah terbuka)'}")
+                hole_txt.append(f"{s} {n} {kind}: lubang {'tidak dipotong' if got else 'dipotong, ada garis dalam' if hole_r else 'ikut dikelilingi garis (celah terbuka)'}")
 band = [(s, n, k, x) for s, n, k, x in rows if n in SIMPLE and not (x["off"] - MAX_IN <= x["dmin"] and x["dmax"] <= x["off"] + 0.5)]
 verdict("A5", straight == 0 and not cont_bad and not hole_bad and not band,
         f"bentuk tetap benar setelah reduksi node: {straight} garis lurus/sudut di {len(rows)} garis; jumlah kontur salah {len(cont_bad)}; "
-        f"lubang salah {len(hole_bad)}; bentuk sederhana keluar pita [offset - 0,3; offset + 0,5]: {len(band)} (batas bawah pita = A4). "
+        f"lubang salah {len(hole_bad)}; bentuk sederhana keluar pita [offset - 0,3; offset + 0,5]: {len(band)} (batas bawah pita = A4"
+        + (": " + ", ".join(f"{s} {n} {k} {f2(x['dmin'])}-{f2(x['dmax'])}" for s, n, k, x in band) if band else "") + "). "
         + "; ".join(cont_bad + hole_bad + hole_txt))
 
 # A6 opsi kiss/die sesuai pilihan operator (data + warna garis di PDF export)
@@ -680,7 +695,7 @@ for sc in SCN:
                 if np.abs((got[2:] - got[:2]) - size).max() > 0.05:
                     x1.append(f"{sc['name']} {d['name']}: gambar {f2(got[2] - got[0])} x {f2(got[3] - got[1])}, harapan {f2(size[0])} x {f2(size[1])}")
 verdict("X1", not x1 and not eb,
-        f"{len(SCN)} PDF produksi: jumlah dan ukuran halaman sesuai lembar (termasuk lembar yang dipadatkan); posisi artwork = E1; "
+        f"{len(SCN)} PDF produksi: jumlah dan ukuran halaman sesuai lembar; posisi artwork = E1; "
         f"{x1n} artwork diukur ulang dari PDF: ukuran sama dengan file asli/lebar yang diminta (batas 0,05 mm)" + "".join(f"; {t}" for t in x1[:12]))
 
 # X2 warna garis potong: preflight content stream + separasi CMYK
