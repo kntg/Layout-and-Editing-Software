@@ -283,10 +283,7 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            var n = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm);
-            n.Copies = it.Copies;
-            n.Name = it.Name;
-            items[items.IndexOf(it)] = n;
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -315,15 +312,20 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            var n = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
-                manualKiss: mk, manualDie: md);
-            n.Copies = it.Copies;
-            n.Name = it.Name;
-            items[items.IndexOf(it)] = n;
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
+                manualKiss: mk, manualDie: md));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
         Redraw(Lang.T("CutSaved", it.Name));
+    }
+
+    // Ganti desain dengan hasil muat ulangnya; jumlah salinan dan nama tetap.
+    void Replace(Sticker old, Sticker n)
+    {
+        n.Copies = old.Copies;
+        n.Name = old.Name;
+        items[items.IndexOf(old)] = n;
     }
 
     void Nest_Click(object s, RoutedEventArgs e) => Arrange();
@@ -345,11 +347,8 @@ public partial class MainWindow : Window
                 {
                     // Garis manual tidak ikut offset/Halus; lebar berubah: polygon diskala bersama artwork.
                     double k = it.WidthMm / it.LoadedW;
-                    var n = Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
-                        manualKiss: Loader.Scale(it.ManualKiss, k), manualDie: Loader.Scale(it.ManualDie, k));
-                    n.Copies = it.Copies;
-                    n.Name = it.Name;
-                    items[i] = n;
+                    Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
+                        manualKiss: Loader.Scale(it.ManualKiss, k), manualDie: Loader.Scale(it.ManualDie, k)));
                 }
             }
             sheetW = CW;
