@@ -1,0 +1,4 @@
+{
+  // Baris panjang dibiarkan: tabel dan kalimat dokumen tidak dipotong per 80 karakter.
+  "config": { "MD013": false }
+}
