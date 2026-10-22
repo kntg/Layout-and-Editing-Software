@@ -9,7 +9,7 @@ namespace StickerLayout;
 // digeser, ditambah (klik di garis), dan dihapus (Delete). Koordinat polygon: mm relatif terhadap pojok kiri-atas artwork.
 public partial class CutEditWindow : Window
 {
-    sealed record State(List<Point[]> Kiss, List<Point[]> Die, bool Auto);
+    sealed record State(List<Point[]> Kiss, List<Point[]> Die, bool Auto, Point[] Objs, Point[] Holes);
 
     readonly Sticker auto;      // desain dengan garis otomatis pada pengaturan sekarang: sumber Simplify dan Reset otomatis
     readonly double reach;      // titik tidak bisa keluar dari kotak desain otomatis (grid nesting tetap benar)
@@ -21,6 +21,7 @@ public partial class CutEditWindow : Window
     State? before;              // keadaan sebelum titik diseret atau ditambah
     bool dragging, moved, ready;
     double scale = 1, ox, oy;
+    List<Point> objs = [], holes = [];  // pilihan smart select: klik objek dan klik lubang (mm relatif artwork)
 
     // Hasil: polygon garis yang aktif, atau null = garis otomatis. Garis yang sedang mati kembali otomatis.
     public List<Point[]>? ManualKiss => isAuto || !auto.LoadedKiss.On ? null : kiss;
@@ -39,6 +40,7 @@ public partial class CutEditWindow : Window
         EditKiss.IsEnabled = auto.LoadedKiss.On;
         EditDie.IsEnabled = auto.LoadedDie.On;
         (auto.LoadedKiss.On ? EditKiss : EditDie).IsChecked = true;
+        Tol.Value = Loader.DefaultTolerance(auto);
         ready = true;
         Changed();
     }
@@ -47,7 +49,7 @@ public partial class CutEditWindow : Window
     List<Point[]> Active => OnDie ? die : kiss;
     List<Point[]> Polys(string path) => Loader.ToPolygons(path, auto.Off, Eps.Value);
     static List<Point[]> Copy(List<Point[]> p) => [.. p.Select(c => (Point[])c.Clone())];
-    State Snap() => new(Copy(kiss), Copy(die), isAuto);
+    State Snap() => new(Copy(kiss), Copy(die), isAuto, [.. objs], [.. holes]);
     Point Clamp(Point p) => new(Math.Clamp(p.X, -reach, auto.ArtW + reach), Math.Clamp(p.Y, -reach, auto.ArtH + reach));
     Point Screen(Point p) => new(ox + (p.X + reach) * scale, oy + (p.Y + reach) * scale);
     Point Mm(Point s) => new((s.X - ox) / scale - reach, (s.Y - oy) / scale - reach);
@@ -63,7 +65,9 @@ public partial class CutEditWindow : Window
     {
         if (from.Count == 0 || dragging) return;
         to.Add(Snap());
-        (kiss, die, isAuto) = from[^1];
+        (kiss, die, isAuto, var o, var h) = from[^1];
+        objs = [.. o];
+        holes = [.. h];
         from.RemoveAt(from.Count - 1);
         sel = null;
         merging = null;
@@ -141,11 +145,53 @@ public partial class CutEditWindow : Window
     internal void Reset()
     {
         Push(Snap());
+        objs = [];
+        holes = [];
         kiss = auto.LoadedKiss.On ? Polys(auto.Kiss) : [];
         die = auto.LoadedDie.On ? Polys(auto.Die) : [];
         isAuto = true;
         sel = null;
         Changed();
+    }
+
+    int Tolerance => (int)Tol.Value;
+
+    // Smart select: klik objek mengganti pilihan (add = Shift+klik, menambah objek); klik di lubang membalik garis dalamnya.
+    internal void Pick(Point q, bool add)
+    {
+        var kind = Loader.Classify(auto, q, Tolerance);
+        if (kind == Loader.PickKind.Empty) { Info.Text = Lang.T("SmartEmpty"); return; }
+        bool fresh = kind == Loader.PickKind.Object && !add;
+        List<Point> o = fresh ? [] : [.. objs], h = fresh ? [] : [.. holes];
+        (kind == Loader.PickKind.Object ? o : h).Add(q);
+        var before = Snap();
+        if (Select(o, h)) Push(before);
+    }
+
+    // Garis dari objek dan lubang terpilih; false (keadaan lama tetap) bila pilihan tidak menghasilkan garis.
+    bool Select(List<Point> o, List<Point> h)
+    {
+        var (k, d, tooSmall) = Loader.SmartSelect(auto, o, h, Tolerance, Eps.Value);
+        if (auto.LoadedKiss.On && k.Count == 0 || auto.LoadedDie.On && d.Count == 0) { Info.Text = Lang.T("SmartEmpty"); return false; }
+        objs = o;
+        holes = h;
+        if (auto.LoadedKiss.On) kiss = k;
+        if (auto.LoadedDie.On) die = d;
+        sel = null;
+        isAuto = false;
+        Changed();
+        if (tooSmall) Info.Text = Lang.T("SmartSmall");
+        return true;
+    }
+
+    // Toleransi menghitung ulang pilihan smart select; geser berturut-turut = satu langkah undo.
+    void Tol_Changed(object s, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!ready) return;
+        TolText.Text = $"{Tolerance}";
+        if (objs.Count + holes.Count == 0) return;
+        var before = Snap();
+        if (Select(objs, holes) && merging != "tol") { Push(before); merging = "tol"; }
     }
 
     // Slider Simplify membuat ulang garis yang sedang diedit dari kurva otomatis.
@@ -154,6 +200,7 @@ public partial class CutEditWindow : Window
         if (!ready) return;
         string tag = OnDie ? "die" : "kiss";
         if (merging != tag) { Push(Snap()); merging = tag; }
+        if (objs.Count + holes.Count > 0) { Select(objs, holes); return; } // pilihan smart select disederhanakan ulang
         if (OnDie) die = Polys(auto.Die); else kiss = Polys(auto.Kiss);
         sel = null;
         isAuto = false;
@@ -175,6 +222,7 @@ public partial class CutEditWindow : Window
         RedoBtn.IsEnabled = redo.Count > 0;
         ResetBtn.IsEnabled = !isAuto;
         EpsText.Text = $"{Eps.Value:0.00} mm";
+        TolText.Text = $"{Tolerance}";
         Info.Text = Lang.T("CutInfo", kiss.Sum(c => c.Length), die.Sum(c => c.Length), Lang.T(isAuto ? "CutAuto" : "CutManual"));
         Draw();
     }
@@ -231,6 +279,7 @@ public partial class CutEditWindow : Window
 
     void Board_Down(object s, MouseButtonEventArgs e)
     {
+        if (SmartBox.IsChecked == true) { Pick(Mm(e.GetPosition(Board)), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)); return; }
         Press(Mm(e.GetPosition(Board)), 7 / scale);
         if (dragging) Board.CaptureMouse();
     }

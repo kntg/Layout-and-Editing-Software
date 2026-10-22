@@ -2,7 +2,7 @@
 
 Sumber: pertanyaan user 2026-10-22 ("tengah donat tidak dapat titik"; "smart select harus bisa membaca setiap bentuk
 dan sudut") dan jawaban user di sesi yang sama. Status: cara pakai, mesin, dan pengujian disetujui user per bagian;
-menunggu review dokumen ini.
+dokumen disetujui 2026-10-22; implementasi selesai 2026-10-22 (selfcheck S13, uji UI EDIT-04).
 
 ## Latar belakang
 
@@ -37,8 +37,8 @@ lingkaran potong ±1 mm yang sulit dibuang (weeding) dan berisiko menyobek vinyl
 
 ### 1. Cara pakai di editor
 
-- Tombol **Smart select** (ikon tongkat) di panel kiri editor garis potong. Selama aktif, klik di gambar memilih
-  objek; saat tidak aktif, klik mengedit titik seperti sekarang.
+- Kotak centang **Smart select** di panel kiri editor garis potong (bergaya tema yang sudah ada). Selama dicentang,
+  klik di gambar memilih objek; saat tidak dicentang, klik mengedit titik seperti sekarang.
 - **Klik di objek:** garis kiss dan die yang aktif diganti garis yang mengikuti objek itu, masing-masing dengan offset
   sendiri: kontur luar ditambah garis dalam untuk lubang objek yang muat (lihat 2e). Satu klik mengatur kedua garis,
   sehingga die tetap membungkus kiss.

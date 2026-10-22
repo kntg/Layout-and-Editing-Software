@@ -78,7 +78,7 @@ public class Placed
     public (double x, double y) T => Rot switch { 90 => (S.H, 0), 180 => (S.W, S.H), 270 => (0, S.W), _ => (0, 0) };
 }
 
-public static class Loader
+public static partial class Loader
 {
     public const double PxMm = 6;    // resolusi mask garis potong: 6 px per mm
     // Potrace: tanpa sudut tajam (pisau tidak berbelok mendadak) dan gabung segmen kurva sampai 1 px (0,17 mm).

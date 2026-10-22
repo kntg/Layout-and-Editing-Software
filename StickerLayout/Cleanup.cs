@@ -50,13 +50,16 @@ public sealed class CleanImage
         Math.Abs(px[i * 4] - c.B) <= tol && Math.Abs(px[i * 4 + 1] - c.G) <= tol && Math.Abs(px[i * 4 + 2] - c.R) <= tol;
 
     // Warna latar = warna yang paling sering muncul di tepi gambar (dikelompokkan per 16 tingkat).
-    public Color? BorderColor()
+    public Color? BorderColor() => BorderColor(px, W, H, Clear);
+
+    // Juga dipakai smart select (Loader) untuk gambar tanpa transparansi. skip: piksel yang tidak dihitung.
+    public static Color? BorderColor(byte[] px, int W, int H, Func<int, bool> skip)
     {
         var bins = new Dictionary<int, (int n, long b, long g, long r)>();
         void Add(int x, int y)
         {
             int i = y * W + x;
-            if (Clear(i)) return;
+            if (skip(i)) return;
             int key = (px[i * 4 + 2] >> 4) << 8 | (px[i * 4 + 1] >> 4) << 4 | px[i * 4] >> 4;
             var (n, b, g, r) = bins.GetValueOrDefault(key);
             bins[key] = (n + 1, b + px[i * 4], g + px[i * 4 + 1], r + px[i * 4 + 2]);

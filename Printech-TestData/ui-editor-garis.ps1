@@ -1,7 +1,9 @@
 ﻿param([string]$Exe, [string]$In, [string]$Shots)
 # Uji UI editor garis potong (masukan leader 2026-10-21) lewat UI Automation, tanpa mouse dan keyboard: die diaktifkan,
 # editor dibuka dari daftar desain (kiss dan die), slider Simplify mengubah jumlah titik garis yang diedit, tombol
-# Urungkan/Ulangi editor, Simpan memberi tanda "garis manual", menu Edit > Urungkan mengembalikan garis otomatis. Geser, tambah, dan hapus titik butuh mouse: logikanya diuji selfcheck S12.
+# Urungkan/Ulangi editor, kotak Smart select dan slider Toleransi, Simpan memberi tanda "garis manual", menu Edit > Urungkan
+# mengembalikan garis otomatis. Geser, tambah, dan hapus titik serta klik smart select di kanvas butuh mouse: logikanya
+# diuji selfcheck S12 dan S13.
 # Jalankan dengan Windows PowerShell 5.1:
 # powershell -ExecutionPolicy Bypass -File ui-editor-garis.ps1 -Exe <StickerLayout.exe> -In <folder 01-input> -Shots <folder gambar>
 $ErrorActionPreference = 'Stop'
@@ -75,20 +77,28 @@ Start-Sleep -Milliseconds 300
 $r = Points (Find $AE::AutomationIdProperty 'Info' $ed).Current.Name
 Res 'EDIT-03' $(if ($u[0] -eq $a[0] -and $u[2] -eq 'garis otomatis' -and $r[0] -eq $b[0] -and $r[2] -eq 'garis manual') { 'LULUS' } else { 'GAGAL' }) "tombol Urungkan: kiss $($u[0]) titik, '$($u[2])'; Ulangi: kiss $($r[0]) titik, '$($r[2])'"
 
+$smart = Find $AE::AutomationIdProperty 'SmartBox' $ed
+$tg = $smart.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+$tg.Toggle(); Start-Sleep -Milliseconds 200
+$state = "$($tg.Current.ToggleState)"
+$tolv = (Find $AE::AutomationIdProperty 'Tol' $ed).GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).Current.Value
+$tg.Toggle()
+Res 'EDIT-04' $(if ($state -eq 'On' -and $tolv -eq 64) { 'LULUS' } else { 'GAGAL' }) "Smart select: kotak centang $state, Toleransi awal $tolv (harapan On, 64 untuk PNG transparan); klik di kanvas butuh mouse (NOT RUN)"
+
 Invoke (Find $AE::NameProperty 'Simpan' $ed)
 for ($i = 0; $i -lt 60 -and (Editor); $i++) { Start-Sleep -Milliseconds 250 }
 for ($i = 0; $i -lt 40 -and (Status) -notmatch 'disimpan'; $i++) { Start-Sleep -Milliseconds 250 }
 $st = Status
 $n1 = Badges
 if ($Shots) { [CapE]::Save($p.MainWindowHandle, (Join-Path $Shots 'editor-garis-manual.png')) }
-Res 'EDIT-04' $(if ($st -match 'disimpan' -and $n1 -eq 1) { 'LULUS' } else { 'GAGAL' }) "Simpan: status '$st', tanda 'garis manual' $n1"
+Res 'EDIT-05' $(if ($st -match 'disimpan' -and $n1 -eq 1) { 'LULUS' } else { 'GAGAL' }) "Simpan: status '$st', tanda 'garis manual' $n1"
 
 $edit = Find $AE::NameProperty 'Edit'
 $edit.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
 Invoke (Find $AE::NameProperty 'Urungkan' $AE::RootElement)
 for ($i = 0; $i -lt 40 -and (Badges) -ne 0; $i++) { Start-Sleep -Milliseconds 250 }
 $n2 = Badges
-Res 'EDIT-05' $(if ($n2 -eq 0) { 'LULUS' } else { 'GAGAL' }) "Edit > Urungkan: tanda 'garis manual' $n2 (harapan 0), status '$(Status)'"
+Res 'EDIT-06' $(if ($n2 -eq 0) { 'LULUS' } else { 'GAGAL' }) "Edit > Urungkan: tanda 'garis manual' $n2 (harapan 0), status '$(Status)'"
 "responding: " + $p.Responding
 $p.Kill()
 $bad = @($results | Where-Object { $_ -match ' GAGAL:' }).Count

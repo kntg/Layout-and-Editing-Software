@@ -15,7 +15,7 @@ Bagian 4 berisi hasil pemeriksaan sebelum perbaikan D1/D2, hasil sesudahnya, dan
 
 | Tingkat | Isi | Cara menjalankan | Dijalankan di audit ini |
 | --- | --- | --- | --- |
-| Otomatis | Self-check bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11, S12, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
+| Otomatis | Self-check bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S13, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
 | Integrasi | Mesin Printech dijalankan pada dataset `Printech-TestData`, lalu dinilai dengan geometri file asli: `validasi.ps1` + `validasi.py`, ditambah `cek-original.ps1` | Lihat [Printech-TestData/README.md](../../Printech-TestData/README.md) | Ya |
 | Manual UI | Pengujian lewat aplikasi di PC pengembang. Sebagian sudah otomatis dengan UI Automation (mouse, keyboard, kontrol asli): `ui-semua-input.ps1`, `ui-file-khusus.ps1`, `ui-edit-layout.ps1`, `ui-undo.ps1`, `ui-editor-garis.ps1` di `Printech-TestData`, dijalankan dengan Windows PowerShell 5.1 | Langkah per kasus uji, atau skrip | Ya (2026-10-19) |
 | Operator/hardware | CorelDRAW, Cutting Master 5, printer Develop, Graphtec | PC operator di AP 55 | Tidak (BLOCKED) |
@@ -80,7 +80,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 | Import CDR | [Core.cs:643-687](../../StickerLayout/Core.cs#L643-L687), [App.xaml.cs:19](../../StickerLayout/App.xaml.cs#L19), [MainWindow.xaml.cs:235-241](../../StickerLayout/MainWindow.xaml.cs#L235-L241) | selfcheck P1–P2 (tanpa CorelDRAW) | Konversi asli, CorelDRAW macet, dan bukti D1 dengan CorelDRAW: butuh operator |
 | Import PNG/JPG/SVG | [Core.cs:146-155](../../StickerLayout/Core.cs#L146-L155), [Core.cs:331-347](../../StickerLayout/Core.cs#L331-L347) | selfcheck `circle.png`/`rough.jpg`/`star.jpg`/`badge.svg`; validasi | File rusak |
 | dpi dan peringatan | [Core.cs:46-50](../../StickerLayout/Core.cs#L46-L50) | selfcheck (SelfCheck.cs:100-103); verifikasi dataset | Pembulatan tampilan (D6) |
-| Garis potong | [Core.cs:405-554](../../StickerLayout/Core.cs#L405-L554), editor [Core.cs:556-633](../../StickerLayout/Core.cs#L556-L633) dan [CutEditWindow.xaml.cs](../../StickerLayout/CutEditWindow.xaml.cs) | S1–S9, S11, S12; validasi A1–A6 | Potong fisik (S10) |
+| Garis potong | [Core.cs:405-554](../../StickerLayout/Core.cs#L405-L554), editor [Core.cs:556-633](../../StickerLayout/Core.cs#L556-L633) dan [CutEditWindow.xaml.cs](../../StickerLayout/CutEditWindow.xaml.cs), smart select [SmartSelect.cs](../../StickerLayout/SmartSelect.cs) | S1–S9, S11–S13; validasi A1–A6 | Potong fisik (S10) |
 | Bleed | [Core.cs:241-293](../../StickerLayout/Core.cs#L241-L293) | selfcheck (SelfCheck.cs:338-352); validasi B4 | Cetak/potong fisik |
 | Nesting dan pemeriksaan geometri | [Core.cs:742-946](../../StickerLayout/Core.cs#L742-L946) | selfcheck (SelfCheck.cs:364-390), P3, P5; validasi B1–B7 | — |
 | Edit layout (UI) | [MainWindow.xaml.cs:385-719](../../StickerLayout/MainWindow.xaml.cs#L385-L719) | Fungsi `Snap`/`Check`/`Fill` dan logika editor garis potong lewat selfcheck; alur UI lewat `ui-edit-layout.ps1` (EDIT-01..09, EDIT-11, CUT-12), `ui-undo.ps1` (EDIT-12), dan `ui-editor-garis.ps1` (EDIT-13) | Uji UI tidak masuk self-check: dijalankan terpisah, butuh desktop tanpa gangguan mouse |
@@ -134,6 +134,8 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 **Masukan leader tahap 2–4 (2026-10-21):** undo/redo global (`ui-undo.ps1`: EDIT-12 lulus), garis dalam untuk lubang asli (stiker donat, selfcheck S11, CUT-07), dan editor garis potong polygon (selfcheck S12: CUT-14; `ui-editor-garis.ps1` tanpa mouse: EDIT-13 lulus 5/5, [bukti](../../Printech-TestData/04-evidence/2026-10-21-ui-editor-garis.txt)). Build Release dan Debug 0 warning. Selfcheck Release 4/4 (16/16 skenario). Selfcheck Debug: S9 (stiker 300 mm < 5 detik di Debug) 3,9–5,8 detik, gagal 3 dari 6 jalan saat CPU PC 42–62 % dipakai aplikasi lain; build HEAD sebelum perubahan hari ini, diukur bergantian di kondisi yang sama, 2,1–7,4 detik, jadi bukan regresi, tetapi kriteria Debug belum terbukti lulus hari ini. Validasi: hanya A2b, A4, A5 gagal seperti sebelumnya. UI semua input: angka sama, RAM 81 MB. Seret, tambah, dan hapus titik dengan mouse sungguhan: NOT RUN (EDIT-14).
 
+**Smart select (2026-10-22):** klik objek tanpa AI di editor garis potong ([spesifikasi](../superpowers/specs/2026-10-22-smart-select-design.md)). Selfcheck S13 lulus (CUT-15); kotak centang dan Toleransi lewat UI Automation lulus, 6/6 langkah (EDIT-15); klik kanvas dengan mouse NOT RUN (EDIT-16). Garis otomatis tidak berubah: `validasi.json` identik dengan sebelum perubahan, selfcheck Release dan Debug 4/4 (17/17 skenario). File donat user (pngtree, tidak masuk repo): garis luar 49,51 mm dengan watermark menjadi 44,03 mm tanpa watermark, dan lubang tengah dapat garis dalam 1,36 mm dengan 1 klik ([bukti](../../Printech-TestData/04-evidence/2026-10-22-smart-select.txt)).
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -148,7 +150,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 ## 6. Kasus uji
 
-Total 86 kasus: PASS 63, FAIL 3, BLOCKED 18, NOT RUN 2. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21.
+Total 90 kasus: PASS 65, FAIL 3, BLOCKED 19, NOT RUN 3. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; CUT-15, EDIT-15, EDIT-16, dan HW-16 per 2026-10-22.
 
 Kolom Sumber menunjukkan asal kriterianya:
 
@@ -205,6 +207,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | CUT-12 | Manual UI (otomatis UIA) | Desain apa pun | ui-edit-layout.ps1 | Dialog NeedCut / DieInside / BleedGap; layout tidak dibuat | 04-evidence/2026-10-19-ui-edit-layout.txt | Dok: PRD F3, F17 (MainWindow.xaml.cs:129-133) | PASS — 3 dari 3 jalan lulus |
 | CUT-13 | Otomatis + Integrasi | PNG/JPG dengan bleed 1–2 mm | selfcheck bleed; validasi.py B4 | Warna meluas sampai bleed di luar kiss; vektor tanpa bleed; area bleed di dalam margin | selfcheck (SelfCheck.cs:338-352); laporan B4 | Dok: PRD F17 | PASS |
 | CUT-14 | Otomatis | circle.png 40 mm, donat lubang Ø 21,5 mm | selfcheck S12: polygon dari kurva otomatis, garis manual dimuat, titik digeser, lebar 40 → 80 mm, offset kiss 2 → 1 mm, die manual rapat + kiss otomatis, export PDF, editor tanpa mouse | Simpangan kurva ke polygon ≤ toleransi Simplify; path M/L/Z; grid berubah saat titik digeser; skala ikut lebar; offset tidak mengubah garis manual; kiss di dalam die; PDF garis lurus CMYK; Simpan nonaktif saat kiss keluar die | selfcheck S12 | Masukan leader 2026-10-21 (editor garis potong); PRD F23 | PASS — Simpangan 0,125 mm (toleransi 0,2); titik 64/32/16; luas 0,9 %; grid 1881 → 1887 sel; PDF 93 garis lurus, 0 kurva; donat 2 → 1 kontur kiss |
+| CUT-15 | Otomatis | Cincin berlubang sempit Ø 2,6 mm, lubang jarum Ø 1,2 mm, takik 5 mm, watermark alpha 38, pulau; gambar opak berlatar putih | selfcheck S13: SmartSelect/Classify langsung dan lewat editor tanpa mouse | Watermark tidak ikut pada Toleransi 64; takik diikuti; lubang sempit tertutup sampai diklik; klik kedua menghapus; lubang jarum ditolak; die membungkus kiss; Shift+klik menambah pulau; gambar opak memilih objek | selfcheck S13 | Spesifikasi smart select 2026-10-22; PRD F24 | PASS — Kiss kiri 8,16 mm (Toleransi 64) / -1,87 mm (16); kontur 1, +lubang 2 (garis dalam 0,88 mm, die 1, kiss di luar die 0,00 mm2), klik lubang 2x 1, +pulau 2; lubang jarum ditolak; takik diikuti (otomatis menutupnya); opak Toleransi 32, kiri 8,03 mm; editor 1/2/1/2/3 kontur |
 
 ### Nesting
 
@@ -239,6 +242,8 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | EDIT-11 | Manual UI (otomatis UIA) | - | ui-edit-layout.ps1 (langkah EDIT-11) | Semua teks UI dan Print Ticket berbahasa Inggris | 04-evidence/2026-10-19-ui-edit-layout.txt | Dok: PRD F10 | PASS |
 | EDIT-13 | Manual UI (otomatis UIA) | png-transparent.png | ui-editor-garis.ps1: buka Edit garis potong, Simplify 0,5 mm, tombol Urungkan/Ulangi editor, Simpan, menu Edit > Urungkan | Editor menampilkan kiss dan die; Simplify mengurangi titik garis yang diedit saja; Simpan memberi tanda "garis manual"; Urungkan global mengembalikan garis otomatis | 04-evidence/2026-10-21-ui-editor-garis.txt, 2026-10-21-editor-garis-potong.png, 2026-10-21-editor-garis-manual.png | Masukan leader 2026-10-21; PRD F23 | PASS — EDIT-01..05 lulus: kiss 31 → 22 titik, die 21 tetap |
 | EDIT-14 | Manual UI | Desain apa pun | Seret titik, klik di garis untuk menambah titik, Delete, Ctrl+Z/Ctrl+Y di editor, seret titik keluar kotak | Titik mengikuti mouse dan berhenti di batas kotak; titik baru di posisi klik; kontur 3 titik terhapus bila ada kontur lain; Simpan nonaktif saat kiss keluar die | Tangkapan layar | Masukan leader 2026-10-21; PRD F23 | NOT RUN — Butuh mouse; PC sedang dipakai. Logika yang sama lulus di selfcheck S12 (CUT-14) |
+| EDIT-15 | Manual UI (otomatis UIA) | png-transparent.png | ui-editor-garis.ps1: centang Smart select, baca Toleransi awal | Kotak centang bisa dinyalakan; Toleransi awal 64 untuk PNG transparan | 04-evidence/2026-10-22-smart-select.txt | Spesifikasi smart select 2026-10-22 | PASS — EDIT-04 di skrip UI; 6/6 langkah lulus |
+| EDIT-16 | Manual UI | Stiker donat berwatermark | Klik donat, klik lubang tengah, klik lagi, Shift+klik objek lain, geser Toleransi | Garis mengikuti donat tanpa watermark; garis dalam muncul lalu hilang; objek kedua ikut; Toleransi menghitung ulang | Tangkapan layar | Spesifikasi smart select 2026-10-22 | NOT RUN — Butuh mouse; logika sama lulus di selfcheck S13 (CUT-15) dan pada file donat user lewat mesin |
 
 ### Export
 
@@ -272,6 +277,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | HW-13 | Operator/hardware | Preview JPG | Kirim ke customer | Cukup jelas untuk konfirmasi | Tangkapan layar WhatsApp | Dok: PRD §10 butir 3 | BLOCKED |
 | HW-14 | Operator/hardware | Print Ticket | Lampirkan ke SPK | Isinya cukup untuk kasir | Catatan operator | Dok: PRD §10 butir 11 | BLOCKED |
 | HW-15 | Operator/hardware | Desain dengan garis manual (polygon) | Edit garis potong, export, buka di Cutting Master 5, potong | Potongan mengikuti titik yang diatur; pisau mulus di sudut polygon | Foto hasil potong | Dok: PRD §10 butir 12 | BLOCKED |
+| HW-16 | Operator/hardware | Stiker donat dengan lubang sempit hasil smart select | Smart select donat + klik lubang, export, potong | Lubang tengah terpotong rapi; lingkaran potong terkecil masih bisa dibuang | Foto hasil potong | Dok: PRD §10 butir 13 | BLOCKED — Kalibrasi 0,5 mm dan 0,3 mm di sini |
 
 ### Kinerja
 

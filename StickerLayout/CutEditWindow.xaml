@@ -45,6 +45,15 @@
                     <TextBlock Text="{DynamicResource Complex}" Style="{StaticResource Small}"/>
                 </DockPanel>
 
+                <CheckBox x:Name="SmartBox" Content="{DynamicResource Smart}" Margin="0,20,0,0" AutomationProperties.Name="{DynamicResource Smart}"/>
+                <TextBlock Text="{DynamicResource SmartHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <DockPanel Margin="0,12,0,0">
+                    <TextBlock x:Name="TolText" DockPanel.Dock="Right" TextAlignment="Right" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="{DynamicResource SmartTol}" Style="{StaticResource Label}"/>
+                </DockPanel>
+                <Slider x:Name="Tol" Minimum="0" Maximum="255" Value="64" SmallChange="1" LargeChange="8" Margin="0,6,0,0"
+                        ValueChanged="Tol_Changed" AutomationProperties.Name="{DynamicResource SmartTol}"/>
+
                 <TextBlock Text="{DynamicResource CutHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,18,0,0"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,22,0,0">

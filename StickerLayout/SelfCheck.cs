@@ -103,7 +103,7 @@ public static class SelfCheck
             Check(wide.LowDpi, $"circle 80 mm ({wide.Dpi:0} dpi) harus ditandai resolusi rendah");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah)");
 
-            // Skenario uji garis potong S1-S9, S11, dan S12 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S13 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -274,6 +274,66 @@ public static class SelfCheck
                 $"simpangan {dev:F3} mm (eps 0,2); titik eps 0,05/0,2/0,5 = {nFine}/{nMid}/{nCoarse}; M/L/Z {straight}; luas {areaDiff:P1}; "
                 + $"grid {man.Area} -> {man2.Area} sel; skala {scaleErr:F3} mm; kunci offset {lockErr:F3} mm; die rapat: kiss di luar die {tightOut:F2} mm2; "
                 + $"export {mLines} garis lurus, {mCurves} kurva; editor {string.Join(", ", edLog)} ({(edOk ? "benar" : "SALAH")})");
+
+            // S13: smart select (spesifikasi 2026-10-22). Cincin dengan lubang sempit Ø 2,6 mm, lubang jarum Ø 1,2 mm,
+            // takik 5 mm, watermark alpha 38 yang menempel di kiri bawah, dan pulau terpisah. Konten 391 px = 39,1 mm.
+            var ssImg = Draw(dc =>
+            {
+                dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(38, 255, 255, 255)), null, new Rect(0, 200, 160, 20));
+                var ssCuts = new GeometryGroup();
+                ssCuts.Children.Add(new EllipseGeometry(new Point(200, 150), 13, 13));
+                ssCuts.Children.Add(new EllipseGeometry(new Point(140, 150), 6, 6));
+                ssCuts.Children.Add(new RectangleGeometry(new Rect(175, 0, 50, 100)));
+                dc.DrawGeometry(Brushes.DarkOrange, null, new CombinedGeometry(GeometryCombineMode.Exclude, new EllipseGeometry(new Point(200, 150), 100, 100), ssCuts));
+                dc.DrawEllipse(Brushes.DarkOrange, null, new Point(370, 150), 20, 20);
+            }, 400, 300);
+            var ss = Png(ssImg, 39.1, kiss, die);
+            static double Left(List<Point[]> p) => p.SelectMany(c => c).Min(q => q.X);
+            static bool Holds(List<Point[]> p, Point q) => Geometry.Parse(Loader.PathOf(p, 0)).FillContains(q);
+            Point ringP = new(26, 10), holeP = new(20, 10), pinP = new(14, 10), islandP = new(37, 10), notchP = new(20, 1.5), emptyP = new(2, 2);
+            var sr1 = Loader.SmartSelect(ss, [ringP], [], 64, 0.2);
+            var sr2 = Loader.SmartSelect(ss, [ringP], [holeP], 64, 0.2);
+            var sr3 = Loader.SmartSelect(ss, [ringP], [holeP, new(20.05, 10.05)], 64, 0.2);
+            var sr4 = Loader.SmartSelect(ss, [ringP, islandP], [], 64, 0.2);
+            var sr5 = Loader.SmartSelect(ss, [ringP], [], 16, 0.2);
+            var sr6 = Loader.SmartSelect(ss, [ringP], [pinP], 64, 0.2);
+            var ssAuto = Loader.ToPolygons(ss.Kiss, ss.Off, 0.2);
+            var ssInner = sr2.Kiss.MinBy(c => c.Max(q => q.X) - c.Min(q => q.X))!;
+            double ssInnerW = ssInner.Max(q => q.X) - ssInner.Min(q => q.X);
+            double ssOut = Geometry.Combine(Geometry.Parse(Loader.PathOf(sr2.Kiss, 0)), Geometry.Parse(Loader.PathOf(sr2.Die, 0)), GeometryCombineMode.Exclude, null).GetArea();
+            var ssOpaque = Png(Draw(dc => { dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, 400, 300)); dc.DrawEllipse(Brushes.DarkOrange, null, new Point(200, 150), 100, 100); }, 400, 300), 40, kiss, die);
+            var sro = Loader.SmartSelect(ssOpaque, [new(26, 15)], [], Loader.DefaultTolerance(ssOpaque), 0.2);
+            bool smartOk = sr1.Kiss.Count == 1 && sr1.Die.Count == 1 && Math.Abs(Left(sr1.Kiss) - 8) < 0.5 && !Holds(sr1.Kiss, notchP) && Holds(ssAuto, notchP)
+                && sr2.Kiss.Count == 2 && sr2.Die.Count == 1 && ssInnerW is > 0.5 and < 1.6 && ssOut < 0.5
+                && sr3.Kiss.Count == 1 && sr4.Kiss.Count == 2 && Left(sr5.Kiss) < Left(sr1.Kiss) - 5 && sr6.TooSmall && sr6.Kiss.Count == 1
+                && Loader.Classify(ss, holeP, 64) == Loader.PickKind.Hole && Loader.Classify(ss, emptyP, 64) == Loader.PickKind.Empty
+                && Loader.Classify(ss, ringP, 64) == Loader.PickKind.Object && Loader.DefaultTolerance(ss) == 64
+                && Loader.DefaultTolerance(ssOpaque) == 32 && sro.Kiss.Count == 1 && Math.Abs(Left(sro.Kiss) - 8) < 0.5
+                && Loader.Classify(ssOpaque, emptyP, 32) == Loader.PickKind.Empty;
+            var se = new CutEditWindow(ss, null, null, "smart");
+            bool seTol = se.Tol.Value == 64;
+            se.SmartBox.IsChecked = true;
+            se.Pick(ringP, false);
+            int se1 = se.ManualKiss?.Count ?? -1;
+            se.Pick(holeP, false);
+            int se2 = se.ManualKiss?.Count ?? -1;
+            se.Undo();
+            int se3 = se.ManualKiss?.Count ?? -1;
+            se.Redo();
+            se.Pick(emptyP, false);
+            int se4 = se.ManualKiss?.Count ?? -1;
+            double seL64 = Left(se.ManualKiss!);
+            se.Tol.Value = 16;
+            double seL16 = Left(se.ManualKiss!);
+            se.Pick(islandP, true);
+            int se5 = se.ManualKiss?.Count ?? -1;
+            bool edSmart = seTol && se1 == 1 && se2 == 2 && se3 == 1 && se4 == 2 && seL16 < seL64 - 5 && se5 == 3;
+            S(13, "smart select: objek, takik diikuti, watermark diabaikan, lubang sempit lewat klik, pulau, objek opak", smartOk && edSmart,
+                $"kiss kiri {Left(sr1.Kiss):F2} mm (Toleransi 64) / {Left(sr5.Kiss):F2} mm (16); kontur kiss {sr1.Kiss.Count}, +lubang {sr2.Kiss.Count} "
+                + $"(garis dalam {ssInnerW:F2} mm, die {sr2.Die.Count}, kiss di luar die {ssOut:F2} mm2), klik lubang 2x {sr3.Kiss.Count}, +pulau {sr4.Kiss.Count}, "
+                + $"lubang jarum terlalu kecil {sr6.TooSmall}; takik: smart memuat titik {Holds(sr1.Kiss, notchP)}, otomatis {Holds(ssAuto, notchP)}; "
+                + $"opak: Toleransi {Loader.DefaultTolerance(ssOpaque)}, kiri {Left(sro.Kiss):F2} mm"
+                + $"; editor {se1}/{se2}/{se3}/{se4}/{se5} kontur, kiri {seL64:F2} -> {seL16:F2} mm, Toleransi awal {(seTol ? 64 : -1)} ({(edSmart ? "benar" : "SALAH")})");
 
             // S9: stiker besar 300 mm (gambar 3000 px), kiss + die.
             var bigImg = Draw(dc => dc.DrawEllipse(Brushes.Black, null, new Point(1500, 1500), 1400, 1400), 3000, 3000);
