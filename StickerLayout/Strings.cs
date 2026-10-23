@@ -21,6 +21,7 @@ public static class Lang
         ["TipMove"] = ("Pilih dan geser stiker (V)", "Select and move stickers (V)"),
         ["TipHand"] = ("Geser tampilan (H, atau tahan Spasi)", "Pan the view (H, or hold Space)"),
         ["TipZoom"] = ("Zoom (Z). Alt+klik untuk memperkecil", "Zoom (Z). Alt+click to zoom out"),
+        ["ToggleRulers"] = ("Tampilkan/sembunyikan penggaris", "Show/hide rulers"),
         ["SecFiles"] = ("Desain", "Designs"),
         ["Add"] = ("Tambah file…", "Add files…"),
         ["DefWidth"] = ("Lebar awal PNG/JPG/SVG (mm)", "Initial width PNG/JPG/SVG (mm)"),

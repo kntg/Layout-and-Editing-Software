@@ -1,6 +1,7 @@
 <Window x:Class="StickerLayout.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:StickerLayout"
         Title="{DynamicResource Title}" Width="1440" Height="900" MinWidth="1100" MinHeight="640" WindowState="Maximized"
         Background="{StaticResource Ink0}" Foreground="{StaticResource Text}"
         FontFamily="{StaticResource UiFont}" FontSize="12" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
@@ -117,6 +118,9 @@
                 <Rectangle Height="1" Fill="{StaticResource Line}" Margin="10,8"/>
                 <Button Style="{StaticResource ToolBtn}" Content="&#xE7AD;" Click="Rotate_Click" ToolTip="{DynamicResource RotSel}" AutomationProperties.Name="{DynamicResource RotSel}"/>
                 <Button Style="{StaticResource ToolBtn}" Content="&#xE74D;" Click="DeletePlaced_Click" ToolTip="{DynamicResource DelSel}" AutomationProperties.Name="{DynamicResource DelSel}"/>
+                <Rectangle Height="1" Fill="{StaticResource Line}" Margin="10,8"/>
+                <ToggleButton x:Name="RulerToggle" Style="{StaticResource ToolToggle}" Content="&#xED5E;" IsChecked="True" Click="Rulers_Click"
+                              ToolTip="{DynamicResource ToggleRulers}" AutomationProperties.Name="{DynamicResource ToggleRulers}"/>
             </StackPanel>
         </Border>
 
@@ -347,29 +351,42 @@
                 </Border>
             </Border>
             <Grid>
-                <ScrollViewer x:Name="View" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
-                              Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel"
-                              PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
-                    <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
-                                  MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
-                </ScrollViewer>
-                <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
-                    <ContentControl Template="{StaticResource LogoMark}" Width="76" Height="76" Focusable="False"/>
-                    <TextBlock Text="{DynamicResource EmptyTitle}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,6"/>
-                    <TextBlock Text="{DynamicResource EmptyBody}" Style="{StaticResource Label}" HorizontalAlignment="Center"/>
-                    <TextBlock Text="PDF, AI, CDR, PNG, JPG, SVG" Style="{StaticResource Small}" HorizontalAlignment="Center" Margin="0,6,0,0" Opacity="0.75"/>
-                </StackPanel>
-                <Border x:Name="DropHint" Visibility="Collapsed" Background="#CC1C1D20" BorderBrush="{StaticResource Accent}" BorderThickness="2"
-                        CornerRadius="10" Margin="14" IsHitTestVisible="False">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Icon}" Text="&#xE896;" FontSize="34" Foreground="{StaticResource AccentText}" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource DropHint}" FontSize="16" Margin="0,12,0,0" HorizontalAlignment="Center"/>
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="RulerRow" Height="22"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="RulerColumn" Width="34"/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Border x:Name="RulerCorner" Background="{StaticResource Ink2}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,1"/>
+                <local:RulerControl x:Name="HorizontalRuler" Grid.Column="1" IsHorizontal="True" BackgroundBrush="{StaticResource Ink2}" TickBrush="{StaticResource Dim}" LabelBrush="{StaticResource Text}"/>
+                <local:RulerControl x:Name="VerticalRuler" Grid.Row="1" IsHorizontal="False" BackgroundBrush="{StaticResource Ink2}" TickBrush="{StaticResource Dim}" LabelBrush="{StaticResource Text}"/>
+                <Grid Grid.Row="1" Grid.Column="1">
+                    <ScrollViewer x:Name="View" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
+                                  Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel" ScrollChanged="View_ScrollChanged"
+                                  PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
+                        <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
+                                      MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <ContentControl Template="{StaticResource LogoMark}" Width="76" Height="76" Focusable="False"/>
+                        <TextBlock Text="{DynamicResource EmptyTitle}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,6"/>
+                        <TextBlock Text="{DynamicResource EmptyBody}" Style="{StaticResource Label}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="PDF, AI, CDR, PNG, JPG, SVG" Style="{StaticResource Small}" HorizontalAlignment="Center" Margin="0,6,0,0" Opacity="0.75"/>
                     </StackPanel>
-                </Border>
+                    <Border x:Name="DropHint" Visibility="Collapsed" Background="#CC1C1D20" BorderBrush="{StaticResource Accent}" BorderThickness="2"
+                            CornerRadius="10" Margin="14" IsHitTestVisible="False">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE896;" FontSize="34" Foreground="{StaticResource AccentText}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource DropHint}" FontSize="16" Margin="0,12,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Grid>
         </DockPanel>
     </DockPanel>

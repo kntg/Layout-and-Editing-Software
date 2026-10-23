@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace StickerLayout;
@@ -85,6 +86,7 @@ public partial class MainWindow : Window
             views.Add(panel);
         }
         Sheets.ItemsSource = views;
+        Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
         Empty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         FileCount.Text = items.Count > 0 ? items.Count.ToString(CultureInfo.InvariantCulture) : "";
         TabText.Text = $"{paper}   {F(w)} × {F(CH)} mm";
@@ -536,6 +538,40 @@ public partial class MainWindow : Window
     {
         zoom.ScaleX = zoom.ScaleY = e.NewValue / 100 * 96 / 25.4; // 100% = ukuran asli
         if (ZoomText != null) ZoomText.Text = $"{e.NewValue:0}%";
+        if (HorizontalRuler != null) Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
+    }
+
+    void Rulers_Click(object s, RoutedEventArgs e)
+    {
+        bool visible = RulerToggle.IsChecked == true;
+        RulerRow.Height = visible ? new GridLength(22) : new GridLength(0);
+        RulerColumn.Width = visible ? new GridLength(34) : new GridLength(0);
+        RulerCorner.Visibility = HorizontalRuler.Visibility = VerticalRuler.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
+    }
+
+    void View_ScrollChanged(object s, ScrollChangedEventArgs e) => UpdateRulers();
+
+    void UpdateRulers()
+    {
+        if (HorizontalRuler == null || VerticalRuler == null) return;
+        HorizontalRuler.Scale = VerticalRuler.Scale = zoom.ScaleX;
+        if (canvases.Count == 0 || !canvases[0].IsLoaded)
+        {
+            HorizontalRuler.Origin = VerticalRuler.Origin = 0;
+            HorizontalRuler.InvalidateVisual();
+            VerticalRuler.InvalidateVisual();
+            return;
+        }
+        try
+        {
+            var origin = canvases[0].TransformToAncestor(View).Transform(new Point(0, 0));
+            HorizontalRuler.Origin = origin.X;
+            VerticalRuler.Origin = origin.Y;
+        }
+        catch (InvalidOperationException) { return; }
+        HorizontalRuler.InvalidateVisual();
+        VerticalRuler.InvalidateVisual();
     }
 
     void View_Wheel(object s, MouseWheelEventArgs e)
