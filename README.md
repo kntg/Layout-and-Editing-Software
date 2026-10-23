@@ -2,7 +2,7 @@
 
 Alat internal untuk membuat layout stiker print & cut. Operator menambahkan file dari customer. Printech lalu membuat garis kiss-cut dan die-cut secara otomatis, menyusun stiker di kertas A3+, dan meng-export PDF untuk CorelDRAW dan Cutting Master 5 (Graphtec).
 
-**Status:** prototipe. Cakupannya automasi layout saja, dengan estimasi 2 minggu (dicatat 2026-10-17).
+**Status:** prototipe untuk presentasi. Cakupannya automasi layout saja, dengan estimasi 2 minggu (dicatat 2026-10-17). Prototipe dijalankan dari laptop tim dan belum dipasang di PC toko.
 
 Isi README ini:
 
@@ -16,6 +16,8 @@ Isi README ini:
 - [Alat pengembang](#alat-pengembang)
 
 ## Setup untuk operator
+
+Belum dipakai: untuk presentasi, prototipe dijalankan dari laptop tim (lihat [Setup untuk developer](#setup-untuk-developer)). Bagian ini untuk nanti, bila Printech dipasang di PC tanpa .NET SDK, misalnya PC toko.
 
 Operator tidak perlu memasang .NET. Yang dibutuhkan:
 

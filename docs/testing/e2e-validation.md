@@ -20,7 +20,7 @@ Bagian 4 berisi hasil pemeriksaan sebelum perbaikan D1/D2, hasil sesudahnya, dan
 | Otomatis | Self-check bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S16, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
 | Integrasi | Mesin Printech dijalankan pada dataset `Printech-TestData`, lalu dinilai dengan geometri file asli: `validasi.ps1` + `validasi.py`, ditambah `cek-original.ps1` | Lihat [Printech-TestData/README.md](../../Printech-TestData/README.md) | Ya |
 | Manual UI | Pengujian lewat aplikasi di PC pengembang. Sebagian sudah otomatis dengan UI Automation (mouse, keyboard, kontrol asli): `ui-semua-input.ps1`, `ui-file-khusus.ps1`, `ui-edit-layout.ps1`, `ui-undo.ps1`, `ui-editor-garis.ps1` di `Printech-TestData`, dijalankan dengan Windows PowerShell 5.1 | Langkah per kasus uji, atau skrip | Ya (2026-10-19) |
-| Operator/hardware | CorelDRAW, Cutting Master 5, printer Develop, Graphtec | PC operator di AP 55 | Tidak (BLOCKED) |
+| Operator/hardware | CorelDRAW, Cutting Master 5, printer Develop, Graphtec | PC operator di AP 55 | Tidak (BLOCKED, di luar cakupan prototipe) |
 
 Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-satunya gerbang otomatis di dalam aplikasi adalah `--selfcheck`. `validasi.py` butuh Python dengan PyMuPDF, Pillow, NumPy, dan SciPy.
 
@@ -291,7 +291,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | HW-09 | Operator/hardware | CDR asli | UJI-STABILITAS P7 | Desain masuk; waktu dicatat untuk kalibrasi batas 30 detik | Catatan waktu | Dok: UJI-STABILITAS P7 | BLOCKED |
 | HW-10 | Operator/hardware | CDR | UJI-STABILITAS P8 | Dokumen operator utuh; CorelDRAW tidak tertutup | Tangkapan layar | Dok: UJI-STABILITAS P8 | BLOCKED |
 | HW-11 | Operator/hardware | 3 file CDR | UJI-STABILITAS P10 | Ketiganya masuk berurutan; UI responsif; Susun tidak membuka CorelDRAW lagi | Video atau catatan | Dok: UJI-STABILITAS P10 | BLOCKED |
-| HW-12 | Operator/hardware | Zip operator | Unblock zip, jalankan, lalu --selfcheck | Aplikasi terbuka; selfcheck exit 0 di PC operator | Output selfcheck | Dok: PRD §11 | BLOCKED — Zip dibangun ulang 2026-10-21 (perbaikan D4, D8, D10); selfcheck exe hasil publish dan exe dari zip di PC pengembang: exit 0, 15/15 |
+| HW-12 | Operator/hardware | Zip operator | Unblock zip, jalankan, lalu --selfcheck | Aplikasi terbuka; selfcheck exit 0 di PC operator | Output selfcheck | Dok: PRD §11 | BLOCKED — Ditunda: prototipe dipresentasikan dulu dari laptop tim, belum dipasang di PC toko. Zip dari clone baru 2026-10-23: selfcheck exe hasil ekstrak zip di PC pengembang exit 0, 20/20 |
 | HW-13 | Operator/hardware | Preview JPG | Kirim ke customer | Cukup jelas untuk konfirmasi | Tangkapan layar WhatsApp | Dok: PRD §10 butir 3 | BLOCKED |
 | HW-14 | Operator/hardware | Print Ticket | Lampirkan ke SPK | Isinya cukup untuk kasir | Catatan operator | Dok: PRD §10 butir 11 | BLOCKED |
 | HW-15 | Operator/hardware | Desain dengan garis manual (node lurus dan kurva) | Edit garis potong, export, buka di Cutting Master 5, potong | Potongan mengikuti node yang diatur; pisau mulus di setiap node | Foto hasil potong | Dok: PRD §10 butir 12 | BLOCKED |
@@ -398,10 +398,9 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 
 ## 11. Urutan perbaikan yang disarankan (berdasarkan risiko produksi)
 
-D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21. Berikutnya:
+D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21. Kasus tingkat Operator/hardware di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
 
-1. **Zip operator di PC operator (HW-12, zip dibangun ulang 2026-10-21), lalu HW-01 sampai HW-08 dan IMP-09:** satu-satunya bukti produksi fisik dan bukti D1 dengan CorelDRAW asli.
-2. **Keputusan toleransi D3 dan D5; pesan error D9; tampilan dpi D6.**
+1. **Keputusan toleransi D3 dan D5; pesan error D9; tampilan dpi D6.**
 
 ## 12. Keputusan yang dibutuhkan
 

@@ -226,6 +226,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 
 ## 11. Menjalankan
 
+- **Untuk presentasi prototipe:** Printech dijalankan dari laptop tim yang terpasang .NET 10 SDK ([README, Setup untuk developer](../README.md#setup-untuk-developer)). Zip operator di bawah baru dipakai bila Printech dipasang di PC toko.
 - **Untuk operator (tanpa memasang .NET):**
   1. Salin `Printech-win-x64.zip` (64 MB) ke PC operator.
   2. Klik kanan zip → Properties → centang **Unblock** → OK. Langkah ini mencegah peringatan Windows SmartScreen, karena exe belum ditandatangani.
