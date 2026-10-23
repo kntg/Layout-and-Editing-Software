@@ -1,0 +1,6 @@
+{
+  // Baris panjang dibiarkan: tabel dan kalimat dokumen tidak dipotong per 80 karakter.
+  "config": { "MD013": false },
+  // CHANGES.md (catatan leader dari repo tim) berenkoding UTF-16, tidak terbaca markdownlint.
+  "ignores": ["CHANGES.md"]
+}

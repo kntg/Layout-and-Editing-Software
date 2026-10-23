@@ -32,6 +32,8 @@ Kumpulan file uji untuk Printech. Hasil benar setiap file sudah diketahui sebelu
 2. `pwsh validasi.ps1`: menjalankan Printech untuk semua skenario.
 3. `python validasi.py`: menilai hasilnya. Butuh PyMuPDF, Pillow, NumPy, dan SciPy. Exit code 0 berarti semua lulus.
 
+Self-check aplikasi: `pwsh -File run-selfcheck.ps1 [-Config Debug]`. Skrip ini menjalankan `--selfcheck` 4 kali: folder baru, folder `samples`, PDF berukuran salah, dan folder yang tidak bisa dibuat. Dua yang terakhir harus gagal (exit code 1). Folder kerja bawaan ada di folder temp. Hasil benar: `RINGKAS: 4/4`, exit code 0.
+
 ## Uji UI dan RAM (PC pengembang, Windows PowerShell 5.1)
 
 Jalankan dengan `powershell -ExecutionPolicy Bypass -File <skrip> ...`. Parameter tertulis di baris pertama tiap skrip. Selama uji, jangan sentuh mouse dan keyboard.

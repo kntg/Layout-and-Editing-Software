@@ -763,7 +763,7 @@ public static class Nest
                 (e ? edge : inner).Add((x, y));
                 x0 = Math.Min(x0, x); y0 = Math.Min(y0, y); x1 = Math.Max(x1, x); y1 = Math.Max(y1, y);
             }
-        int bleed = s.BleedPng == null ? 0 : (int)Math.Ceiling(s.LoadedBleed / Cell - 1e-9);
+        int bleed = s.BleedPng == null ? 0 : CellsOf(s.LoadedBleed);
         // Sel tepi dicek dulu: tabrakan hampir selalu terjadi di tepi, jadi posisi yang salah cepat ditolak.
         return new([.. edge, .. inner], edge, x0, y0, x1, y1, bleed);
     }
@@ -782,6 +782,17 @@ public static class Nest
                     int x = ox + cx + dx, y = oy + cy + dy;
                     if (x >= 0 && y >= 0 && x < cols && y < rows) occ[x, y] = true;
                 }
+    }
+
+    // Jarak (mm) dalam sel grid, dibulatkan ke atas.
+    static int CellsOf(double mm) => (int)Math.Ceiling(mm / Cell - 1e-9);
+
+    // Grid hunian area cetak (di dalam margin), dengan stiker ps sudah ditandai.
+    static bool[,] Occupancy(IEnumerable<Placed> ps, double cw, double ch, double margin, int gc)
+    {
+        var occ = new bool[Math.Max(0, (int)((cw - 2 * margin) / Cell)), Math.Max(0, (int)((ch - 2 * margin) / Cell))];
+        foreach (var q in ps) Stamp(occ, FootOf(q.S, q.Rot), (int)Math.Round((q.X - margin) / Cell), (int)Math.Round((q.Y - margin) / Cell), gc);
+        return occ;
     }
 
     public static bool[,] Rotate(bool[,] g, int rot)
@@ -825,8 +836,7 @@ public static class Nest
 
     static List<List<Placed>> Once(List<Sticker> items, double cw, double ch, double margin, double gap, out int tooBig)
     {
-        int cols = Math.Max(0, (int)((cw - 2 * margin) / Cell)), rows = Math.Max(0, (int)((ch - 2 * margin) / Cell));
-        int gc = (int)Math.Ceiling(gap / Cell - 1e-9);
+        int gc = CellsOf(gap);
         var sheets = new List<(bool[,] occ, List<Placed> ps, HashSet<Sticker> full)>();
         var cache = new Dictionary<(Sticker, int), Foot>();
         tooBig = 0;
@@ -840,7 +850,7 @@ public static class Nest
                 sh.full.Add(s);
             }
             if (done) continue;
-            var occ = new bool[cols, rows];
+            var occ = Occupancy([], cw, ch, margin, gc);
             var ps = new List<Placed>();
             if (TryPlace(occ, s, cache, gc, margin, ps)) sheets.Add((occ, ps, []));
             else tooBig++;
@@ -874,11 +884,8 @@ public static class Nest
     // dijaga) dan tetap di dalam margin. Memakai grid hunian yang sama dengan susun otomatis. false = tidak ada tempat.
     public static bool Snap(List<Placed> ps, Placed p, double cw, double ch, double margin, double gap)
     {
-        int cols = Math.Max(0, (int)((cw - 2 * margin) / Cell)), rows = Math.Max(0, (int)((ch - 2 * margin) / Cell));
-        int gc = (int)Math.Ceiling(gap / Cell - 1e-9);
-        var occ = new bool[cols, rows];
-        foreach (var q in ps)
-            if (q != p) Stamp(occ, FootOf(q.S, q.Rot), (int)Math.Round((q.X - margin) / Cell), (int)Math.Round((q.Y - margin) / Cell), gc);
+        var occ = Occupancy(ps.Where(q => q != p), cw, ch, margin, CellsOf(gap));
+        int cols = occ.GetLength(0), rows = occ.GetLength(1);
         var f = FootOf(p.S, p.Rot);
         double px = (p.X - margin) / Cell, py = (p.Y - margin) / Cell, best = double.MaxValue;
         (int x, int y)? at = null;
@@ -899,13 +906,11 @@ public static class Nest
     // Mengembalikan jumlah stiker yang ditambahkan.
     public static int Fill(List<List<Placed>> sheets, IEnumerable<Sticker> designs, double cw, double ch, double margin, double gap)
     {
-        int cols = Math.Max(0, (int)((cw - 2 * margin) / Cell)), rows = Math.Max(0, (int)((ch - 2 * margin) / Cell));
-        int gc = (int)Math.Ceiling(gap / Cell - 1e-9), added = 0;
+        int gc = CellsOf(gap), added = 0;
         var cache = new Dictionary<(Sticker, int), Foot>();
         foreach (var ps in sheets)
         {
-            var occ = new bool[cols, rows];
-            foreach (var q in ps) Stamp(occ, FootOf(q.S, q.Rot), (int)Math.Round((q.X - margin) / Cell), (int)Math.Round((q.Y - margin) / Cell), gc);
+            var occ = Occupancy(ps, cw, ch, margin, gc);
             var turn = designs.Where(s => s.Copies > 0).ToList();
             for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
                 if (TryPlace(occ, turn[i], cache, gc, margin, ps)) { added++; i++; }
