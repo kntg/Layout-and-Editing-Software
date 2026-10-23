@@ -128,6 +128,40 @@
         <Setter Property="Height" Value="34"/>
         <Setter Property="Margin" Value="0,2"/>
     </Style>
+    <Style x:Key="ToolToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontFamily" Value="{StaticResource Icons}"/>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="Width" Value="34"/>
+        <Setter Property="Height" Value="34"/>
+        <Setter Property="Margin" Value="0,2"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid>
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"/>
+                        <Border x:Name="Hl" Background="White" Opacity="0" CornerRadius="4"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Hl" Property="Opacity" Value="0.08"/></Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ink3}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                            <Setter Property="Foreground" Value="{StaticResource AccentText}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <!-- Alat di batang kiri (pilih salah satu, seperti Photoshop) -->
     <Style x:Key="Tool" TargetType="RadioButton">
