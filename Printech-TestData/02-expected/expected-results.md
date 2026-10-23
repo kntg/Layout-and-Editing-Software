@@ -35,9 +35,9 @@ PNG opak 600 × 400 px: persegi biru membulat 300 × 200 px dan lingkaran oranye
 
 | File | Hasil benar (lebar 50 mm) |
 | --- | --- |
-| `png-latar-abu-muda.png` (latar 242, 242, 242) | Seluruh gambar = artwork 50 × 33,3 mm, 305 dpi; latar abu tampil di layar dan PDF; garis kiss mengelilingi kotak gambar |
+| `png-latar-abu-muda.png` (latar 242, 242, 242) | Seluruh gambar = artwork 50 × 33,3 mm, 305 dpi; latar abu tampil di layar dan PDF; garis kiss berupa kotak bersudut tajam sejauh offset dari kotak gambar (desain kotak, sejak 2026-10-23) |
 | `png-latar-pink-pastel.png` (latar 255, 240, 245) | Sama dengan abu muda |
-| `png-latar-putih.png` (latar putih) | Sama dengan abu muda: seluruh gambar 50 × 33,3 mm, 305 dpi; garis kiss mengelilingi kotak gambar |
+| `png-latar-putih.png` (latar putih) | Sama dengan abu muda: seluruh gambar 50 × 33,3 mm, 305 dpi; garis kiss berupa kotak bersudut tajam |
 
 ## Pengaturan saat menguji
 
@@ -90,6 +90,7 @@ Toleransi:
   - Rongga yang terbentuk saat offset menutup celah (cincin C) tidak dipotong.
   - Lingkaran di dalam `pdf-single-page.pdf` dan `svg-vector.svg` tidak dipotong.
   - Celah cincin C ditutup offset + halus, dan lubangnya tidak dipotong.
+- **Desain kotak** (masukan 2026-10-23). Artwork yang memenuhi kotaknya mendapat garis kotak bersudut tajam: 4 node lurus, kotak artwork ± offset, Halus tidak dipakai, die minimal 1 piksel di luar kiss. File yang termasuk: `jpg-low-resolution.jpg`, `jpg-large-24mp.jpg`, `pdf-single-page.pdf` (persegi panjang penuh), `pdf-multi-page.pdf p2`, `pdf-rotated.pdf`, `pdf-encrypted.pdf`, dan `png-latar-*.png`. Ukuran garisnya tetap sama dengan tabel di atas; yang berubah hanya sudutnya, dari membulat menjadi tajam. Garis yang tepat di sudut berjarak offset × √2 dari sudut artwork. `svg-vector.svg` (sudut bulat rx 8) bukan desain kotak.
 - **`invalid-file.cdr`:**
   - muncul dialog "Gagal memuat";
   - aplikasi tidak crash, dan file lain yang ditambahkan bersamaan tetap masuk.
@@ -107,7 +108,7 @@ Toleransi:
   - status "18 stiker di 2 lembar.";
   - peringatan "1 lebih besar dari kertas   2 desain resolusi rendah   1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)";
   - pemakaian bahan "54% · sisa 46%";
-  - judul lembar "5 pcs / lembar A3+ · 91%" dan "13 pcs / lembar A3+ · 16%".
+  - judul lembar "5 pcs / lembar A3+ · 92%" dan "13 pcs / lembar A3+ · 16%". Sebelum 2026-10-23 lembar 1 = 91%; sudut garis kotak yang tajam menambah sedikit luas.
 
   Asal angka-angka ini:
   - 2 lembar diketahui dari ukuran: artwork A3 hanya menyisakan jalur selebar 14 mm dan 34 mm, sehingga desain 54 × 54 mm butuh lembar kedua.

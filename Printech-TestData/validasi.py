@@ -274,8 +274,33 @@ def hole_center(d):
     return None, None, None
 
 
+@functools.lru_cache(maxsize=None)
+def box_source(source, page):
+    """Desain kotak (masukan 2026-10-23): artwork (alpha > 16, aturan Printech) memenuhi kotaknya, yaitu semua piksel tepi
+    terisi dan isinya >= 99,5 %. PDF/AI dirender PyMuPDF dengan latar transparan pada 6 px/mm (resolusi mask Printech)."""
+    ext = pathlib.Path(source).suffix.lower()
+    if ext == ".svg":
+        return False  # svg-vector.svg: persegi panjang bersudut bulat (rx 8)
+    if ext in (".pdf", ".ai"):
+        pix = fitz.open(IN / source)[page].get_pixmap(matrix=fitz.Matrix(6 * PT, 6 * PT), alpha=True)
+        fg = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n)[..., -1] > 16
+    else:
+        fg = np.array(Image.open(IN / source).convert("RGBA"))[..., 3] > 16
+    ys, xs = np.nonzero(fg)
+    if not len(xs):
+        return False
+    f = fg[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    return bool(f[0].all() and f[-1].all() and f[:, 0].all() and f[:, -1].all() and f.mean() >= 0.995)
+
+
+def lim_max(name, x):
+    """Batas jarak terjauh garis ke artwork: offset + 0,5. Desain kotak: sudut garis kotak berjarak offset x akar 2."""
+    return x["off"] * (math.sqrt(2) if name in BOXES else 1) + 0.5
+
+
 data = json.loads((RUN / "validasi.json").read_text(encoding="utf-8-sig"))
 SC = {s["name"]: s for s in data}
+BOXES = {d["name"] for sc in data if sc["name"].startswith("A-") for d in sc.get("designs", []) if box_source(d["source"], d["page"])}
 out(f"Validasi garis potong, nesting, dan export Printech, {DAY}. Data: {RUN}")
 out("Kriteria: 02-expected/validasi-garis-potong-nesting.md. Jarak dalam mm.")
 out()
@@ -298,11 +323,12 @@ out()
 
 # A1 offset sesuai nilai yang dipilih (bentuk sederhana)
 bad = [(s, n, k, x) for s, n, k, x in rows if n in SIMPLE and s in ("A-standar", "A-offset-kecil", "A-offset-besar")
-       and not (abs(x["p50"] - x["off"]) <= 0.25 and x["dmax"] <= x["off"] + 0.5)]
-sel = [x for s, n, k, x in rows if n in SIMPLE and s in ("A-standar", "A-offset-kecil", "A-offset-besar")]
-dev = [x["p50"] - x["off"] for x in sel]
+       and not (abs(x["p50"] - x["off"]) <= 0.25 and x["dmax"] <= lim_max(n, x))]
+sel = [(n, x) for s, n, k, x in rows if n in SIMPLE and s in ("A-standar", "A-offset-kecil", "A-offset-besar")]
+dev = [x["p50"] - x["off"] for n, x in sel]
 verdict("A1", not bad, f"offset sesuai nilai pada {len(sel)} garis bentuk sederhana (offset 1/2/3 kiss, 3/4/6 die): median - offset "
-        f"{f2(min(dev))} s.d. {f2(max(dev))} (batas ±0,25), maks - offset terbesar {f2(max(x['dmax'] - x['off'] for x in sel))} (batas 0,50)"
+        f"{f2(min(dev))} s.d. {f2(max(dev))} (batas ±0,25), maks - harapan terbesar {f2(max(x['dmax'] - lim_max(n, x) + 0.5 for n, x in sel))} "
+        "(batas 0,50; harapan = offset, desain kotak: offset x akar 2 di sudut)"
         + "".join(f"; {s} {n} {k}: median {f2(x['p50'])}, maks {f2(x['dmax'])}" for s, n, k, x in bad))
 
 # A2 Halus memengaruhi karakter kontur
@@ -336,8 +362,9 @@ verdict("A4", not badm, f"jarak garis ke artwork tidak kurang dari offset - 0,3 
         f"{f2(x0['dmin'])} mm (offset {f2(x0['off'])}, batas {f2(x0['off'] - MAX_IN)})"
         + (f"; {len(badm)} garis di bawah batas: " + ", ".join(f"{s} {n} {k} {f2(x['dmin'])}/{f2(x['off'] - MAX_IN)}" for s, n, k, x in badm[:12]) if badm else ""))
 
-# A5 reduksi node tidak mengubah bentuk: tanpa sudut/garis lurus, jumlah kontur dan lubang benar, bentuk sederhana dalam pita offset
-straight = sum(x["straight"] for *_, x in rows)
+# A5 reduksi node tidak mengubah bentuk: tanpa sudut/garis lurus, jumlah kontur dan lubang benar, bentuk sederhana dalam pita offset.
+# Desain kotak memang 4 garis lurus (masukan 2026-10-23); garisnya dinilai di A7.
+straight = sum(x["straight"] for s, n, k, x in rows if n not in BOXES)
 cont_bad, hole_bad, hole_txt = [], [], []
 for (s, n), m in M.items():
     d = next(d for d in SC[s]["designs"] if d["name"] == n)
@@ -360,10 +387,11 @@ for (s, n), m in M.items():
                 hole_bad.append(f"{s} {n} {kind}")
             if s == "A-standar" or want is False:
                 hole_txt.append(f"{s} {n} {kind}: lubang {'tidak dipotong' if got else 'dipotong, ada garis dalam' if hole_r else 'ikut dikelilingi garis (celah terbuka)'}")
-band = [(s, n, k, x) for s, n, k, x in rows if n in SIMPLE and not (x["off"] - MAX_IN <= x["dmin"] and x["dmax"] <= x["off"] + 0.5)]
+band = [(s, n, k, x) for s, n, k, x in rows if n in SIMPLE and not (x["off"] - MAX_IN <= x["dmin"] and x["dmax"] <= lim_max(n, x))]
 verdict("A5", straight == 0 and not cont_bad and not hole_bad and not band,
-        f"bentuk tetap benar setelah reduksi node: {straight} garis lurus/sudut di {len(rows)} garis; jumlah kontur salah {len(cont_bad)}; "
-        f"lubang salah {len(hole_bad)}; bentuk sederhana keluar pita [offset - 0,3; offset + 0,5]: {len(band)} (batas bawah pita = A4"
+        f"bentuk tetap benar setelah reduksi node: {straight} garis lurus/sudut di {sum(n not in BOXES for _, n, _, _ in rows)} garis bukan kotak; "
+        f"jumlah kontur salah {len(cont_bad)}; lubang salah {len(hole_bad)}; "
+        f"bentuk sederhana keluar pita [offset - 0,3; offset + 0,5, kotak: offset x akar 2 + 0,5]: {len(band)} (batas bawah pita = A4"
         + (": " + ", ".join(f"{s} {n} {k} {f2(x['dmin'])}-{f2(x['dmax'])}" for s, n, k, x in band) if band else "") + "). "
         + "; ".join(cont_bad + hole_bad + hole_txt))
 
@@ -390,6 +418,27 @@ for s, want in (("A-standar", (1, 1)), ("A-hanya-kiss", (1, 0)), ("A-hanya-die",
 none = SC["A-tanpa-garis"]["error"]
 opt.append(("A-tanpa-garis", none != "tanpa error", f"keduanya mati: '{none}'"))
 verdict("A6", all(o[1] for o in opt), "garis sesuai pilihan: " + "; ".join(o[2] for o in opt))
+
+# A7 desain kotak (masukan 2026-10-23): garis = kotak artwork ± offset, 4 garis lurus, Halus tidak dipakai. Die minimal
+# 1 piksel (1/6 mm) di luar kiss.
+box_err, box_bad = [], []
+for (s, n), m in M.items():
+    if n not in BOXES:
+        continue
+    d = next(d for d in SC[s]["designs"] if d["name"] == n)
+    ab = bbox(np.r_[art(d)])
+    for kind in ("kiss", "die"):
+        if kind not in m:
+            continue
+        x = m[kind]
+        off = x["off"] if kind == "kiss" or not d["kissCut"][0] else max(x["off"], d["kissCut"][1] + 1 / 6)
+        err = float(np.abs(bbox(x["P"]) - (ab + [-off, -off, off, off])).max())
+        box_err.append(err)
+        if not (x["n"] == 1 and x["nodes"] == x["straight"] == 3 and err <= 0.15):
+            box_bad.append(f"{s} {n} {kind}: {x['n']} kontur, {x['nodes']} segmen ({x['straight']} lurus), selisih {f2(err)}")
+verdict("A7", bool(box_err) and not box_bad, f"desain kotak ({', '.join(sorted(BOXES))}): garis = kotak artwork ± offset dengan 4 garis "
+        f"lurus pada {len(box_err)} garis (termasuk Halus 0-2), selisih terbesar {f2(max(box_err, default=0))} mm (batas 0,15)"
+        + "".join("; " + b for b in box_bad))
 out()
 
 

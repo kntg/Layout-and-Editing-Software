@@ -103,7 +103,7 @@ public static class SelfCheck
             Check(wide.LowDpi, $"circle 80 mm ({wide.Dpi:0} dpi) harus ditandai resolusi rendah");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah)");
 
-            // Skenario uji garis potong S1-S9 dan S11-S13 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S15 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -200,22 +200,25 @@ public static class SelfCheck
             }
             S(11, "lubang: lubang asli yang tetap terbuka dipotong (donat), rongga dari celah tertutup dan lubang kecil tidak", solid, string.Join("; ", holes));
 
-            // S12: editor garis potong (masukan leader 2026-10-21). Polygon dari kurva otomatis; garis manual dipakai apa adanya.
+            // S12: editor garis potong (masukan leader 2026-10-21; node kurva seperti CorelDRAW 2026-10-23). Garis manual dipakai apa adanya.
             var cPath = Path.Combine(dir, "circle.png");
-            var pk = Loader.ToPolygons(circle40.Kiss, circle40.Off, 0.2);
-            var pd = Loader.ToPolygons(circle40.Die, circle40.Off, 0.2);
-            double dev = Deviation(circle40.Kiss, circle40.Off, pk);
-            int nFine = Loader.ToPolygons(circle40.Kiss, circle40.Off, 0.05).Sum(c => c.Length), nMid = pk.Sum(c => c.Length),
-                nCoarse = Loader.ToPolygons(circle40.Kiss, circle40.Off, 0.5).Sum(c => c.Length);
+            var pk = Curves.Simplify(circle40.Kiss, circle40.Off, 0.2); // garis lurus: uji muat dan export garis lurus
+            var pd = Curves.Simplify(circle40.Die, circle40.Off, 0.2);
+            // Simplify editor = fit kurva Bezier: simpangan dari kurva otomatis <= eps, node logo kasar turun bila eps naik.
+            var ek = Curves.Fit(circle40.Kiss, circle40.Off, 0.2);
+            double dev = Math.Max(Deviation(circle40.Kiss, circle40.Off, ek), Deviation(rough1.Kiss, rough1.Off, Curves.Fit(rough1.Kiss, rough1.Off, 0.2)));
+            int nFine = Curves.Count(Curves.Fit(rough1.Kiss, rough1.Off, 0.05)), nMid = Curves.Count(Curves.Fit(rough1.Kiss, rough1.Off, 0.2)),
+                nCoarse = Curves.Count(Curves.Fit(rough1.Kiss, rough1.Off, 0.5)), nEd = Curves.Count(ek), nEd5 = Curves.Count(Curves.Fit(circle40.Kiss, circle40.Off, 0.5));
             var man = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: pk, manualDie: pd);
             bool straight = !(man.Kiss + man.Die).Contains('C') && man.Kiss.StartsWith('M') && man.Die.EndsWith('Z');
             double areaDiff = Math.Abs(man.AreaMm2 - circle40.AreaMm2) / circle40.AreaMm2;
-            // Titik die terkanan digeser 1,5 mm keluar: grid nesting ikut berubah.
-            var pd2 = pd.Select(c => (Point[])c.Clone()).ToList();
-            pd2[0][Array.FindIndex(pd2[0], q => q.X == pd2[0].Max(r => r.X))].X += 1.5;
+            // Node die terkanan digeser 1,5 mm keluar: grid nesting ikut berubah.
+            var pd2 = pd.Select(c => (Node[])c.Clone()).ToList();
+            int far = Array.FindIndex(pd2[0], q => q.P.X == pd2[0].Max(r => r.P.X));
+            pd2[0][far] = Node.Corner(pd2[0][far].P + new Vector(1.5, 0));
             var man2 = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: pk, manualDie: pd2);
-            // Lebar 40 -> 80 mm: polygon diskala. Offset kiss 2 -> 1 mm: garis manual tidak berubah.
-            var man80 = Loader.Load(cPath, 0, 80, kiss, die, manualKiss: Loader.Scale(pk, 2), manualDie: Loader.Scale(pd, 2));
+            // Lebar 40 -> 80 mm: garis diskala. Offset kiss 2 -> 1 mm: garis manual tidak berubah.
+            var man80 = Loader.Load(cPath, 0, 80, kiss, die, manualKiss: Curves.Scale(pk, 2), manualDie: Curves.Scale(pd, 2));
             var manOff = Loader.Load(cPath, 0, 40, new Cut(true, 1, 1), die, manualKiss: pk, manualDie: pd);
             static Rect Rel(Sticker s) { var b = s.KissGeo!.Bounds; b.Offset(-s.Off, -s.Off); return b; }
             double scaleErr = Math.Abs(Rel(man80).Width - 2 * Rel(man).Width);
@@ -223,57 +226,84 @@ public static class SelfCheck
             // Die manual rapat (di posisi garis kiss) dengan kiss otomatis: kiss dipangkas ke dalam die.
             var tight = Loader.Load(cPath, 0, 40, kiss, die, manualDie: pk);
             double tightOut = Geometry.Combine(tight.KissGeo!, tight.DieGeo!, GeometryCombineMode.Exclude, null).GetArea();
-            // Export: garis manual = garis lurus, warna CMYK sama.
+            // Export: garis manual lurus = garis lurus, garis manual kurva = kurva Bezier, warna CMYK sama.
             var manPdf = Path.Combine(dir, "export-manual.pdf");
             Check(Export.Pdf(manPdf, [[new Placed { S = man, X = Margin, Y = Margin }]], A4W, [A4H]).Count == 0, "peringatan export garis manual");
             string mc;
             using (var mdoc = PdfReader.Open(manPdf, PdfDocumentOpenMode.Import)) mc = Content(mdoc.Pages[0]);
             int mLines = Regex.Matches(mc, @"(?<=\s)l(?=\s)").Count, mCurves = Regex.Matches(mc, @"(?<=\s)c(?=\s)").Count;
-            bool mExport = mLines > 0 && mCurves == 0 && mc.Contains("0 1 0 0 K") && mc.Contains("1 0 0 0 K");
+            var manC = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: Curves.Parse(circle40.Kiss, circle40.Off), manualDie: Curves.Parse(circle40.Die, circle40.Off));
+            int cCurves = ExportOps([new Placed { S = manC, X = Margin, Y = Margin }]).Curves;
+            bool mExport = mLines > 0 && mCurves == 0 && mc.Contains("0 1 0 0 K") && mc.Contains("1 0 0 0 K") && cCurves > 0
+                && Math.Abs(manC.AreaMm2 - circle40.AreaMm2) / circle40.AreaMm2 < 0.01;
+            // Node kurva: membelah kurva tidak mengubah bentuk; jadikan kurva lalu garis kembali ke polygon semula; node halus segaris.
+            double splitDev = Deviation(circle40.Kiss, circle40.Off, [Curves.Split(Curves.Parse(circle40.Kiss, circle40.Off)[0], 1, 0.37)]);
+            var curved = Curves.ToCurve(pk[0], 1);
+            var smooth = Curves.SetSmooth(curved, 1, true)[1];
+            bool nodeOps = splitDev < 0.01 && !Curves.Straight(curved[0], curved[1]) && !Curves.Straight(curved[1], curved[2])
+                && Curves.PathOf([Curves.ToLine(curved, 1)], 0) == Curves.PathOf([pk[0]], 0)
+                && Math.Abs(Vector.CrossProduct(smooth.In - smooth.P, smooth.Out - smooth.P)) < 1e-9 && smooth.Smooth;
 
-            // Editor tanpa mouse: tambah titik di tengah segmen lalu seret, undo/redo, hapus, kiss keluar die, Simplify, reset.
-            var ed = new CutEditWindow(circle40, null, null, "uji");
-            var mid = pk[0][0] + (pk[0][1] - pk[0][0]) / 2;
+            // Editor tanpa mouse: tambah node di kurva lalu seret, undo/redo, hapus, kiss keluar die, handle, tombol node, Simplify, reset.
+            var ed = new CutEditWindow(circle40, null, null, CutShape.Auto, "uji");
+            var mid = Curves.At(ek[0][0], ek[0][1], 0.5); // titik tepat di kurva antara node 0 dan 1
             ed.Press(mid, 0.3);
             ed.DragTo(mid + (new Point(circle40.ArtW / 2, circle40.ArtH / 2) - mid) * 0.05);
             ed.Release();
-            int Pts(List<Point[]>? p) => p?.Sum(c => c.Length) ?? -1;
+            int Pts(List<Node[]>? p) => p?.Sum(c => c.Length) ?? -1;
             var edLog = new List<string> { $"tambah {Pts(ed.ManualKiss)}" };
-            bool edOk = Pts(ed.ManualKiss) == nMid + 1 && ed.CanSave;
+            bool edOk = Pts(ed.ManualKiss) == nEd + 1 && ed.CanSave;
             ed.Undo();
             edOk &= ed.ManualKiss == null;
             ed.Redo();
-            edOk &= Pts(ed.ManualKiss) == nMid + 1;
-            ed.Press(pk[0][2], 0.3);
+            edOk &= Pts(ed.ManualKiss) == nEd + 1;
+            ed.Press(ek[0][2].P, 0.3);
             ed.Release();
             ed.DeletePoint();
-            edOk &= Pts(ed.ManualKiss) == nMid;
+            edOk &= Pts(ed.ManualKiss) == nEd;
             edLog.Add($"undo/redo/hapus {Pts(ed.ManualKiss)}");
-            ed.Press(pk[0][3], 0.3);
+            ed.Press(ek[0][3].P, 0.3);
             ed.DragTo(new Point(-100, -100));
             ed.Release();
             edOk &= !ed.CanSave && !ed.KissInside;
             ed.Undo();
             edOk &= ed.CanSave;
+            // Handle Out node 1 diseret: node halus, jadi handle In ikut segaris; jumlah node tetap.
+            ed.Press(ek[0][1].P, 0.3);
+            ed.Release();
+            var h0 = ed.ManualKiss![0].First(n => (n.P - ek[0][1].P).Length < 1e-6);
+            ed.Press(h0.Out, 0.3);
+            ed.DragTo(h0.Out + new Vector(1.5, 0.5));
+            ed.Release();
+            var h1 = ed.ManualKiss![0].First(n => (n.P - ek[0][1].P).Length < 1e-6);
+            bool handleOk = Pts(ed.ManualKiss) == nEd && (h1.Out - h0.Out).Length > 1 && Math.Abs(Vector.CrossProduct(h1.In - h1.P, h1.Out - h1.P)) < 1e-6;
+            ed.ToLine();
+            var h2 = ed.ManualKiss![0].First(n => (n.P - ek[0][1].P).Length < 1e-6);
+            ed.ToCurve();
+            var h3 = ed.ManualKiss![0].First(n => (n.P - ek[0][1].P).Length < 1e-6);
+            handleOk &= h2.In == h2.P && h2.Out == h2.P && h3.In != h3.P && h3.Out != h3.P;
+            edOk &= handleOk;
+            edLog.Add($"handle {(handleOk ? "benar" : "SALAH")}");
             ed.Eps.Value = 0.5;
-            edOk &= Pts(ed.ManualKiss) == nCoarse;
+            edOk &= Pts(ed.ManualKiss) == nEd5;
             edLog.Add($"Simplify 0,5 {Pts(ed.ManualKiss)}");
             ed.Reset();
             edOk &= ed.ManualKiss == null && ed.ManualDie == null && ed.CanSave;
-            // Donat: garis dalam yang tidak diinginkan dihapus titik demi titik sampai konturnya hilang.
+            // Donat: garis dalam yang tidak diinginkan dihapus node demi node sampai konturnya hilang.
             var dn = Png(Donut(70), 40, kiss, die);
-            var dk = Loader.ToPolygons(dn.Kiss, dn.Off, 0.2);
-            var hole = dk.MinBy(c => c.Max(q => q.X) - c.Min(q => q.X))!;
-            var ed2 = new CutEditWindow(dn, null, null, "donat");
-            foreach (var q in hole.Take(hole.Length - 2)) { ed2.Press(q, 0.01); ed2.Release(); ed2.DeletePoint(); }
+            var dk = Curves.Fit(dn.Kiss, dn.Off, 0.2);
+            var hole = dk.MinBy(c => c.Max(q => q.P.X) - c.Min(q => q.P.X))!;
+            var ed2 = new CutEditWindow(dn, null, null, CutShape.Auto, "donat");
+            foreach (var q in hole.Take(Math.Max(1, hole.Length - 2))) { ed2.Press(q.P, 0.01); ed2.Release(); ed2.DeletePoint(); } // <= 3 node: sekali hapus
             edOk &= ed2.ManualKiss?.Count == 1 && ed2.ManualKiss[0].Length == dk.First(c => c != hole).Length;
             edLog.Add($"donat: kontur kiss {dk.Count} -> {ed2.ManualKiss?.Count}");
-            S(12, "editor garis potong: polygon, garis manual, skala, kunci offset, export garis lurus, edit titik",
+            S(12, "editor garis potong: node lurus dan kurva, garis manual, skala, kunci offset, export, edit node dan handle",
                 dev <= 0.21 && nCoarse < nMid && nMid < nFine && straight && areaDiff < 0.02 && man2.Area > man.Area && scaleErr < 0.05 && lockErr < 0.01
-                && tightOut < 0.5 && mExport && edOk,
-                $"simpangan {dev:F3} mm (eps 0,2); titik eps 0,05/0,2/0,5 = {nFine}/{nMid}/{nCoarse}; M/L/Z {straight}; luas {areaDiff:P1}; "
+                && tightOut < 0.5 && mExport && nodeOps && edOk,
+                $"simpangan {dev:F3} mm (eps 0,2); node logo kasar eps 0,05/0,2/0,5 = {nFine}/{nMid}/{nCoarse}, lingkaran {nEd}; M/L/Z {straight}; luas {areaDiff:P1}; "
                 + $"grid {man.Area} -> {man2.Area} sel; skala {scaleErr:F3} mm; kunci offset {lockErr:F3} mm; die rapat: kiss di luar die {tightOut:F2} mm2; "
-                + $"export {mLines} garis lurus, {mCurves} kurva; editor {string.Join(", ", edLog)} ({(edOk ? "benar" : "SALAH")})");
+                + $"export lurus {mLines} garis lurus, {mCurves} kurva, kurva {cCurves} kurva; belah kurva {splitDev:F4} mm; jadikan kurva/garis/halus {nodeOps}; "
+                + $"editor {string.Join(", ", edLog)} ({(edOk ? "benar" : "SALAH")})");
 
             // S13: smart select (spesifikasi 2026-10-22). Cincin dengan lubang sempit Ø 2,6 mm, lubang jarum Ø 1,2 mm,
             // takik 5 mm, watermark alpha 38 yang menempel di kiri bawah, dan pulau terpisah. Konten 391 px = 39,1 mm.
@@ -288,8 +318,8 @@ public static class SelfCheck
                 dc.DrawEllipse(Brushes.DarkOrange, null, new Point(370, 150), 20, 20);
             }, 400, 300);
             var ss = Png(ssImg, 39.1, kiss, die);
-            static double Left(List<Point[]> p) => p.SelectMany(c => c).Min(q => q.X);
-            static bool Holds(List<Point[]> p, Point q) => Geometry.Parse(Loader.PathOf(p, 0)).FillContains(q);
+            static double Left(List<Node[]> p) => Geometry.Parse(Curves.PathOf(p, 0)).Bounds.Left;
+            static bool Holds(List<Node[]> p, Point q) => Geometry.Parse(Curves.PathOf(p, 0)).FillContains(q);
             Point ringP = new(26, 10), holeP = new(20, 10), pinP = new(14, 10), islandP = new(37, 10), notchP = new(20, 1.5), emptyP = new(2, 2);
             var sr1 = Loader.SmartSelect(ss, [ringP], [], 64, 0.2);
             var sr2 = Loader.SmartSelect(ss, [ringP], [holeP], 64, 0.2);
@@ -297,10 +327,10 @@ public static class SelfCheck
             var sr4 = Loader.SmartSelect(ss, [ringP, islandP], [], 64, 0.2);
             var sr5 = Loader.SmartSelect(ss, [ringP], [], 16, 0.2);
             var sr6 = Loader.SmartSelect(ss, [ringP], [pinP], 64, 0.2);
-            var ssAuto = Loader.ToPolygons(ss.Kiss, ss.Off, 0.2);
-            var ssInner = sr2.Kiss.MinBy(c => c.Max(q => q.X) - c.Min(q => q.X))!;
-            double ssInnerW = ssInner.Max(q => q.X) - ssInner.Min(q => q.X);
-            double ssOut = Geometry.Combine(Geometry.Parse(Loader.PathOf(sr2.Kiss, 0)), Geometry.Parse(Loader.PathOf(sr2.Die, 0)), GeometryCombineMode.Exclude, null).GetArea();
+            var ssAuto = Curves.Simplify(ss.Kiss, ss.Off, 0.2);
+            var ssInner = sr2.Kiss.MinBy(c => c.Max(q => q.P.X) - c.Min(q => q.P.X))!;
+            double ssInnerW = Geometry.Parse(Curves.PathOf([ssInner], 0)).Bounds.Width;
+            double ssOut = Geometry.Combine(Geometry.Parse(Curves.PathOf(sr2.Kiss, 0)), Geometry.Parse(Curves.PathOf(sr2.Die, 0)), GeometryCombineMode.Exclude, null).GetArea();
             var ssOpaque = Png(Draw(dc => { dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, 400, 300)); dc.DrawEllipse(Brushes.DarkOrange, null, new Point(200, 150), 100, 100); }, 400, 300), 40, kiss, die);
             var sro = Loader.SmartSelect(ssOpaque, [new(26, 15)], [], Loader.DefaultTolerance(ssOpaque), 0.2);
             bool smartOk = sr1.Kiss.Count == 1 && sr1.Die.Count == 1 && Math.Abs(Left(sr1.Kiss) - 8) < 0.5 && !Holds(sr1.Kiss, notchP) && Holds(ssAuto, notchP)
@@ -310,7 +340,7 @@ public static class SelfCheck
                 && Loader.Classify(ss, ringP, 64) == Loader.PickKind.Object && Loader.DefaultTolerance(ss) == 64
                 && Loader.DefaultTolerance(ssOpaque) == 32 && sro.Kiss.Count == 1 && Math.Abs(Left(sro.Kiss) - 8) < 0.5
                 && Loader.Classify(ssOpaque, emptyP, 32) == Loader.PickKind.Empty;
-            var se = new CutEditWindow(ss, null, null, "smart");
+            var se = new CutEditWindow(ss, null, null, CutShape.Auto, "smart");
             bool seTol = se.Tol.Value == 64;
             se.SmartBox.IsChecked = true;
             se.Pick(ringP, false);
@@ -334,6 +364,87 @@ public static class SelfCheck
                 + $"lubang jarum terlalu kecil {sr6.TooSmall}; takik: smart memuat titik {Holds(sr1.Kiss, notchP)}, otomatis {Holds(ssAuto, notchP)}; "
                 + $"opak: Toleransi {Loader.DefaultTolerance(ssOpaque)}, kiri {Left(sro.Kiss):F2} mm"
                 + $"; editor {se1}/{se2}/{se3}/{se4}/{se5} kontur, kiri {seL64:F2} -> {seL16:F2} mm, Toleransi awal {(seTol ? 64 : -1)} ({(edSmart ? "benar" : "SALAH")})");
+
+            // S14: desain kotak (masukan 2026-10-23). Gambar opak dan PNG kotak bermargin transparan mendapat garis kotak bersudut
+            // tajam sejauh offset (4 node lurus, Halus tidak dipakai); kotak bersudut bulat (badge.svg) tetap mengikuti bentuk.
+            var boxImg = Draw(dc => { dc.DrawRectangle(Brushes.SteelBlue, null, new Rect(0, 0, 400, 200)); dc.DrawEllipse(Brushes.Gold, null, new Point(200, 100), 60, 60); }, 400, 200);
+            var bx = Png(boxImg, 40, kiss, die);
+            var bxSharp = Png(boxImg, 40, new Cut(true, 2, 0), new Cut(true, 4, 0));
+            var bxMargin = Png(Draw(dc => dc.DrawRectangle(Brushes.SteelBlue, null, new Rect(50, 40, 300, 120)), 400, 200), 30, kiss, die);
+            var bxDie = Png(boxImg, 40, none, die);
+            var bxTight = Png(boxImg, 40, kiss, new Cut(true, 2.05, 0));
+            static bool Box4(string p) => p != "" && !p.Contains('C') && Curves.Parse(p, 0) is [{ Length: 4 }];
+            // Selisih terbesar kotak garis (kiss atau die) dari kotak artwork ± off.
+            static double BoxErr(Sticker s, bool die, double off)
+            {
+                var b = (die ? s.DieGeo : s.KissGeo)!.Bounds;
+                b.Offset(-s.Off, -s.Off);
+                return new[] { b.X + off, b.Y + off, b.Width - s.ArtW - 2 * off, b.Height - s.ArtH - 2 * off }.Max(Math.Abs);
+            }
+            double bxErr = new[] { BoxErr(bx, false, 2), BoxErr(bx, true, 4), BoxErr(bxSharp, false, 2), BoxErr(bxMargin, false, 2), BoxErr(bxMargin, true, 4),
+                BoxErr(bxDie, true, 4), BoxErr(bxTight, true, 2 + 1 / Loader.PxMm) }.Max();
+            double bxArea = bx.AreaMm2 / ((bx.ArtW + 8) * (bx.ArtH + 8)) - 1;
+            var bxEd = new CutEditWindow(bx, null, null, CutShape.Auto, "kotak");
+            bool bxOk = Box4(bx.Kiss) && Box4(bx.Die) && Box4(bxSharp.Kiss) && Box4(bxMargin.Kiss) && bxDie.Kiss == "" && Box4(bxDie.Die) && Box4(bxTight.Die)
+                && Box4(rawBlue.Kiss) && items.First(s => s.Name == "badge.svg").Kiss.Contains('C') && bxErr < 0.05 && Math.Abs(bxArea) < 0.01
+                && bxEd.Info.Text.StartsWith("Kiss 4 ");
+            S(14, "desain kotak: garis kotak tajam sejauh offset, 4 node lurus, tanpa Halus; kotak bersudut bulat tetap kurva", bxOk,
+                $"kiss {Curves.Count(Curves.Parse(bx.Kiss, 0))} node, die {Curves.Count(Curves.Parse(bx.Die, 0))} node; selisih kotak maks {bxErr:F3} mm "
+                + $"(Halus 0/1, margin transparan, die saja, die rapat = kiss + 1 px); luas {bxArea:P1}; JPG opak {Box4(rawBlue.Kiss)}; "
+                + $"badge sudut bulat kurva {items.First(s => s.Name == "badge.svg").Kiss.Contains('C')}; editor '{bxEd.Info.Text}'");
+
+            // S15: preset bentuk (masukan 2026-10-23). Bentuk mengelilingi artwork sejauh offset (artwork + offset - 0,3 mm di dalam
+            // garis kiss), die membungkus kiss, jumlah node sesuai bentuk, ukuran sesuai bentuk terkecil, ikut offset dan lebar.
+            var circArt = Loader.Load(cPath, 0, 40, new Cut(true, 1.7, 0), none);
+            var textArt = Png(text, 60, new Cut(true, 1.7, 0), none);
+            Sticker ShapeOf(string src, double w, Cut k, Cut d, CutShape shape) =>
+                Loader.Load(src, 0, w, k, d, edited: src == "uji.png" ? Loader.Png(text) : null, shape: shape);
+            // Ukuran garis kiss bentuk terkecil pada circle.png (artwork Ø 40 mm, offset 2, jadi lingkaran r 22 harus muat): lingkaran
+            // Ø 44, segitiga tinggi 3 x 22, segi enam tinggi 44 dan lebar 44 / cos 30°, bintang (lekuk dalam 0,5 x jari-jari luar)
+            // lebar 2 x 44 x sin 72°. Batas: -0,1 s.d. +Tol mm. Hull dihitung dari sudut piksel 6 px/mm (sengaja ke luar supaya
+            // artwork tidak terpotong), jadi bentuk bulat/miring bisa ±0,6 mm lebih besar dari minimal.
+            var shapeWant = new Dictionary<CutShape, (int Nodes, double W, double H, double Tol)>
+            {
+                [CutShape.Rect] = (4, 44, 44, 0.1), [CutShape.RoundRect] = (8, 44, 44, 0.1), [CutShape.Circle] = (4, 44, 44, 0.7),
+                [CutShape.Oval] = (4, 44, 44, 0.8), [CutShape.Triangle] = (3, 66 / Math.Sqrt(3) * 2, 66, 0.7),
+                [CutShape.Hexagon] = (6, 44 / Math.Cos(Math.PI / 6), 44, 0.7), [CutShape.Star] = (10, 2 * 44 * Math.Sin(2 * Math.PI / 5), double.NaN, 0.9),
+                [CutShape.Heart] = (4, double.NaN, double.NaN, 0),
+            };
+            static bool Near(double got, double want, double tol) => double.IsNaN(want) || got >= want - 0.1 && got <= want + tol;
+            var shapeLog = new List<string>();
+            bool shapeOk = true;
+            foreach (var (shape, (nodes, ww, wh, tol)) in shapeWant)
+                foreach (var (lbl, s, art) in new[] { ("lingkaran", ShapeOf(cPath, 40, kiss, die, shape), circArt), ("teks", ShapeOf("uji.png", 60, kiss, die, shape), textArt) })
+                {
+                    var kn = Curves.Parse(s.Kiss, 0);
+                    bool wantCurve = shape is CutShape.RoundRect or CutShape.Circle or CutShape.Oval or CutShape.Heart;
+                    double artOut = Outside(art, s), kissOut = Geometry.Combine(s.KissGeo!, s.DieGeo!, GeometryCombineMode.Exclude, null).GetArea();
+                    var kb = s.KissGeo!.Bounds;
+                    bool size = lbl != "lingkaran" || Near(kb.Width, ww, tol) && Near(kb.Height, wh, tol);
+                    bool ok = kn.Count == 1 && kn[0].Length == nodes && s.Kiss.Contains('C') == wantCurve && artOut < 0.05 && kissOut < 0.01 && size && s.Shape == shape;
+                    shapeOk &= ok;
+                    if (!ok || lbl == "lingkaran")
+                        shapeLog.Add($"{shape} {lbl}: {kn.Sum(c => c.Length)} node, {kb.Width:F1}x{kb.Height:F1} mm, artwork keluar {artOut:F2}, kiss di luar die {kissOut:F3}{(ok ? "" : " SALAH")}");
+                }
+            // Parametrik: offset kiss 3 dan lebar 60 mm menyesuaikan bentuk; editor: bentuk dipilih, node diedit = garis manual.
+            double c3 = ShapeOf(cPath, 40, new Cut(true, 3, 1), new Cut(true, 5, 2), CutShape.Circle).KissGeo!.Bounds.Width;
+            double c60 = ShapeOf(cPath, 60, kiss, die, CutShape.Circle).KissGeo!.Bounds.Width;
+            var edS = new CutEditWindow(circle40, null, null, CutShape.Auto, "bentuk");
+            edS.ApplyShape(CutShape.Circle);
+            bool edShape = edS.Shape == CutShape.Circle && edS.ManualKiss == null && edS.Info.Text.StartsWith("Kiss 4 ");
+            var sn = Loader.ShapeLines(circle40, CutShape.Circle).Kiss![0][0].P;
+            edS.Press(sn, 0.3);
+            edS.DragTo(sn + new Vector(1, 0));
+            edS.Release();
+            edShape &= edS.Shape == CutShape.Auto && edS.ManualKiss != null;
+            edS.Undo();
+            edShape &= edS.Shape == CutShape.Circle && new CutEditWindow(circle40, null, null, CutShape.Star, "bintang").Shape == CutShape.Star;
+            var (sl, scv) = ExportOps([new Placed { S = ShapeOf(cPath, 40, kiss, die, CutShape.Rect), X = Margin, Y = Margin },
+                new Placed { S = ShapeOf(cPath, 40, kiss, die, CutShape.Circle), X = Margin + 60, Y = Margin }]);
+            S(15, "preset bentuk: mengelilingi artwork sejauh offset, die membungkus kiss, node sesuai bentuk, ikut offset dan lebar",
+                shapeOk && Near(c3, 46, 0.7) && Near(c60, 64, 0.7) && edShape && sl > 0 && scv > 0,
+                string.Join("; ", shapeLog) + $"; lingkaran offset 3 = {c3:F2} mm (harapan 46), lebar 60 = {c60:F2} mm (64); editor {(edShape ? "benar" : "SALAH")}; "
+                + $"export {sl} garis lurus, {scv} kurva");
 
             // S9: stiker besar 300 mm (gambar 3000 px), kiss + die.
             var bigImg = Draw(dc => dc.DrawEllipse(Brushes.Black, null, new Point(1500, 1500), 1400, 1400), 3000, 3000);
@@ -449,14 +560,12 @@ public static class SelfCheck
             Check(snapped && afterDrop == 0 && snappedRot && afterRot == 0, $"snap gagal: jatuh {afterDrop} tabrakan, putar {afterRot} tabrakan");
             log.Add($"snap: dijatuhkan di atas tetangga -> pindah {jump:F0} mm, 0 tabrakan; diputar -> 0 tabrakan");
 
-            // Indikator bahan: bentuk reguler vs irregular, warna target, preset valid, Print Ticket 1 halaman A4.
+            // Indikator bahan: bentuk reguler vs irregular, warna target, Print Ticket 1 halaman A4.
             var fillOf = items.ToDictionary(s => s.Name, s => s.Fill);
             Check(fillOf["badge.svg"] > 0.85 && Math.Abs(fillOf["circle.png"] - Math.PI / 4) < 0.03 && fillOf["star.jpg"] < 0.75,
                 $"isi bentuk salah: badge {fillOf["badge.svg"]:F2}, circle {fillOf["circle.png"]:F2}, star {fillOf["star.jpg"]:F2}");
             Check(Yield.Level(0.76, true) == 2 && Yield.Level(0.72, true) == 1 && Yield.Level(0.65, true) == 0
                 && Yield.Level(0.61, false) == 2 && Yield.Level(0.56, false) == 1 && Yield.Level(0.50, false) == 0, "batas warna bahan salah");
-            Check(Presets.Material.Values.All(m => (m.Kiss.On || m.Die.On) && (!(m.Kiss.On && m.Die.On) || m.Die.Off > m.Kiss.Off) && m.Gap >= 0),
-                "preset bahan tidak valid");
             var ticket = Path.Combine(dir, "print-ticket.pdf");
             Export.Ticket(ticket, "A4", sheets, A4W, sheets.Select(_ => A4H).ToList(), Margin, ["uji"]);
             using (var tk = PdfReader.Open(ticket, PdfDocumentOpenMode.Import))
@@ -611,6 +720,20 @@ public static class SelfCheck
 
     static double Use(List<List<Placed>> sheets) => sheets.Sum(x => x.Sum(p => p.S.AreaMm2)) / (A4W * A4H * sheets.Count);
 
+    // Export satu lembar A4 ke file sementara: jumlah operator garis lurus (l) dan kurva (c) di halaman.
+    static (int Lines, int Curves) ExportOps(List<Placed> sheet)
+    {
+        var tmp = Path.Combine(Path.GetTempPath(), $"printech-uji-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            Check(Export.Pdf(tmp, [sheet], A4W, [A4H]).Count == 0, "peringatan export");
+            string c;
+            using (var d = PdfReader.Open(tmp, PdfDocumentOpenMode.Import)) c = Content(d.Pages[0]);
+            return (Regex.Matches(c, @"(?<=\s)l(?=\s)").Count, Regex.Matches(c, @"(?<=\s)c(?=\s)").Count);
+        }
+        finally { File.Delete(tmp); }
+    }
+
     static string Content(PdfPage page)
     {
         var sb = new StringBuilder();
@@ -661,16 +784,18 @@ public static class SelfCheck
 
     static byte[] NoBackground(string path) { var c = new CleanImage(File.ReadAllBytes(path)); c.EraseFromBorder(32); return c.ToPng(0); }
 
-    // Simpangan maksimal kurva (dipecah 0,01 mm) dari polygon (mm relatif artwork).
-    static double Deviation(string path, double off, List<Point[]> polys)
+    // Titik kurva yang dipecah 0,01 mm, per kontur (koordinat path dikurangi off).
+    static List<Point[]> Flat(string path, double off) => [.. Geometry.Parse(path).GetFlattenedPathGeometry(0.01, ToleranceType.Absolute).Figures
+        .Select(f => f.Segments.SelectMany(s => s is PolyLineSegment pl ? pl.Points : s is LineSegment l ? [l.Point] : []).Prepend(f.StartPoint)
+            .Select(q => new Point(q.X - off, q.Y - off)).ToArray())];
+
+    // Simpangan maksimal kurva (dipecah 0,01 mm) dari garis node (mm relatif artwork, juga dipecah 0,01 mm).
+    static double Deviation(string path, double off, List<Node[]> lines)
     {
+        var target = Flat(Curves.PathOf(lines, 0), 0);
         double worst = 0;
-        foreach (var f in Geometry.Parse(path).GetFlattenedPathGeometry(0.01, ToleranceType.Absolute).Figures)
-            foreach (var q0 in f.Segments.SelectMany(s => s is PolyLineSegment pl ? pl.Points : s is LineSegment l ? [l.Point] : []).Prepend(f.StartPoint))
-            {
-                var q = new Point(q0.X - off, q0.Y - off);
-                worst = Math.Max(worst, polys.Min(c => c.Select((a, i) => (q - Loader.Nearest(q, a, c[(i + 1) % c.Length])).Length).Min()));
-            }
+        foreach (var q in Flat(path, off).SelectMany(c => c))
+            worst = Math.Max(worst, target.Min(c => c.Select((a, i) => (q - Loader.Nearest(q, a, c[(i + 1) % c.Length])).Length).Min()));
         return worst;
     }
 

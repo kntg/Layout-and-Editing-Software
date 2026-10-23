@@ -49,9 +49,11 @@ public class Sticker
     public string DpiText => Dpi is { } d ? $"{d:0} dpi" : "";
     public bool LowDpi => Dpi < MinDpi;
     public string Kiss = "", Die = "";           // path SVG garis potong (mm, koordinat kotak)
-    // Garis potong hasil editor (polygon, mm relatif terhadap pojok kiri-atas artwork); null = garis otomatis.
-    public List<Point[]>? ManualKiss, ManualDie;
+    // Garis potong hasil editor (node, mm relatif terhadap pojok kiri-atas artwork); null = garis otomatis.
+    public List<Node[]>? ManualKiss, ManualDie;
     public bool Manual => ManualKiss != null || ManualDie != null;
+    public CutShape Shape;                       // bentuk preset dari editor (Auto = mengikuti artwork); garis manual menang
+    public string CutBadge => Manual ? Lang.T("CutManual") : Shape != CutShape.Auto ? Lang.T("Shape" + Shape) : "";
     public bool[,] Grid = null!;                 // hunian sel nesting dari garis terluar [x,y]
     public int Area;
     Geometry? kg, dg, clip;
@@ -127,10 +129,10 @@ public static partial class Loader
 
     // Semua input -> bitmap penuh -> crop ke konten -> mask -> garis kiss/die (dilasi + closing) -> Potrace.
     // loadedPdf: PDF yang dipakai saat desain pertama dimuat (muat ulang saat Susun): isi desain tidak berubah diam-diam
-    // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: polygon dari editor garis potong, dipakai apa adanya
+    // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: garis dari editor garis potong, dipakai apa adanya
     // (offset dan Halus tidak mengubahnya).
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
-        string? loadedPdf = null, List<Point[]>? manualKiss = null, List<Point[]>? manualDie = null)
+        string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -172,17 +174,23 @@ public static partial class Loader
         s.ArtW = widthMm;
         s.ArtH = bb.Height * k;
 
+        var small = new TransformedBitmap(crop, new ScaleTransform(s.ArtW * PxMm / bb.Width, s.ArtH * PxMm / bb.Height));
+        var mask = Silhouette(small, out int mw, out int mh);
+
         // Garis manual milik garis yang aktif. Titik yang lebih jauh dari jangkauan otomatis memperbesar kotak dan bleed.
         s.ManualKiss = manualKiss;
         s.ManualDie = manualDie;
         var mk = kiss.On ? manualKiss : null;
         var md = die.On ? manualDie : null;
-        double over = 0;
-        foreach (var q in (mk ?? []).Concat(md ?? []).SelectMany(c => c))
-            over = Math.Max(over, Math.Max(Math.Max(-q.X, q.X - s.ArtW), Math.Max(-q.Y, q.Y - s.ArtH)));
-
-        var small = new TransformedBitmap(crop, new ScaleTransform(s.ArtW * PxMm / bb.Width, s.ArtH * PxMm / bb.Height));
-        var mask = Silhouette(small, out int mw, out int mh);
+        // Bentuk preset, atau desain kotak (masukan 2026-10-23): garis bentuk mengelilingi artwork sejauh offset, tanpa Halus.
+        // Die memakai bentuk yang sama, minimal 1 px di luar kiss.
+        s.Shape = shape;
+        if (manualKiss == null && manualDie == null)
+        {
+            var use = shape != CutShape.Auto ? shape : Shapes.IsBox(mask) ? CutShape.Rect : CutShape.Auto;
+            if (use != CutShape.Auto) (mk, md) = Shapes.Lines(mask, use, s.ArtW, s.ArtH, kiss, die);
+        }
+        double over = Curves.Overhang((mk ?? []).Concat(md ?? []), s.ArtW, s.ArtH);
         static int Reach(Cut c) => c.On ? (int)Math.Ceiling((c.Off + c.Smooth) * PxMm) : 0;
         int pad = Math.Max(Math.Max(Reach(kiss), Reach(die)), (int)Math.Ceiling(over * PxMm)) + (bled ? (int)Math.Ceiling(bleed * PxMm) : 0) + 3,
             W = mw + 2 * pad, H = mh + 2 * pad;
@@ -196,7 +204,7 @@ public static partial class Loader
         var dieMan = md == null ? null : Raster(md, pad / PxMm, W, H);
         if (kiss.On)
         {
-            if (mk != null) { kissMask = Raster(mk, pad / PxMm, W, H); s.Kiss = PathOf(mk, pad / PxMm); }
+            if (mk != null) { kissMask = Raster(mk, pad / PxMm, W, H); s.Kiss = Curves.PathOf(mk, pad / PxMm); }
             else
             {
                 kissMask = KeepHoles(Smooth(Close(m, kiss), m, kiss), holes);
@@ -208,7 +216,7 @@ public static partial class Loader
         }
         if (die.On)
         {
-            if (dieMan != null) { outer = dieMan; s.Die = PathOf(md!, pad / PxMm); }
+            if (dieMan != null) { outer = dieMan; s.Die = Curves.PathOf(md!, pad / PxMm); }
             else
             {
                 outer = Smooth(Close(m, die), m, die);
@@ -553,46 +561,6 @@ public static partial class Loader
         return sb.ToString();
     }
 
-    // ---- Polygon editor garis potong (masukan leader 2026-10-21) ----
-
-    // Kurva Potrace -> polygon: dipecah rapat (0,01 mm), lalu disederhanakan Ramer-Douglas-Peucker dengan toleransi eps mm
-    // (slider Simplify). Titik polygon selalu di kurva, jadi polygon menyimpang dari kurva maksimal eps.
-    public static List<Point[]> ToPolygons(string path, double off, double eps)
-    {
-        var res = new List<Point[]>();
-        if (path == "") return res;
-        foreach (var f in Geometry.Parse(path).GetFlattenedPathGeometry(0.01, ToleranceType.Absolute).Figures)
-        {
-            var p = new List<Point> { f.StartPoint };
-            foreach (var seg in f.Segments)
-                if (seg is PolyLineSegment pl) p.AddRange(pl.Points);
-                else if (seg is LineSegment l) p.Add(l.Point);
-            for (int i = 0; i < p.Count; i++) p[i] = new Point(p[i].X - off, p[i].Y - off);
-            p.Add(p[0]); // kontur tertutup: RDP pertama memecah di titik terjauh dari titik awal
-            var keep = new bool[p.Count];
-            keep[0] = keep[^1] = true;
-            var st = new Stack<(int, int)>();
-            st.Push((0, p.Count - 1));
-            while (st.Count > 0)
-            {
-                var (a, b) = st.Pop();
-                int far = -1;
-                double max = eps;
-                for (int i = a + 1; i < b; i++)
-                    if ((p[i] - Nearest(p[i], p[a], p[b])).Length is var d && d > max) (max, far) = (d, i);
-                if (far < 0) continue;
-                keep[far] = true;
-                st.Push((a, far));
-                st.Push((far, b));
-            }
-            var c = p.Where((_, i) => keep[i] && i < p.Count - 1).ToArray();
-            int n = p.Count - 1;
-            if (c.Length < 3 && n >= 3) c = [p[0], p[n / 3], p[2 * n / 3]]; // kontur kecil tidak boleh hilang (tidak terpotong)
-            if (c.Length >= 3) res.Add(c);
-        }
-        return res;
-    }
-
     // Titik terdekat ke q pada segmen a-b.
     public static Point Nearest(Point q, Point a, Point b)
     {
@@ -600,29 +568,14 @@ public static partial class Loader
         return ab.LengthSquared == 0 ? a : a + Math.Clamp((q - a) * ab / ab.LengthSquared, 0, 1) * ab;
     }
 
-    // Polygon (mm relatif artwork) -> path garis lurus M/L/Z di koordinat kotak.
-    public static string PathOf(List<Point[]> polys, double off)
-    {
-        var sb = new StringBuilder();
-        foreach (var c in polys)
-        {
-            for (int i = 0; i < c.Length; i++) sb.Append(i == 0 ? 'M' : 'L').Append(F(c[i].X + off)).Append(' ').Append(F(c[i].Y + off));
-            sb.Append('Z');
-        }
-        return sb.ToString();
-    }
-
-    // Lebar desain berubah: polygon diskala bersama artwork.
-    public static List<Point[]>? Scale(List<Point[]>? polys, double k) => polys?.Select(c => c.Select(q => new Point(q.X * k, q.Y * k)).ToArray()).ToList();
-
-    // Polygon -> mask 6 px/mm (grid nesting, luas, batas kiss/die), seperti mask garis otomatis.
-    static bool[,] Raster(List<Point[]> polys, double off, int W, int H)
+    // Garis manual -> mask 6 px/mm (grid nesting, luas, batas kiss/die), seperti mask garis otomatis.
+    static bool[,] Raster(List<Node[]> lines, double off, int W, int H)
     {
         var v = new DrawingVisual();
         using (var dc = v.RenderOpen())
         {
             dc.PushTransform(new ScaleTransform(PxMm, PxMm));
-            dc.DrawGeometry(Brushes.Black, null, Geometry.Parse(PathOf(polys, off)));
+            dc.DrawGeometry(Brushes.Black, null, Geometry.Parse(Curves.PathOf(lines, off)));
         }
         var rt = new RenderTargetBitmap(W, H, 96, 96, PixelFormats.Pbgra32);
         rt.Render(v);
@@ -716,18 +669,6 @@ public static class Yield
         var t = Target(regular);
         return use >= t.Green ? 2 : use >= t.Low ? 1 : 0;
     }
-}
-
-// Preset per jenis bahan. Nilai awal dari panduan cetak stiker publik (lihat RESEARCH.md bagian 13);
-// belum dikonfirmasi operator AP 55. Margin 10 mm = ruang reg mark Cutting Master 5.
-public static class Presets
-{
-    public static readonly Dictionary<string, (Cut Kiss, Cut Die, double Margin, double Gap)> Material = new()
-    {
-        ["Vinyl kiss-cut"] = (new(true, 2, 1), new(false, 4, 2), 10, 2),
-        ["Chromo die-cut"] = (new(false, 2, 1), new(true, 3, 1), 10, 3),
-        ["Akrilik/tebal"] = (new(false, 2, 1), new(true, 3, 3), 10, 4),
-    };
 }
 
 public static class Paper

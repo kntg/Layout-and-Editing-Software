@@ -2,8 +2,9 @@
 # Uji UI editor garis potong (masukan leader 2026-10-21) lewat UI Automation, tanpa mouse dan keyboard: die diaktifkan,
 # editor dibuka dari daftar desain (kiss dan die), slider Simplify mengubah jumlah titik garis yang diedit, tombol
 # Urungkan/Ulangi editor, kotak Smart select dan slider Toleransi, Simpan memberi tanda "garis manual", menu Edit > Urungkan
-# mengembalikan garis otomatis. Geser, tambah, dan hapus titik serta klik smart select di kanvas butuh mouse: logikanya
-# diuji selfcheck S12 dan S13.
+# mengembalikan garis otomatis, tombol bentuk Lingkaran (tanda "Lingkaran", bentuk tetap setelah offset diubah dan disusun ulang).
+# Geser, tambah, dan hapus node, seret handle, serta klik smart select di kanvas butuh mouse: logikanya diuji selfcheck
+# S12, S13, dan S15.
 # Jalankan dengan Windows PowerShell 5.1:
 # powershell -ExecutionPolicy Bypass -File ui-editor-garis.ps1 -Exe <StickerLayout.exe> -In <folder 01-input> -Shots <folder gambar>
 $ErrorActionPreference = 'Stop'
@@ -35,7 +36,8 @@ function Find($prop, $value, $scope = $root) {
 function Invoke($e) { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() }
 function Status { (Find $AE::AutomationIdProperty 'Status').Current.Name }
 # Tanda "garis manual" yang tampil di daftar desain (elemen Collapsed tidak dihitung).
-function Badges { @($root.FindAll('Descendants', $PC::new($AE::NameProperty, 'garis manual')) | Where-Object { -not $_.Current.IsOffscreen -and -not $_.Current.BoundingRectangle.IsEmpty }).Count }
+function Badge($text) { @($root.FindAll('Descendants', $PC::new($AE::NameProperty, $text)) | Where-Object { -not $_.Current.IsOffscreen -and -not $_.Current.BoundingRectangle.IsEmpty }).Count }
+function Badges { Badge 'garis manual' }
 function Points($info) { if ($info -match 'Kiss (\d+) titik · die (\d+) titik · (.+)$') { @([int]$Matches[1], [int]$Matches[2], $Matches[3]) } else { @(-1, -1, $info) } }
 
 $name = 'png-transparent.png'
@@ -99,6 +101,33 @@ Invoke (Find $AE::NameProperty 'Urungkan' $AE::RootElement)
 for ($i = 0; $i -lt 40 -and (Badges) -ne 0; $i++) { Start-Sleep -Milliseconds 250 }
 $n2 = Badges
 Res 'EDIT-06' $(if ($n2 -eq 0) { 'LULUS' } else { 'GAGAL' }) "Edit > Urungkan: tanda 'garis manual' $n2 (harapan 0), status '$(Status)'"
+# EDIT-07: preset bentuk (masukan 2026-10-23): tombol Lingkaran di editor, Simpan memberi tanda 'Lingkaran'; offset kiss 3 lalu
+# Susun memuat ulang desain dan bentuknya tetap lingkaran (editor dibuka lagi: kiss 4 node, 'Lingkaran').
+Invoke (Find $AE::NameProperty 'Edit garis potong')
+$ed = $null
+for ($i = 0; $i -lt 60 -and -not $ed; $i++) { Start-Sleep -Milliseconds 250; $ed = Editor }
+Start-Sleep -Milliseconds 600
+(Find $AE::NameProperty 'Lingkaran' $ed).GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+Start-Sleep -Milliseconds 500
+$c1 = Points (Find $AE::AutomationIdProperty 'Info' $ed).Current.Name
+if ($Shots) { [CapE]::Save([IntPtr]$ed.Current.NativeWindowHandle, (Join-Path $Shots 'editor-bentuk-lingkaran.png')) }
+Invoke (Find $AE::NameProperty 'Simpan' $ed)
+for ($i = 0; $i -lt 60 -and (Editor); $i++) { Start-Sleep -Milliseconds 250 }
+for ($i = 0; $i -lt 40 -and (Badge 'Lingkaran') -ne 1; $i++) { Start-Sleep -Milliseconds 250 }
+$nb = Badge 'Lingkaran'
+(Find $AE::AutomationIdProperty 'KissOff').GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue('3')
+Invoke (Find $AE::NameProperty 'Susun otomatis')
+Start-Sleep -Milliseconds 1500
+Invoke (Find $AE::NameProperty 'Edit garis potong')
+$ed = $null
+for ($i = 0; $i -lt 60 -and -not $ed; $i++) { Start-Sleep -Milliseconds 250; $ed = Editor }
+Start-Sleep -Milliseconds 600
+$c2 = Points (Find $AE::AutomationIdProperty 'Info' $ed).Current.Name
+Invoke (Find $AE::NameProperty 'Batal' $ed)
+for ($i = 0; $i -lt 60 -and (Editor); $i++) { Start-Sleep -Milliseconds 250 }
+$nb2 = Badge 'Lingkaran'
+Res 'EDIT-07' $(if ($c1[0] -eq 4 -and $c1[2] -eq 'Lingkaran' -and $nb -eq 1 -and $c2[0] -eq 4 -and $c2[2] -eq 'Lingkaran' -and $nb2 -eq 1) { 'LULUS' } else { 'GAGAL' }) `
+  "tombol Lingkaran: kiss $($c1[0]) titik, '$($c1[2])'; Simpan: tanda 'Lingkaran' $nb; offset kiss 3 + Susun: editor kiss $($c2[0]) titik, '$($c2[2])', tanda $nb2"
 "responding: " + $p.Responding
 $p.Kill()
 $bad = @($results | Where-Object { $_ -match ' GAGAL:' }).Count

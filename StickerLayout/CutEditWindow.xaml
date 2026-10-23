@@ -17,7 +17,12 @@
         </Border>
 
         <Border DockPanel.Dock="Left" Width="272" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="16">
+                <TextBlock Text="{DynamicResource Shape}" Style="{StaticResource Label}"/>
+                <WrapPanel x:Name="ShapePanel" Margin="-2,6,0,0"/>
+                <TextBlock Text="{DynamicResource ShapeHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,4,0,18"/>
+
                 <TextBlock Text="{DynamicResource CutLine}" Style="{StaticResource Label}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <RadioButton x:Name="EditKiss" GroupName="Line" Checked="Line_Checked" Foreground="{StaticResource Text}" AutomationProperties.Name="{DynamicResource Kiss}">
@@ -54,6 +59,14 @@
                 <Slider x:Name="Tol" Minimum="0" Maximum="255" Value="64" SmallChange="1" LargeChange="8" Margin="0,6,0,0"
                         ValueChanged="Tol_Changed" AutomationProperties.Name="{DynamicResource SmartTol}"/>
 
+                <TextBlock Text="{DynamicResource NodeSel}" Style="{StaticResource Label}" Margin="0,20,0,0"/>
+                <UniformGrid Columns="2" Margin="0,6,0,0">
+                    <Button x:Name="ToCurveBtn" Content="{DynamicResource ToCurve}" Click="ToCurve_Click" Margin="0,0,3,6" AutomationProperties.Name="{DynamicResource ToCurve}"/>
+                    <Button x:Name="ToLineBtn" Content="{DynamicResource ToLine}" Click="ToLine_Click" Margin="3,0,0,6" AutomationProperties.Name="{DynamicResource ToLine}"/>
+                    <Button x:Name="SmoothBtn" Content="{DynamicResource NodeSmooth}" Click="Smooth_Click" Margin="0,0,3,0" AutomationProperties.Name="{DynamicResource NodeSmooth}"/>
+                    <Button x:Name="CuspBtn" Content="{DynamicResource NodeCusp}" Click="Cusp_Click" Margin="3,0,0,0" AutomationProperties.Name="{DynamicResource NodeCusp}"/>
+                </UniformGrid>
+
                 <TextBlock Text="{DynamicResource CutHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,18,0,0"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
@@ -81,6 +94,7 @@
                 <TextBlock x:Name="Warn" Text="{DynamicResource KissOutside}" Foreground="{StaticResource Warn}" TextWrapping="Wrap" Margin="0,18,0,0"
                            Visibility="Collapsed"/>
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Canvas x:Name="Board" Background="{StaticResource Ink0}" ClipToBounds="True" Cursor="Cross" SizeChanged="Board_Size"
@@ -90,7 +104,9 @@
             <Rectangle x:Name="Box" Stroke="{StaticResource Dim}" StrokeThickness="1" StrokeDashArray="4 3"/>
             <Path x:Name="DiePath" Stroke="{StaticResource DieBrush}" StrokeThickness="1.5"/>
             <Path x:Name="KissPath" Stroke="{StaticResource KissBrush}" StrokeThickness="1.5"/>
+            <Path x:Name="HandleLines" Stroke="{StaticResource Dim}" StrokeThickness="1"/>
             <Path x:Name="Handles" Fill="White" StrokeThickness="1"/>
+            <Path x:Name="HandleDots" Fill="{StaticResource Ink0}" Stroke="White" StrokeThickness="1.2"/>
             <Path x:Name="SelHandle" Stroke="White" StrokeThickness="1.5"/>
         </Canvas>
     </DockPanel>

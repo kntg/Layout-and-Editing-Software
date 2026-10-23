@@ -1,0 +1,54 @@
+Kotak otomatis, preset bentuk garis potong, node kurva, dan penghapusan preset bahan (spesifikasi
+docs/superpowers/specs/2026-10-23-bentuk-garis-potong-design.md), 2026-10-23. Diuji tanpa mouse: selfcheck (mesin dan editor lewat
+method internal), UI Automation untuk kontrol editor dan daftar desain, serta validasi independen. Seret node dan handle dengan mouse
+sungguhan: NOT RUN. Potong di Graphtec: BLOCKED (tidak ada mesin di PC pengembangan).
+
+== Build
+dotnet build -c Release dan -c Debug: 0 warning, 0 error.
+
+== Selfcheck (build Release)
+S12 LULUS: editor garis potong: node lurus dan kurva, garis manual, skala, kunci offset, export, edit node dan handle | simpangan 0,185 mm (eps 0,2); node logo kasar eps 0,05/0,2/0,5 = 21/17/10, lingkaran 4; M/L/Z True; luas 0,9%; grid 1881 -> 1887 sel; skala 0,001 mm; kunci offset 0,000 mm; die rapat: kiss di luar die 0,00 mm2; export lurus 93 garis lurus, 0 kurva, kurva 11 kurva; belah kurva 0,0066 mm; jadikan kurva/garis/halus True; editor tambah 5, undo/redo/hapus 4, handle benar, Simplify 0,5 2, donat: kontur kiss 2 -> 1 (benar)
+S13 LULUS: smart select: objek, takik diikuti, watermark diabaikan, lubang sempit lewat klik, pulau, objek opak | kiss kiri 8,20 mm (Toleransi 64) / -2,05 mm (16); kontur kiss 1, +lubang 2 (garis dalam 1,00 mm, die 1, kiss di luar die 0,00 mm2), klik lubang 2x 1, +pulau 2, lubang jarum terlalu kecil True; takik: smart memuat titik False, otomatis True; opak: Toleransi 32, kiri 8,11 mm; editor 1/2/1/2/3 kontur, kiri 8,20 -> -2,05 mm, Toleransi awal 64 (benar)
+S14 LULUS: desain kotak: garis kotak tajam sejauh offset, 4 node lurus, tanpa Halus; kotak bersudut bulat tetap kurva | kiss 4 node, die 4 node; selisih kotak maks 0,001 mm (Halus 0/1, margin transparan, die saja, die rapat = kiss + 1 px); luas 0,0%; JPG opak True; badge sudut bulat kurva True; editor 'Kiss 4 titik · die 4 titik · garis otomatis'
+S15 LULUS: preset bentuk: mengelilingi artwork sejauh offset, die membungkus kiss, node sesuai bentuk, ikut offset dan lebar | Rect lingkaran: 4 node, 44,0x44,0 mm, artwork keluar 0,00, kiss di luar die 0,000; RoundRect lingkaran: 8 node, 44,1x44,1 mm, artwork keluar 0,00, kiss di luar die 0,000; Circle lingkaran: 4 node, 44,5x44,5 mm, artwork keluar 0,00, kiss di luar die 0,000; Oval lingkaran: 4 node, 44,6x44,6 mm, artwork keluar 0,00, kiss di luar die 0,000; Triangle lingkaran: 3 node, 76,7x66,4 mm, artwork keluar 0,00, kiss di luar die 0,000; Hexagon lingkaran: 6 node, 51,3x44,4 mm, artwork keluar 0,00, kiss di luar die 0,000; Star lingkaran: 10 node, 84,3x80,2 mm, artwork keluar 0,00, kiss di luar die 0,000; Heart lingkaran: 4 node, 71,4x63,8 mm, artwork keluar 0,00, kiss di luar die 0,000; lingkaran offset 3 = 46,45 mm (harapan 46), lebar 60 = 64,58 mm (64); editor benar; export 9 garis lurus, 12 kurva
+
+== Selfcheck runner (run-selfcheck.ps1)
+Release: 4/4 sesuai harapan, 19/19 skenario (S1-S9, S11-S15, P1-P5).
+Debug: 4/4 sesuai harapan, 19/19 skenario; S9 2607 ms, P5 susun 494 ms.
+Smart select sejak 2026-10-23 juga menghasilkan node kurva (fit Bezier); S13 tetap lulus.
+Tahap A (model node, sebelum fitur baru): log selfcheck identik dengan sebelum perubahan, selain waktu dan RAM.
+
+== UI Automation, ui-editor-garis.ps1 (build Release, tanpa mouse dan keyboard)
+EDIT-01 LULUS: editor terbuka: 'Kiss 14 titik · die 10 titik · garis otomatis'
+EDIT-02 LULUS: Simplify 0,5 mm: kiss 14 -> 11 titik, die 10 -> 10 titik, 'garis manual'
+EDIT-03 LULUS: tombol Urungkan: kiss 14 titik, 'garis otomatis'; Ulangi: kiss 11 titik, 'garis manual'
+EDIT-04 LULUS: Smart select: kotak centang On, Toleransi awal 64 (harapan On, 64 untuk PNG transparan); klik di kanvas butuh mouse (NOT RUN)
+EDIT-05 LULUS: Simpan: status 'Garis potong png-transparent.png disimpan.', tanda 'garis manual' 1
+EDIT-06 LULUS: Edit > Urungkan: tanda 'garis manual' 0 (harapan 0), status '1 stiker di 1 lembar.'
+EDIT-07 LULUS: tombol Lingkaran: kiss 4 titik, 'Lingkaran'; Simpan: tanda 'Lingkaran' 1; offset kiss 3 + Susun: editor kiss 4 titik, 'Lingkaran', tanda 1
+RINGKAS: 7 uji, 0 GAGAL. Kiss png-transparent.png sebagai node kurva: 14 node (polygon 2026-10-21: 31 titik).
+Tangkapan layar: 2026-10-23-editor-bentuk-lingkaran.png. Die 0 node di langkah ini karena Edit > Urungkan (EDIT-06) mengembalikan
+pengaturan sebelum die diaktifkan.
+
+== UI Automation, ui-semua-input.ps1 (build Release)
+semua file selesai dimuat dan disusun 3,0 s setelah start; status: 18 stiker di 2 lembar.
+peringatan: 1 lebih besar dari kertas, 2 desain resolusi rendah, 1 PDF ditempel sebagai gambar
+pemakaian bahan: 54% · sisa 46%; judul lembar: 5 pcs / lembar A3+ · 92% | 13 pcs / lembar A3+ · 16% (sebelumnya 91% / 16%)
+RAM private working set: 93 MB; responding: True
+
+== Validasi (validasi.ps1 + validasi.py)
+Laporan: 2026-10-23-validasi-garis-potong-nesting.txt. Desain kotak di skenario A (dideteksi sendiri oleh validasi.py dari file asli):
+jpg-large-24mp.jpg, jpg-low-resolution.jpg, pdf-multi-page.pdf p2, pdf-single-page.pdf. A7 lulus: 22 garis, 4 garis lurus, kotak ± offset,
+selisih terbesar 0,10 mm. A1 lulus dengan harapan offset x akar 2 di sudut kotak. Tetap gagal seperti sebelumnya: A2b (54%), A4
+(43 garis di bawah batas, sebelumnya 65), A5 (hanya batas bawah pita: 5 garis, sebelumnya 27).
+validasi.json dibanding sebelum kotak otomatis: berbeda hanya pada desain kotak (garis dan luas) dan pada hasil penuhi lembar
+B-campuran yang ikut bergeser. Sesudah node kurva dan preset bentuk: identik dengan tahap kotak otomatis (garis otomatis tidak berubah).
+
+== Preset bentuk (render export)
+2026-10-23-bentuk-preset.png: circle.png 30 mm dan logo.pdf dengan semua bentuk (otomatis, kotak, kotak sudut bulat, lingkaran,
+oval, segitiga, bintang, hati, segi enam), kiss 2/1 dan die 4/2. Setiap bentuk mengelilingi artwork; die membungkus kiss.
+
+== Preset bahan dihapus
+Presets.Material, kotak pilihan, pemulihan undo (indeks pengaturan digeser), cek selfcheck, langkah EDIT-09 di ui-edit-layout.ps1,
+dan kasus e2e EDIT-09. Pemulihan pengaturan lewat Edit > Urungkan lulus di EDIT-06 (ui-editor-garis.ps1).
+ui-edit-layout.ps1 (memakai mouse) dan ui-undo.ps1 (memakai keyboard): NOT RUN, karena PC sedang dipakai.

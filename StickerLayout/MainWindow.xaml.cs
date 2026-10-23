@@ -36,8 +36,6 @@ public partial class MainWindow : Window
         List.ItemsSource = items;
         PaperBox.ItemsSource = Paper.Sizes.Keys.Append("Custom").ToList();
         PaperBox.SelectedItem = "A3+"; // kertas stiker Develop (AP 55)
-        PresetBox.ItemsSource = Presets.Material.Keys.Prepend("Manual").ToList();
-        PresetBox.SelectedIndex = 0;
     }
 
     static double D(TextBox t, double def, double min = 0.01) =>
@@ -152,9 +150,8 @@ public partial class MainWindow : Window
     Doc? saved;
     bool restoring;
 
-    string[] Settings() => [PaperBox.SelectedItem as string ?? "", PresetBox.SelectedIndex.ToString(CultureInfo.InvariantCulture), CanvasW.Text,
-        CanvasH.Text, MarginBox.Text, GapBox.Text, $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text,
-        BleedBox.Text, WidthBox.Text];
+    string[] Settings() => [PaperBox.SelectedItem as string ?? "", CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text,
+        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text];
 
     Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name))],
         [.. sheets.Select(sh => sh.Select(p => (p.S, p.X, p.Y, p.Rot)).ToList())], [.. sheetH], sheetW, tooBig, Settings());
@@ -182,16 +179,15 @@ public partial class MainWindow : Window
         to.Add(saved);
         var d = saved = from[^1];
         from.RemoveAt(from.Count - 1);
-        restoring = true; // kertas dan preset tidak boleh memicu susun ulang
+        restoring = true; // ganti kertas tidak boleh memicu susun ulang
         try
         {
             var v = d.Settings;
             PaperBox.SelectedItem = v[0];
-            PresetBox.SelectedIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
-            (CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text) = (v[2], v[3], v[4], v[5]);
-            (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[6] == "True", v[7], v[8]);
-            (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[9] == "True", v[10], v[11]);
-            (BleedBox.Text, WidthBox.Text) = (v[12], v[13]);
+            (CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text) = (v[1], v[2], v[3], v[4]);
+            (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[5] == "True", v[6], v[7]);
+            (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[8] == "True", v[9], v[10]);
+            (BleedBox.Text, WidthBox.Text) = (v[11], v[12]);
         }
         finally { restoring = false; }
         items.Clear();
@@ -283,14 +279,14 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm));
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
         Redraw(Lang.T("Cleaned", it.Name));
     }
 
-    // Editor garis potong: polygon kiss/die yang titiknya bisa digeser, ditambah, dihapus. Berlaku untuk semua salinan desain.
+    // Editor garis potong: bentuk preset, node lurus/kurva yang bisa digeser, ditambah, dihapus. Berlaku untuk semua salinan desain.
     void CutItem_Click(object s, RoutedEventArgs e)
     {
         if ((s as FrameworkElement)?.DataContext is not Sticker it || !CutsValid()) return;
@@ -299,21 +295,21 @@ public partial class MainWindow : Window
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            // Garis otomatis pada pengaturan sekarang: dasar polygon baru, slider Simplify, dan Reset otomatis.
+            // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
             var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, loadedPdf: it.Pdf);
-            w = new CutEditWindow(auto, Loader.Scale(it.ManualKiss, k), Loader.Scale(it.ManualDie, k), it.Name) { Owner = this };
+            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name) { Owner = this };
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         finally { Mouse.OverrideCursor = null; }
         bool ok = w.ShowDialog() == true;
-        var (mk, md) = (w.ManualKiss, w.ManualDie);
+        var (mk, md, shape) = (w.ManualKiss, w.ManualDie, w.Shape);
         w = null;
         FreeMemory(); // desain otomatis untuk editor memuat ulang gambar penuh
         if (!ok) return;
         try
         {
             Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
-                manualKiss: mk, manualDie: md));
+                manualKiss: mk, manualDie: md, shape: shape));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -345,10 +341,10 @@ public partial class MainWindow : Window
                 if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != kiss || it.LoadedDie != die
                     || (it.Pdf == null && it.LoadedBleed != bleed)))
                 {
-                    // Garis manual tidak ikut offset/Halus; lebar berubah: polygon diskala bersama artwork.
+                    // Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
                     double k = it.WidthMm / it.LoadedW;
                     Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
-                        manualKiss: Loader.Scale(it.ManualKiss, k), manualDie: Loader.Scale(it.ManualDie, k)));
+                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape));
                 }
             }
             sheetW = CW;
@@ -404,16 +400,6 @@ public partial class MainWindow : Window
     // Putar 90°, lalu snap ke posisi kosong terdekat (tidak menabrak, jarak antar stiker tetap).
     void RotateSel() => EditSel(p => { p.Rot = (p.Rot + 90) % 360; Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm); });
     void Rotate_Click(object s, RoutedEventArgs e) => RotateSel();
-
-    // Preset bahan mengisi garis potong, margin, dan jarak, lalu langsung menyusun ulang.
-    void Preset_Changed(object s, SelectionChangedEventArgs e)
-    {
-        if (restoring || PresetBox.SelectedItem is not string k || !Presets.Material.TryGetValue(k, out var m)) return;
-        KissOn.IsChecked = m.Kiss.On; KissOff.Text = F(m.Kiss.Off); KissSm.Text = F(m.Kiss.Smooth);
-        DieOn.IsChecked = m.Die.On; DieOff.Text = F(m.Die.Off); DieSm.Text = F(m.Die.Smooth);
-        MarginBox.Text = F(m.Margin); GapBox.Text = F(m.Gap);
-        if (items.Count > 0) Arrange();
-    }
 
     // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK.
     void Ticket_Click(object s, RoutedEventArgs e)

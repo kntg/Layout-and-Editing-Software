@@ -193,6 +193,8 @@ Pemetaan ke Printech: langkah 5 (trim, offset/border, ukuran mm) sudah otomatis.
 
 ## 13. Nilai awal preset bahan (2026-10-17)
 
+Tidak dipakai lagi: preset bahan dihapus dari aplikasi pada 2026-10-23, karena menurut user/leader tidak diperlukan. Bagian ini disimpan sebagai riwayat riset.
+
 Prototipe belum butuh angka dari operator, jadi preset memakai panduan cetak stiker yang terbuka untuk umum. Angka di bawah diambil dari ringkasan hasil pencarian web; halaman sumbernya belum dibuka satu per satu.
 
 - **Jarak antar stiker:**

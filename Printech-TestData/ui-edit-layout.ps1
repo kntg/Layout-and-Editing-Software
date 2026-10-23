@@ -1,5 +1,5 @@
 ﻿param([string]$Exe, [string]$Samples, [string]$Out)
-# Uji UI alur edit layout dengan mouse, keyboard, dan kontrol asli: EDIT-01..09, EDIT-11, CUT-12 di docs/testing/e2e-validation.md.
+# Uji UI alur edit layout dengan mouse, keyboard, dan kontrol asli: EDIT-01..08, EDIT-11, CUT-12 di docs/testing/e2e-validation.md.
 # Memakai samples/circle.png dan samples/star.jpg. Exit code 0 meski ada GAGAL; baca baris RINGKAS. Jangan sentuh mouse selama uji.
 # Jalankan dengan Windows PowerShell 5.1 (bukan pwsh 7): powershell -ExecutionPolicy Bypass -File ui-edit-layout.ps1 -Exe <StickerLayout.exe> -Samples <folder samples> -Out <folder tangkapan layar>
 $ErrorActionPreference = 'Stop'
@@ -168,11 +168,6 @@ ClickEl $edits[2]; [E]::Key(0x41, $false, $true); TypeKeys '80'; [E]::Key(0x09, 
 Nest
 $st = Text 'Status'; $h1 = & $texts
 Res 'EDIT-05' ($st -match '^4 stiker' -and ($h1 -join ',') -ne ($h0 -join ',')) "status '$st'; tinggi desain '$($h0 -join ', ')' -> '$($h1 -join ', ')'"
-
-# EDIT-09: preset Chromo die-cut mengisi garis/jarak dan menyusun ulang
-Pick 'PresetBox' 'Chromo die-cut'
-$kiss = IsOn 'KissOn'; $die = IsOn 'DieOn'; $doff = Val 'DieOff'; $gap = Val 'GapBox'
-Res 'EDIT-09' (-not $kiss -and $die -and $doff -eq '3' -and $gap -eq '3') "kiss $kiss, die $die, offset die $doff, jarak $gap; status '$(Text 'Status')'"
 
 # CUT-12: validasi pengaturan garis potong sebelum Susun
 Toggle 'KissOn' $false; Toggle 'DieOn' $false; Nest

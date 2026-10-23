@@ -31,11 +31,11 @@ public static partial class Loader
         return parts[lab[x, y] - 1].Edge ? PickKind.Empty : PickKind.Hole;
     }
 
-    // Garis kiss/die (polygon, mm relatif artwork) dari objek yang diklik. holes = klik di dalam lubang: tiap klik membalik
+    // Garis kiss/die (node, mm relatif artwork) dari objek yang diklik. holes = klik di dalam lubang: tiap klik membalik
     // keadaan lubang itu (lubang lebar otomatis dipotong, lubang sempit tidak). TooSmall: lubang yang diminta dipotong
     // terlalu kecil untuk garis dalam.
     // ponytail: grid dilabeli ulang setiap klik (stiker 300 mm ±0,2 detik); simpan cache per Toleransi bila terasa lambat.
-    public static (List<Point[]> Kiss, List<Point[]> Die, bool TooSmall) SmartSelect(Sticker s, IReadOnlyList<Point> objects,
+    public static (List<Node[]> Kiss, List<Node[]> Die, bool TooSmall) SmartSelect(Sticker s, IReadOnlyList<Point> objects,
         IReadOnlyList<Point> holes, int tol, double eps)
     {
         var g = Objects(s, tol);
@@ -95,7 +95,7 @@ public static partial class Loader
             }
         }
         double off = g.Pad / PxMm;
-        return (kissMask == null ? [] : ToPolygons(Trace(kissMask), off, eps), dieMask == null ? [] : ToPolygons(Trace(dieMask), off, eps), tooSmall);
+        return (kissMask == null ? [] : Curves.Fit(Trace(kissMask), off, eps), dieMask == null ? [] : Curves.Fit(Trace(dieMask), off, eps), tooSmall);
     }
 
     // Objek pada grid 6 px/mm (sama dengan mask garis otomatis), dengan bantalan selebar offset terbesar + 3 px.

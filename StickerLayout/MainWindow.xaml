@@ -159,14 +159,13 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                    <TextBlock DockPanel.Dock="Right" Text="{DynamicResource CutManual}" Margin="6,0,0,0">
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding CutBadge, Mode=OneTime}" Margin="6,0,0,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock" BasedOn="{StaticResource Small}">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
                                                                 <Setter Property="Foreground" Value="{StaticResource AccentText}"/>
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Manual}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    <DataTrigger Binding="{Binding CutBadge, Mode=OneTime}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -294,10 +293,6 @@
                             </StackPanel>
                         </Expander.Header>
                         <StackPanel>
-                            <DockPanel Margin="0,0,0,10">
-                                <ComboBox x:Name="PresetBox" Width="140" DockPanel.Dock="Right" SelectionChanged="Preset_Changed" AutomationProperties.Name="{DynamicResource Preset}"/>
-                                <TextBlock Text="{DynamicResource Preset}" Style="{StaticResource Label}"/>
-                            </DockPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition/>
