@@ -43,7 +43,7 @@ Jalankan dengan `powershell -ExecutionPolicy Bypass -File <skrip> ...`. Paramete
 - `ui-edit-layout.ps1`: seret + snap, putar, panah, hapus, jumlah/lebar, Susun, export dengan stiker merah, ganti kertas, bahasa, dan dialog validasi garis potong.
 - `ram-profil.ps1`: RAM (angka Task Manager) per kelompok file.
 - `ui-undo.ps1`: undo/redo global lewat menu Edit, Ctrl+Y, Ctrl+Z, Ctrl+Shift+Z (tanpa mouse; uji keyboard dilewati bila jendela tidak bisa aktif).
-- `ui-editor-garis.ps1`: editor garis potong lewat UI Automation tanpa mouse dan keyboard: buka editor, Simplify, Urungkan/Ulangi editor, kotak Smart select dan slider Toleransi, Simpan, menu Edit > Urungkan, tombol bentuk Lingkaran (tanda bentuk di daftar desain, bentuk tetap setelah offset diubah dan disusun ulang). Argumen `-Shots` menyimpan tangkapan layar.
+- `ui-editor-garis.ps1`: editor garis potong lewat UI Automation tanpa mouse dan keyboard: buka editor, Simplify, Urungkan/Ulangi editor, kotak Smart select dan slider Toleransi, Simpan, menu Edit > Urungkan, tombol bentuk Lingkaran (tanda bentuk di daftar desain, bentuk tetap setelah offset diubah dan disusun ulang), warna border Merah (tetap setelah disimpan). Argumen `-Shots` menyimpan tangkapan layar.
 
 ## Membuat ulang file uji
 

@@ -66,6 +66,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 | F24 | Smart select di editor garis potong (kotak centang di panel kiri): klik objek, garis kiss dan die mengikuti bentuknya dengan jarak offset (lekukan diikuti, sudut luar bulat); Shift+klik menambah objek; klik di dalam lubang menambah atau menghapus garis dalam, termasuk lubang yang lebih sempit dari offset; slider Toleransi mengabaikan piksel tipis seperti watermark. Tanpa AI | Ada (2026-10-22) |
 | F25 | Desain kotak otomatis: foto, JPG/PNG opak, PNG kotak, dan PDF berlatar kotak putih mendapat garis kotak bersudut tajam (4 node lurus) sejauh offset, tanpa operator memilih apa pun | Ada (2026-10-23) |
 | F26 | Preset bentuk garis potong di editor: kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam. Bentuk mengelilingi artwork sejauh offset (artwork tidak terpotong), die memakai bentuk yang sama, dan bentuk ikut menyesuaikan bila offset atau lebar diubah. Daftar desain menampilkan nama bentuk | Ada (2026-10-23) |
+| F27 | Warna border per desain (editor garis potong): area antara artwork dan garis kiss dicetak dengan warna CMYK pilihan (merah, hitam, biru, kuning, hijau, atau CMYK kustom), diteruskan sejauh bleed (bila bleed 0: 1 mm) di luar garis. Tampil di layar, preview JPG, dan PDF | Ada (2026-10-23) |
 
 ## 6. Keputusan
 
@@ -122,6 +123,11 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - Hull memakai sudut piksel, sengaja ke arah luar supaya artwork tidak terpotong. Akibatnya bentuk bulat atau miring bisa sampai ±0,6 mm lebih besar dari ukuran minimal (selfcheck S15).
   - Bentuk disimpan per desain (`Sticker.Shape`) dan dihitung ulang setiap kali desain dimuat ulang (offset, lebar, Susun, Rapikan). Begitu node-nya diedit, hasilnya disimpan sebagai garis manual. Simplify tidak berlaku untuk bentuk.
   - Kotak sudut bulat memakai radius 3 mm dan bintang memakai rasio 0,5 sebagai titik awal; nilai ini disesuaikan dengan pilihan operator.
+- **Warna border** (masukan 2026-10-23). Disimpan per desain (`Sticker.Border`, CMYK) dan ikut saat desain dimuat ulang.
+  - Area = garis kiss (tanpa kiss: die) diperlebar sejauh bleed, atau 1 mm bila bleed 0, supaya pergeseran pisau tidak menyisakan tepi putih. Lubang ikut diperlebar ke dalam; tengah lubang yang dipotong tetap putih. Bagian transparan artwork di dalam garis memperlihatkan warna border.
+  - PDF menulis warnanya sebagai CMYK murni (operator `k`), digambar di bawah artwork.
+  - Bila warna border dipakai, bleed tidak lagi memperluas warna tepi gambar (perluasan itu akan menutupi border).
+  - Tanpa bleed, jarak antar stiker minimal 1 mm supaya perpanjangan warna tidak masuk stiker tetangga.
 - **Rapikan gambar hanya untuk raster** (PNG, JPG, SVG, PDF yang gagal dibaca vektor). File vektor (PDF/AI/CDR) tetap dirapikan di CorelDRAW supaya warna CMYK dan vektornya utuh. Rapikan hanya mengubah transparansi, tidak menggambar ulang piksel.
 - **Reduksi node garis potong (2026-10-16).** RDP literal tidak dipakai untuk garis otomatis (editor garis potong memakai fit Bezier sejak 2026-10-23, lihat di atas). Potrace sudah menghasilkan kurva Bezier yang dioptimasi; RDP hanya bekerja pada garis lurus, jadi kurva harus dipecah dulu. Hasil ukur: teks butuh 117 titik garis lurus untuk akurasi 0,1 mm, sedangkan Bezier cukup 72 node. Yang dipakai:
   - Tuning Potrace: `AlphaMax` 1,3334 (tidak ada sudut tajam, pisau tidak berbelok mendadak) dan `OptTolerance` 1 px = 0,17 mm (lebih banyak segmen kurva digabung).
@@ -131,7 +137,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
     - median jarak = offset −0,19 s.d. +0,02 mm;
     - setelah kurva Potrace, garis bisa sampai 0,13 mm lebih dekat dari offset - 0,3 mm. Ini terjadi di sudut lancip dan pada offset kecil (galat mask 6 px/mm).
   - Hasil di app (kiss 2/1 mm, die 4/2 mm), node kiss/die sebelum -> sesudah: rough.jpg 64/43 -> 16/13 (-73%), lingkaran 11/10 -> 3/4 (-67%), logo.pdf 21/15 -> 8/7 (-58%), bintang 29/27 -> 15/17 (-43%), badge 9/8 -> 8/8. Sudut tajam 2 -> 0. Sejak 2026-10-18 (penjaga dibulatkan ke atas, die minimal 1 px di luar kiss) rough.jpg 17/16. Muat per desain 20-70 ms, stiker 300 mm ±1 detik (Release).
-  - Skenario uji S1–S15 beserta hasilnya: [UJI-GARIS-POTONG.md](UJI-GARIS-POTONG.md).
+  - Skenario uji S1–S16 beserta hasilnya: [UJI-GARIS-POTONG.md](UJI-GARIS-POTONG.md).
 - **Stabilitas dan performa** (2026-10-17, spesifikasi leader bagian 2):
   - CorelDRAW COM berjalan di proses worker (exe yang sama dengan argumen `--cdr2pdf`), bukan di proses utama. Selama menunggu, UI tetap jalan. Lewat 30 detik, worker dihentikan dan operator mendapat pesan; Printech tetap jalan. CorelDRAW sendiri tidak dimatikan supaya pekerjaan operator yang belum disimpan aman.
   - 3 percobaan nesting dan hapus latar dihitung paralel dengan `Parallel.For`. Spesifikasi menyebut `Parallel.ForEachAsync`, tetapi API itu untuk kerja async (I/O), sedangkan kerja ini murni CPU. Hasilnya identik bit per bit dengan versi berurutan.
@@ -181,7 +187,8 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - Bentuk bisa sampai ±0,6 mm lebih besar dari ukuran minimal, karena hull dihitung dari sudut piksel.
   - Ukuran bentuk belum bisa diketik, dan bentuk belum bisa diputar.
   - Bentuk selalu mengelilingi artwork. Memotong foto menjadi bentuk (crop) belum ada.
-  - Dengan bleed aktif, ruang antara artwork dan bentuk ikut diisi warna tepi artwork, sama seperti garis manual yang jauh dari artwork.
+  - Dengan bleed aktif, ruang antara artwork dan bentuk ikut diisi warna tepi artwork, sama seperti garis manual yang jauh dari artwork. Pakai warna border bila ruang itu harus berwarna rata.
+- Warna border: urungkan/ulangi di dalam editor belum mencakup ganti warna (urungkan global di jendela utama mencakupnya). Print Ticket belum menulis warna border. Warna di layar hanya perkiraan dari CMYK.
 - Smart select membaca transparansi atau beda warna dengan latar; objek di foto berlatar ramai belum bisa dipilih. Klik di kanvas belum diuji dengan mouse sungguhan (logikanya diuji selfcheck S13).
 - Bleed: tepi JPG yang sangat kasar (kompresi tinggi) bisa menyisakan garis pucat tipis di area bleed; rapikan gambarnya dulu untuk hasil terbaik. Stiker raster sangat besar (±300 mm) dengan bleed dimuat ±1–2 detik lebih lama.
 
@@ -214,7 +221,8 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 14. Masukkan foto atau JPG kotak (tanpa transparansi). Apakah garis kiss dan die langsung berbentuk kotak bersudut tajam sejauh offset? Setelah dipotong di Graphtec, apakah sudut kotak rapi?
 15. Di Edit garis potong, pilih bentuk (lingkaran, oval, segitiga, bintang, hati, segi enam, kotak sudut bulat), lalu Simpan. Apakah bentuknya sesuai keinginan customer, artwork tidak terpotong, dan hasil potong Graphtec mengikuti bentuk? Perlukah radius kotak sudut bulat (3 mm) atau bentuk bintang diubah?
 16. Di editor, pilih node, lalu seret handle-nya. Coba juga Jadikan kurva/Jadikan garis dan Node halus/Node sudut. Apakah node dan kurvanya sama saat PDF dibuka di CorelDRAW, dan apakah pisau Graphtec mulus pada kurva?
-17. Catat setiap error atau kejanggalan, lalu kirim ke pengembang.
+17. Di editor, pilih warna border (misalnya Merah), Simpan, cetak di Develop, lalu potong di Graphtec. Apakah warnanya sesuai, dan tidak ada tepi putih di garis potong walau pisau sedikit bergeser? Perlukah perpanjangan 1 mm diubah?
+18. Catat setiap error atau kejanggalan, lalu kirim ke pengembang.
 
 ## 11. Menjalankan
 
@@ -226,4 +234,4 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - **Membuat zip untuk operator:** `dotnet publish StickerLayout -c Release -r win-x64 --self-contained -o publish\Printech`, lalu zip folder `publish\Printech`. Folder `publish/` tidak masuk git.
 - **Menjalankan aplikasi:** `dotnet run --project StickerLayout` (perlu .NET 10). File juga bisa dibuka sebagai argumen, misalnya lewat "Open with" atau dengan menyeret file ke ikon aplikasi.
 - **File contoh:** folder `samples/` (circle.png, star.jpg, badge.svg, logo.pdf, logo.ai, logo-on-blue.jpg untuk mencoba Rapikan, dan lainnya).
-- **Cek otomatis:** `StickerLayout\bin\Debug\net10.0-windows\StickerLayout.exe --selfcheck samples`. Hasilnya ditulis ke `samples/selfcheck.txt`. Skenario garis potong (S1–S9, S11–S15) dan stabilitas (P1–P5) ikut dijalankan; satu saja gagal, exit code 1.
+- **Cek otomatis:** `StickerLayout\bin\Debug\net10.0-windows\StickerLayout.exe --selfcheck samples`. Hasilnya ditulis ke `samples/selfcheck.txt`. Skenario garis potong (S1–S9, S11–S16) dan stabilitas (P1–P5) ikut dijalankan; satu saja gagal, exit code 1.

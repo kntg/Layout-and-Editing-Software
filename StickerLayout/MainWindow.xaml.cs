@@ -132,6 +132,8 @@ public partial class MainWindow : Window
         if (Kiss.On && Die.On && Die.Off <= Kiss.Off) { MessageBox.Show(Lang.T("DieInside"), App.Brand); return false; }
         // Bleed tidak boleh melewati jarak antar stiker: warna tidak pernah masuk garis potong tetangga.
         if (BleedMm > GapMm) { MessageBox.Show(Lang.T("BleedGap"), App.Brand); return false; }
+        // Warna border tanpa bleed diteruskan Sticker.BorderMin mm di luar garis potong: jarak antar stiker harus muat.
+        if (BleedMm == 0 && GapMm < Sticker.BorderMin && items.Any(s => s.Border != null)) { MessageBox.Show(Lang.T("BorderGap"), App.Brand); return false; }
         return true;
     }
 
@@ -281,7 +283,7 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape));
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -299,19 +301,19 @@ public partial class MainWindow : Window
         {
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
             var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, loadedPdf: it.Pdf);
-            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name) { Owner = this };
+            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border) { Owner = this };
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         finally { Mouse.OverrideCursor = null; }
         bool ok = w.ShowDialog() == true;
-        var (mk, md, shape) = (w.ManualKiss, w.ManualDie, w.Shape);
+        var (mk, md, shape, border) = (w.ManualKiss, w.ManualDie, w.Shape, w.Border);
         w = null;
         FreeMemory(); // desain otomatis untuk editor memuat ulang gambar penuh
         if (!ok) return;
         try
         {
             Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
-                manualKiss: mk, manualDie: md, shape: shape));
+                manualKiss: mk, manualDie: md, shape: shape, border: border));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -346,7 +348,7 @@ public partial class MainWindow : Window
                     // Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
                     double k = it.WidthMm / it.LoadedW;
                     Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
-                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape));
+                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border));
                 }
             }
             sheetW = CW;

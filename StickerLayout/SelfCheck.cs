@@ -103,7 +103,7 @@ public static class SelfCheck
             Check(wide.LowDpi, $"circle 80 mm ({wide.Dpi:0} dpi) harus ditandai resolusi rendah");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah)");
 
-            // Skenario uji garis potong S1-S9 dan S11-S15 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S16 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -445,6 +445,63 @@ public static class SelfCheck
                 shapeOk && Near(c3, 46, 0.7) && Near(c60, 64, 0.7) && edShape && sl > 0 && scv > 0,
                 string.Join("; ", shapeLog) + $"; lingkaran offset 3 = {c3:F2} mm (harapan 46), lebar 60 = {c60:F2} mm (64); editor {(edShape ? "benar" : "SALAH")}; "
                 + $"export {sl} garis lurus, {scv} kurva");
+
+            // S16: warna border (masukan 2026-10-23). Area di dalam garis kiss di luar artwork dicetak CMYK pilihan, diteruskan
+            // 1 mm di luar garis (bleed 0) atau sejauh bleed; artwork tetap; tengah lubang donat tetap putih; tanpa perluasan warna tepi.
+            var red = new Cmyk(0, 1, 1, 0);
+            Placed At2(Sticker s, double x, double y) => new() { S = s, X = x, Y = y };
+            var bPlain = At2(Loader.Load(cPath, 0, 40, kiss, die), Margin, Margin);
+            var bCircle = At2(Loader.Load(cPath, 0, 40, kiss, die, border: red), Margin + 55, Margin);
+            var bDonut = At2(Loader.Load("uji.png", 0, 40, kiss, die, edited: Loader.Png(Donut(70)), border: red), Margin, Margin + 55);
+            var bBleed = At2(Loader.Load(cPath, 0, 40, kiss, die, bleed: 2, border: red), Margin + 55, Margin + 55);
+            List<Placed> bSheet = [bPlain, bCircle, bDonut, bBleed];
+            var bPdf = Path.Combine(Path.GetTempPath(), $"printech-border-{Guid.NewGuid():N}.pdf");
+            var bJpgDir = Path.Combine(Path.GetTempPath(), $"printech-border-{Guid.NewGuid():N}");
+            string bContent;
+            BitmapSource bRender, bJpg;
+            try
+            {
+                Check(Export.Pdf(bPdf, [bSheet], A4W, [A4H]).Count == 0, "peringatan export warna border");
+                using (var bd = PdfReader.Open(bPdf, PdfDocumentOpenMode.Import)) bContent = Content(bd.Pages[0]);
+                bRender = RenderPage(bPdf, 0, 10);
+                Directory.CreateDirectory(bJpgDir);
+                var bFiles = Export.Preview(Path.Combine(bJpgDir, "b.jpg"), [bSheet], A4W, [A4H], Margin);
+                using var js = File.OpenRead(bFiles[0]);
+                bJpg = BitmapDecoder.Create(js, BitmapCreateOptions.None, BitmapCacheOption.OnLoad).Frames[0];
+            }
+            finally { File.Delete(bPdf); if (Directory.Exists(bJpgDir)) Directory.Delete(bJpgDir, true); }
+            static double Pt(double mm) => mm * 72 / 25.4;
+            Color Pdf(Placed p, double x, double y) => At(bRender, p, Pt(x), Pt(y), 10);
+            Color Jpg(Placed p, double x, double y)
+            {
+                double k = bJpg.PixelHeight / A4H;
+                var q = Nest.Xf(p).Transform(new Point(p.S.Off + x, p.S.Off + y));
+                var px = new byte[4];
+                new FormatConvertedBitmap(bJpg, PixelFormats.Bgra32, null, 0).CopyPixels(new Int32Rect((int)(q.X * k), (int)(q.Y * k), 1, 1), px, 4, 0);
+                return Color.FromRgb(px[2], px[1], px[0]);
+            }
+            static bool IsRed(Color c) => c.R > 190 && c.G < 90 && c.B < 90;
+            static bool IsWhite(Color c) => c.R > 235 && c.G > 235 && c.B > 235;
+            // circle.png: pusat (20; 20) mm, artwork r 20, kiss r 22, die r 24. Donat: lubang r 10,77, garis kiss di lubang r 8,77.
+            bool bOk = bContent.Contains("0 1 1 0 k") && IsRed(Pdf(bCircle, 41, 20)) && IsRed(Pdf(bCircle, 42.5, 20)) && IsWhite(Pdf(bCircle, 43.5, 20))
+                && IsWhite(Pdf(bPlain, 41, 20)) && Pdf(bCircle, 37, 20) == Pdf(bPlain, 37, 20)
+                && IsRed(Pdf(bDonut, 20 + 9.5, 20)) && IsWhite(Pdf(bDonut, 20, 20)) && IsRed(Pdf(bBleed, 43.5, 20)) && bBleed.S.BleedPng == null
+                && IsRed(Jpg(bCircle, 41, 20)) && IsWhite(Jpg(bPlain, 41, 20));
+            var bEd = new CutEditWindow(circle40, null, null, CutShape.Auto, "warna", red);
+            bool bEdit = bEd.Border == red;
+            bEd.BorderCmyk.Text = "0 0 0 100";
+            bEd.ApplyCmyk();
+            bEdit &= bEd.Border == new Cmyk(0, 0, 0, 1);
+            bEd.BorderCmyk.Text = "abc";
+            bEd.ApplyCmyk();
+            bEdit &= bEd.Border == new Cmyk(0, 0, 0, 1);
+            bEd.SetBorder(null);
+            bEdit &= bEd.Border == null && bEd.ManualKiss == null;
+            S(16, "warna border: area offset berwarna CMYK, diteruskan di luar garis, artwork dan lubang tetap, layar sama dengan PDF", bOk && bEdit,
+                $"PDF: offset {Pdf(bCircle, 41, 20)}, 0,5 mm di luar kiss {Pdf(bCircle, 42.5, 20)}, 1,5 mm di luar {Pdf(bCircle, 43.5, 20)}, tanpa warna {Pdf(bPlain, 41, 20)}; "
+                + $"artwork sama {Pdf(bCircle, 37, 20) == Pdf(bPlain, 37, 20)}; donat: tepi lubang {Pdf(bDonut, 29.5, 20)}, tengah {Pdf(bDonut, 20, 20)}; "
+                + $"bleed 2: 1,5 mm di luar {Pdf(bBleed, 43.5, 20)}, perluasan warna tepi {(bBleed.S.BleedPng == null ? "tidak" : "ADA")}; "
+                + $"operator 0 1 1 0 k {bContent.Contains("0 1 1 0 k")}; preview JPG offset {Jpg(bCircle, 41, 20)}; editor {(bEdit ? "benar" : "SALAH")}");
 
             // S9: stiker besar 300 mm (gambar 3000 px), kiss + die.
             var bigImg = Draw(dc => dc.DrawEllipse(Brushes.Black, null, new Point(1500, 1500), 1400, 1400), 3000, 3000);

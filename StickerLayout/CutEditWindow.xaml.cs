@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -27,13 +28,19 @@ public partial class CutEditWindow : Window
     bool dragging, moved, ready, syncing;
     double scale = 1, ox, oy;
     List<Point> objs = [], holes = [];  // pilihan smart select: klik objek dan klik lubang (mm relatif artwork)
+    Cmyk? border;               // warna border desain (null = kertas putih)
+
+    // Warna border siap pakai (CMYK 0..1); selain ini lewat kotak CMYK.
+    static readonly (string Key, Cmyk? Color)[] Swatches = [("BorderNone", null), ("BorderRed", new(0, 1, 1, 0)), ("BorderBlack", new(0, 0, 0, 1)),
+        ("BorderBlue", new(1, 0.6, 0, 0)), ("BorderYellow", new(0, 0, 1, 0)), ("BorderGreen", new(0.8, 0, 1, 0))];
 
     // Hasil: node garis yang aktif, atau null = garis otomatis/bentuk. Garis yang sedang mati kembali otomatis.
     public List<Node[]>? ManualKiss => isAuto || !auto.LoadedKiss.On ? null : kiss;
     public List<Node[]>? ManualDie => isAuto || !auto.LoadedDie.On ? null : die;
     public CutShape Shape => isAuto ? shape : CutShape.Auto;
+    public Cmyk? Border => border;
 
-    public CutEditWindow(Sticker auto, List<Node[]>? manualKiss, List<Node[]>? manualDie, CutShape shape, string name)
+    public CutEditWindow(Sticker auto, List<Node[]>? manualKiss, List<Node[]>? manualDie, CutShape shape, string name, Cmyk? border = null)
     {
         InitializeComponent();
         Title = Lang.T("CutTitle", name);
@@ -58,6 +65,16 @@ public partial class CutEditWindow : Window
             rb.Checked += Shape_Checked;
             ShapePanel.Children.Add(rb);
         }
+        foreach (var (key, color) in Swatches)
+        {
+            var chip = new Border { Width = 18, Height = 18, CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1), BorderBrush = Brushes.Gray,
+                Background = color is { } c ? new SolidColorBrush(c.Rgb) : (Brush)FindResource("Checker") };
+            var rb = new RadioButton { Style = (Style)FindResource("Tool"), GroupName = "Border", Tag = color, Content = chip, ToolTip = Lang.T(key) };
+            AutomationProperties.SetName(rb, Lang.T(key));
+            rb.Checked += Swatch_Checked;
+            BorderPanel.Children.Add(rb);
+        }
+        this.border = border;
         ready = true;
         Changed();
     }
@@ -305,6 +322,8 @@ public partial class CutEditWindow : Window
             !isAuto ? Lang.T("CutManual") : shape == CutShape.Auto ? Lang.T("CutAuto") : Lang.T("Shape" + shape));
         syncing = true;
         foreach (RadioButton rb in ShapePanel.Children) rb.IsChecked = isAuto && (CutShape)rb.Tag == shape;
+        foreach (RadioButton rb in BorderPanel.Children) rb.IsChecked = Equals(rb.Tag, border);
+        BorderCmyk.Text = border is { } b ? string.Join(" ", new[] { b.C, b.M, b.Y, b.K }.Select(v => (v * 100).ToString("0.#", CultureInfo.InvariantCulture))) : "";
         syncing = false;
         Draw();
     }
@@ -317,6 +336,10 @@ public partial class CutEditWindow : Window
         ox = (Board.ActualWidth - bw * scale) / 2;
         oy = (Board.ActualHeight - bh * scale) / 2;
         Place(ArtBg, Screen(new Point(0, 0)), auto.ArtW * scale, auto.ArtH * scale);
+        // Pratinjau warna border: isi garis kiss (tanpa kiss: die); papan catur disembunyikan supaya bagian transparan terlihat berwarna.
+        BorderPath.Data = border == null ? null : Geo(kiss.Count > 0 ? kiss : die, 0);
+        BorderPath.Fill = border is { } bc ? new SolidColorBrush(bc.Rgb) : null;
+        ArtBg.Visibility = border == null ? Visibility.Visible : Visibility.Hidden;
         Place(Art, Screen(new Point(0, 0)), auto.ArtW * scale, auto.ArtH * scale);
         Place(Box, Screen(new Point(-reach, -reach)), bw * scale, bh * scale);
         KissPath.Data = Geo(kiss, 0);
@@ -403,6 +426,34 @@ public partial class CutEditWindow : Window
         if (!ready) return;
         sel = null;
         Draw();
+    }
+
+    // Warna border: tombol warna atau kotak CMYK (empat angka 0-100, dipisah spasi/koma). Kosong = tanpa warna.
+    internal void SetBorder(Cmyk? c)
+    {
+        border = c;
+        Changed();
+    }
+
+    void Swatch_Checked(object s, RoutedEventArgs e)
+    {
+        if (ready && !syncing && s is RadioButton rb) SetBorder(rb.Tag as Cmyk?);
+    }
+
+    void BorderCmyk_LostFocus(object s, RoutedEventArgs e) => ApplyCmyk();
+
+    void BorderCmyk_KeyDown(object s, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) ApplyCmyk();
+    }
+
+    internal void ApplyCmyk()
+    {
+        var v = BorderCmyk.Text.Split([' ', ',', ';'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ? x : double.NaN).ToArray();
+        if (v.Length == 0) SetBorder(null);
+        else if (v.Length == 4 && v.All(x => x is >= 0 and <= 100)) SetBorder(new Cmyk(v[0] / 100, v[1] / 100, v[2] / 100, v[3] / 100));
+        else Changed(); // isian salah: kembali ke warna sekarang
     }
 
     void Shape_Checked(object s, RoutedEventArgs e)

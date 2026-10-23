@@ -63,10 +63,24 @@ public class Sticker
     // Seberapa penuh bentuk mengisi kotaknya: persegi ±1, lingkaran ±0,79, bintang/logo bebas lebih kecil.
     public double Fill => AreaMm2 / Math.Max(1e-9, Outer.Bounds.Width * Outer.Bounds.Height);
     // Batas artwork saat digambar: garis terluar, atau dengan bleed: garis kiss (tanpa kiss: die) diperlebar bleed mm.
-    public Geometry ArtClip => clip ??= BleedPng == null ? Outer : Freeze(Geometry.Combine(KissGeo ?? DieGeo!,
-        (KissGeo ?? DieGeo!).GetWidenedPathGeometry(new Pen(null, 2 * LoadedBleed), 0.01, ToleranceType.Absolute),
+    public Geometry ArtClip => clip ??= BleedPng == null ? Outer : Grow(KissGeo ?? DieGeo!, LoadedBleed);
+    // Warna border (masukan 2026-10-23): area di dalam garis kiss (tanpa kiss: die) di luar artwork dicetak dengan warna ini,
+    // diteruskan sejauh bleed (bleed 0: BorderMin mm) di luar garis supaya pergeseran pisau tidak menyisakan tepi putih.
+    // null = kertas putih. Lubang ikut diperlebar ke dalam sejauh yang sama.
+    public Cmyk? Border;
+    public const double BorderMin = 1;
+    public Geometry? BorderGeo => Border == null ? null : bg ??= Grow(KissGeo ?? DieGeo!, LoadedBleed > 0 ? LoadedBleed : BorderMin);
+    Geometry? bg;
+    static Geometry Grow(Geometry g, double e) => Freeze(Geometry.Combine(g, g.GetWidenedPathGeometry(new Pen(null, 2 * e), 0.01, ToleranceType.Absolute),
         GeometryCombineMode.Union, null, 0.01, ToleranceType.Absolute));
     static Geometry Freeze(Geometry g) { g.Freeze(); return g; }
+}
+
+// Warna CMYK 0..1 untuk PDF. Rgb hanya perkiraan untuk layar dan preview.
+public readonly record struct Cmyk(double C, double M, double Y, double K)
+{
+    public Color Rgb => Color.FromRgb(B(C), B(M), B(Y));
+    byte B(double x) => (byte)Math.Round(255 * (1 - x) * (1 - K));
 }
 
 public class Placed
@@ -132,7 +146,7 @@ public static partial class Loader
     // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: garis dari editor garis potong, dipakai apa adanya
     // (offset dan Halus tidak mengubahnya).
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
-        string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto)
+        string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -170,7 +184,10 @@ public static partial class Loader
         s.LoadedKiss = kiss;
         s.LoadedDie = die;
         s.LoadedBleed = bleed;
-        bool bled = bleed > 0 && s.Pdf == null; // bleed hanya untuk raster (PNG/JPG/SVG/hasil Rapikan)
+        // Bleed perluasan warna tepi hanya untuk raster (PNG/JPG/SVG/hasil Rapikan), dan tidak bila ada warna border: perluasan
+        // itu akan menutupi border; bleed-nya memakai warna border (Sticker.BorderGeo).
+        s.Border = border;
+        bool bled = bleed > 0 && s.Pdf == null && border == null;
         s.ArtW = widthMm;
         s.ArtH = bb.Height * k;
 
@@ -899,6 +916,7 @@ public static class Nest
 
     static readonly Brush KissBrush = Frozen("#EC008C"), DieBrush = Frozen("#00AEEF"), SelBrush = Frozen("#4A90FF");
     static Brush Frozen(string c) { var b = (Brush)new BrushConverter().ConvertFromString(c)!; b.Freeze(); return b; }
+    static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
     // Satuan kanvas = mm. Tag kanvas = indeks lembar, Tag stiker = Placed.
     public static Canvas Sheet(IEnumerable<Placed> ps, double cw, double ch, double margin, Placed? sel, int index)
@@ -913,6 +931,7 @@ public static class Nest
         {
             var s = p.S;
             var c = new Canvas { Width = s.W, Height = s.H, Background = Brushes.Transparent, Tag = p, RenderTransform = Xf(p) };
+            if (s.BorderGeo is { } bgeo) c.Children.Add(new System.Windows.Shapes.Path { Data = bgeo, Fill = Frozen(s.Border!.Value.Rgb), IsHitTestVisible = false });
             // artwork di-clip ke garis potongnya sendiri agar tidak menimpa stiker tetangga
             var art = new Canvas { Width = s.W, Height = s.H, Clip = s.ArtClip, IsHitTestVisible = false };
             var (src, r) = s.BleedView is { } bv ? (bv, s.BleedRect) : (s.Preview, new Rect(s.Off, s.Off, s.ArtW, s.ArtH));

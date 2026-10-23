@@ -2,7 +2,8 @@
 # Uji UI editor garis potong (masukan leader 2026-10-21) lewat UI Automation, tanpa mouse dan keyboard: die diaktifkan,
 # editor dibuka dari daftar desain (kiss dan die), slider Simplify mengubah jumlah titik garis yang diedit, tombol
 # Urungkan/Ulangi editor, kotak Smart select dan slider Toleransi, Simpan memberi tanda "garis manual", menu Edit > Urungkan
-# mengembalikan garis otomatis, tombol bentuk Lingkaran (tanda "Lingkaran", bentuk tetap setelah offset diubah dan disusun ulang).
+# mengembalikan garis otomatis, tombol bentuk Lingkaran (tanda "Lingkaran", bentuk tetap setelah offset diubah dan disusun ulang),
+# warna border Merah (tetap setelah disimpan).
 # Geser, tambah, dan hapus node, seret handle, serta klik smart select di kanvas butuh mouse: logikanya diuji selfcheck
 # S12, S13, dan S15.
 # Jalankan dengan Windows PowerShell 5.1:
@@ -128,6 +129,28 @@ for ($i = 0; $i -lt 60 -and (Editor); $i++) { Start-Sleep -Milliseconds 250 }
 $nb2 = Badge 'Lingkaran'
 Res 'EDIT-07' $(if ($c1[0] -eq 4 -and $c1[2] -eq 'Lingkaran' -and $nb -eq 1 -and $c2[0] -eq 4 -and $c2[2] -eq 'Lingkaran' -and $nb2 -eq 1) { 'LULUS' } else { 'GAGAL' }) `
   "tombol Lingkaran: kiss $($c1[0]) titik, '$($c1[2])'; Simpan: tanda 'Lingkaran' $nb; offset kiss 3 + Susun: editor kiss $($c2[0]) titik, '$($c2[2])', tanda $nb2"
+
+# EDIT-08: warna border (masukan 2026-10-23): tombol Merah mengisi CMYK 0 100 100 0, Simpan, buka editor lagi: warna tetap.
+Invoke (Find $AE::NameProperty 'Edit garis potong')
+$ed = $null
+for ($i = 0; $i -lt 60 -and -not $ed; $i++) { Start-Sleep -Milliseconds 250; $ed = Editor }
+Start-Sleep -Milliseconds 600
+(Find $AE::NameProperty 'Merah' $ed).GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+Start-Sleep -Milliseconds 400
+$w1 = (Find $AE::AutomationIdProperty 'BorderCmyk' $ed).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value
+if ($Shots) { [CapE]::Save([IntPtr]$ed.Current.NativeWindowHandle, (Join-Path $Shots 'editor-warna-border.png')) }
+Invoke (Find $AE::NameProperty 'Simpan' $ed)
+for ($i = 0; $i -lt 60 -and (Editor); $i++) { Start-Sleep -Milliseconds 250 }
+Start-Sleep -Milliseconds 800
+if ($Shots) { [CapE]::Save($p.MainWindowHandle, (Join-Path $Shots 'lembar-warna-border.png')) }
+Invoke (Find $AE::NameProperty 'Edit garis potong')
+$ed = $null
+for ($i = 0; $i -lt 60 -and -not $ed; $i++) { Start-Sleep -Milliseconds 250; $ed = Editor }
+Start-Sleep -Milliseconds 600
+$w2 = (Find $AE::AutomationIdProperty 'BorderCmyk' $ed).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value
+Invoke (Find $AE::NameProperty 'Batal' $ed)
+for ($i = 0; $i -lt 60 -and (Editor); $i++) { Start-Sleep -Milliseconds 250 }
+Res 'EDIT-08' $(if ($w1 -eq '0 100 100 0' -and $w2 -eq '0 100 100 0') { 'LULUS' } else { 'GAGAL' }) "tombol Merah: CMYK '$w1'; sesudah Simpan dan editor dibuka lagi: '$w2'"
 "responding: " + $p.Responding
 $p.Kill()
 $bad = @($results | Where-Object { $_ -match ' GAGAL:' }).Count

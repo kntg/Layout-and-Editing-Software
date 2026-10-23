@@ -23,6 +23,15 @@
                 <WrapPanel x:Name="ShapePanel" Margin="-2,6,0,0"/>
                 <TextBlock Text="{DynamicResource ShapeHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,4,0,18"/>
 
+                <TextBlock Text="{DynamicResource BorderSec}" Style="{StaticResource Label}"/>
+                <WrapPanel x:Name="BorderPanel" Margin="-2,6,0,0"/>
+                <DockPanel Margin="0,6,0,0">
+                    <TextBox x:Name="BorderCmyk" DockPanel.Dock="Right" Width="120" Style="{StaticResource Num}" LostFocus="BorderCmyk_LostFocus" KeyDown="BorderCmyk_KeyDown"
+                             AutomationProperties.Name="{DynamicResource BorderCmyk}"/>
+                    <TextBlock Text="{DynamicResource BorderCmyk}" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="{DynamicResource BorderHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,4,0,18"/>
+
                 <TextBlock Text="{DynamicResource CutLine}" Style="{StaticResource Label}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <RadioButton x:Name="EditKiss" GroupName="Line" Checked="Line_Checked" Foreground="{StaticResource Text}" AutomationProperties.Name="{DynamicResource Kiss}">
@@ -99,6 +108,7 @@
 
         <Canvas x:Name="Board" Background="{StaticResource Ink0}" ClipToBounds="True" Cursor="Cross" SizeChanged="Board_Size"
                 MouseLeftButtonDown="Board_Down" MouseMove="Board_Move" MouseLeftButtonUp="Board_Up">
+            <Path x:Name="BorderPath"/>
             <Rectangle x:Name="ArtBg" Fill="{StaticResource Checker}"/>
             <Image x:Name="Art" Stretch="Fill"/>
             <Rectangle x:Name="Box" Stroke="{StaticResource Dim}" StrokeThickness="1" StrokeDashArray="4 3"/>

@@ -1,0 +1,16 @@
+Warna border per desain (masukan 2026-10-23: offset bisa berwarna, tidak harus putih), 2026-10-23.
+Diuji tanpa mouse. Cetak di Develop dan potong di Graphtec: BLOCKED.
+
+== Selfcheck (build Release)
+S16 LULUS: warna border: area offset berwarna CMYK, diteruskan di luar garis, artwork dan lubang tetap, layar sama dengan PDF | PDF: offset #FFEE1D23, 0,5 mm di luar kiss #FFEE1D23, 1,5 mm di luar #FFFFFFFF, tanpa warna #FFFFFFFF; artwork sama True; donat: tepi lubang #FFEE1D23, tengah #FFFFFFFF; bleed 2: 1,5 mm di luar #FFEE1D23, perluasan warna tepi tidak; operator 0 1 1 0 k True; preview JPG offset #FFFA0105; editor benar
+
+== Selfcheck runner
+Release dan Debug: 4/4 sesuai harapan, 20/20 skenario (S1-S9, S11-S16, P1-P5).
+
+== UI Automation, ui-editor-garis.ps1 (build Release)
+EDIT-01..EDIT-07 lulus seperti sebelumnya.
+EDIT-08 LULUS: tombol Merah: CMYK '0 100 100 0'; sesudah Simpan dan editor dibuka lagi: '0 100 100 0'
+RINGKAS: 8 uji, 0 GAGAL. Tangkapan layar: 2026-10-23-editor-warna-border.png, 2026-10-23-lembar-warna-border.png.
+
+== Validasi
+validasi.json identik dengan sebelum warna border (fitur bawaan mati); validasi.py: hanya A2b, A4, A5 gagal seperti sebelumnya.

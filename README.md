@@ -8,12 +8,12 @@ Alat internal untuk membuat layout stiker print & cut. Operator menambahkan file
 
 - [PRD](docs/PRD.md): tujuan, fitur, keputusan, batasan, checklist uji operator, dan cara menjalankan (§11).
 - [Riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Uji garis potong](docs/UJI-GARIS-POTONG.md): skenario uji S1–S15 dan hasilnya.
+- [Uji garis potong](docs/UJI-GARIS-POTONG.md): skenario uji S1–S16 dan hasilnya.
 - [Uji stabilitas](docs/UJI-STABILITAS.md): skenario uji P1–P10 (worker CDR, paralel, RAM) dan hasilnya.
 - [Validasi end-to-end](docs/testing/e2e-validation.md): semua kasus uji dari import sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [CSV](docs/testing/e2e-test-results-template.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji UI.
 - [Simulasi produksi](docs/simulasi/index.html): tampilan 3D satu lembar hasil validasi. Buka file ini di browser.
-- [Spesifikasi](docs/superpowers/specs/) dan [rencana implementasi](docs/superpowers/plans/) fitur baru (editor garis potong, smart select, bentuk garis potong).
+- [Spesifikasi](docs/superpowers/specs/) dan [rencana implementasi](docs/superpowers/plans/) fitur baru (editor garis potong, smart select, bentuk garis potong, warna border).
 
 ## Mulai cepat
 

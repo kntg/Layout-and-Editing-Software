@@ -91,6 +91,7 @@ public static class Export
                 var s = p.S;
                 var st = g.Save();
                 Place(g, p);
+                if (s.BorderGeo is { } bgeo) g.DrawPath(new XSolidBrush(XColor.FromCmyk(s.Border!.Value.C, s.Border.Value.M, s.Border.Value.Y, s.Border.Value.K)), ToPath(bgeo));
                 g.IntersectClip(ToPath(s.ArtClip));
                 var form = s.Pdf == null ? null : Form(forms, s.Pdf, warn);
                 if (form != null)
