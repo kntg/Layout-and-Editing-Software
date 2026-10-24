@@ -919,7 +919,7 @@ public static class Nest
     static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
     // Satuan kanvas = mm. Tag kanvas = indeks lembar, Tag stiker = Placed.
-    public static Canvas Sheet(IEnumerable<Placed> ps, double cw, double ch, double margin, Placed? sel, int index)
+    public static Canvas Sheet(IEnumerable<Placed> ps, double cw, double ch, double margin, Placed? sel, int index, bool regMarks = false)
     {
         var root = new Canvas { Width = cw, Height = ch, Background = Brushes.White, ClipToBounds = true, Tag = index };
         root.Children.Add(new System.Windows.Shapes.Rectangle
@@ -950,6 +950,35 @@ public static class Nest
                 });
             root.Children.Add(c);
         }
+        if (regMarks) RegistrationMarks.Draw(root, cw, ch, margin);
         return root;
+    }
+}
+
+public static class RegistrationMarks
+{
+    public const double Length = 10;
+    public const double Clearance = 1;
+    public const double Stroke = 0.25;
+
+    public static void Draw(Canvas canvas, double width, double height, double margin)
+    {
+        if (margin <= Clearance || width <= 2 * (margin - Clearance + Length) || height <= 2 * (margin - Clearance + Length)) return;
+        double left = margin - Clearance, top = margin - Clearance;
+        double right = width - margin + Clearance, bottom = height - margin + Clearance;
+
+        void Line(double x1, double y1, double x2, double y2) => canvas.Children.Add(new System.Windows.Shapes.Line
+        {
+            X1 = x1, Y1 = y1, X2 = x2, Y2 = y2, Stroke = Brushes.Black, StrokeThickness = Stroke, IsHitTestVisible = false
+        });
+
+        Line(left, top, left + Length, top);
+        Line(left, top, left, top + Length);
+        Line(right, top, right - Length, top);
+        Line(right, top, right, top + Length);
+        Line(left, bottom, left + Length, bottom);
+        Line(left, bottom, left, bottom - Length);
+        Line(right, bottom, right - Length, bottom);
+        Line(right, bottom, right, bottom - Length);
     }
 }

@@ -71,7 +71,7 @@ public partial class MainWindow : Window
         {
             double h = i < sheetH.Count ? sheetH[i] : CH;
             var ps = i < sheets.Count ? sheets[i] : [];
-            var c = Nest.Sheet(ps, w, h, MarginMm, sel, i);
+            var c = Nest.Sheet(ps, w, h, MarginMm, sel, i, RegMarkToggle.IsChecked == true);
             c.LayoutTransform = zoom;
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
@@ -436,7 +436,7 @@ public partial class MainWindow : Window
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            var warn = Export.Pdf(dlg.FileName, sheets, sheetW, sheetH);
+            var warn = Export.Pdf(dlg.FileName, sheets, sheetW, sheetH, RegMarkToggle.IsChecked == true, MarginMm);
             Redraw(string.Join("  ", warn.Prepend(Lang.T("Saved", dlg.FileName))));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
@@ -452,7 +452,7 @@ public partial class MainWindow : Window
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            var files = Export.Preview(dlg.FileName, sheets, sheetW, sheetH, MarginMm);
+            var files = Export.Preview(dlg.FileName, sheets, sheetW, sheetH, MarginMm, RegMarkToggle.IsChecked == true);
             Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
@@ -482,6 +482,8 @@ public partial class MainWindow : Window
         Lang.Apply(code);
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
+
+    void RegMarks_Click(object s, RoutedEventArgs e) => Redraw();
 
     void Window_Loaded(object s, RoutedEventArgs e)
     {

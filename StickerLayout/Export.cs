@@ -72,7 +72,7 @@ public static class Export
 
     // Satu halaman per lembar. Artwork PDF/AI/CDR ditempel sebagai vektor (warna asli), PNG/JPG apa adanya,
     // di-clip ke garis potong terluar; garis potong digambar di atasnya. Mengembalikan peringatan per file.
-    public static List<string> Pdf(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH)
+    public static List<string> Pdf(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, bool regMarks = false, double margin = 0)
     {
         var warn = new List<string>();
         using var doc = new PdfDocument();
@@ -121,6 +121,7 @@ public static class Export
                 if (p.S.DieGeo is { } d) g.DrawPath(new XPen(DieColor, 0.1), ToPath(d));
                 g.Restore(st);
             }
+            if (regMarks) DrawRegistrationMarks(g, cw, sheetH[i], margin);
         }
         doc.Save(path);
         return warn;
@@ -142,7 +143,7 @@ public static class Export
     }
 
     // Satu JPG per lembar (nama-1.jpg, nama-2.jpg, ...), sisi panjang +-2000 px: cukup tajam, ringan dikirim lewat WhatsApp.
-    public static List<string> Preview(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, double margin)
+    public static List<string> Preview(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, double margin, bool regMarks = false)
     {
         var files = new List<string>();
         for (int i = 0; i < sheets.Count; i++)
@@ -151,11 +152,29 @@ public static class Export
             var file = sheets.Count == 1 ? path
                 : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{i + 1}{Path.GetExtension(path)}");
             var enc = new JpegBitmapEncoder { QualityLevel = 85 };
-            enc.Frames.Add(BitmapFrame.Create(Snapshot(Nest.Sheet(sheets[i], cw, h, margin, null, i), cw, h, 2000 / Math.Max(cw, h))));
+            enc.Frames.Add(BitmapFrame.Create(Snapshot(Nest.Sheet(sheets[i], cw, h, margin, null, i, regMarks), cw, h, 2000 / Math.Max(cw, h))));
             using (var fs = File.Create(file)) enc.Save(fs);
             files.Add(file);
         }
         return files;
+    }
+
+    static void DrawRegistrationMarks(XGraphics g, double width, double height, double margin)
+    {
+        if (margin <= RegistrationMarks.Clearance
+            || width <= 2 * (margin - RegistrationMarks.Clearance + RegistrationMarks.Length)
+            || height <= 2 * (margin - RegistrationMarks.Clearance + RegistrationMarks.Length)) return;
+        double left = margin - RegistrationMarks.Clearance, top = margin - RegistrationMarks.Clearance;
+        double right = width - margin + RegistrationMarks.Clearance, bottom = height - margin + RegistrationMarks.Clearance;
+        var pen = new XPen(XColor.FromCmyk(0, 0, 0, 1), RegistrationMarks.Stroke);
+        g.DrawLine(pen, left, top, left + RegistrationMarks.Length, top);
+        g.DrawLine(pen, left, top, left, top + RegistrationMarks.Length);
+        g.DrawLine(pen, right, top, right - RegistrationMarks.Length, top);
+        g.DrawLine(pen, right, top, right, top + RegistrationMarks.Length);
+        g.DrawLine(pen, left, bottom, left + RegistrationMarks.Length, bottom);
+        g.DrawLine(pen, left, bottom, left, bottom - RegistrationMarks.Length);
+        g.DrawLine(pen, right, bottom, right - RegistrationMarks.Length, bottom);
+        g.DrawLine(pen, right, bottom, right, bottom - RegistrationMarks.Length);
     }
 
     // Render elemen WPF (satuan mm) ke bitmap; k = pixel per mm.
