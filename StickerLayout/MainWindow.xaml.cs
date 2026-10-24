@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     Cut Die => new(DieOn.IsChecked == true, D(DieOff, 4, 0), D(DieSm, 0, 0));
     double BleedMm => D(BleedBox, 0, 0);
     double GapMm => D(GapBox, 2, 0);
+    bool HasRegMarks => RegMarks1.IsChecked == true;
 
     // Hijau = target bahan tercapai, kuning = dalam rentang target, merah = di bawah target.
     Brush UseBrush(double use, bool regular) => (Brush)FindResource(Yield.Level(use, regular) switch { 2 => "Good", 1 => "Mid", _ => "Warn" });
@@ -71,7 +72,7 @@ public partial class MainWindow : Window
         {
             double h = i < sheetH.Count ? sheetH[i] : CH;
             var ps = i < sheets.Count ? sheets[i] : [];
-            var c = Nest.Sheet(ps, w, h, MarginMm, sel, i, RegMarkToggle.IsChecked == true);
+            var c = Nest.Sheet(ps, w, h, MarginMm, sel, i, HasRegMarks);
             c.LayoutTransform = zoom;
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
@@ -436,7 +437,7 @@ public partial class MainWindow : Window
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            var warn = Export.Pdf(dlg.FileName, sheets, sheetW, sheetH, RegMarkToggle.IsChecked == true, MarginMm);
+            var warn = Export.Pdf(dlg.FileName, sheets, sheetW, sheetH, HasRegMarks, MarginMm);
             Redraw(string.Join("  ", warn.Prepend(Lang.T("Saved", dlg.FileName))));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
@@ -452,7 +453,7 @@ public partial class MainWindow : Window
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            var files = Export.Preview(dlg.FileName, sheets, sheetW, sheetH, MarginMm, RegMarkToggle.IsChecked == true);
+            var files = Export.Preview(dlg.FileName, sheets, sheetW, sheetH, MarginMm, HasRegMarks);
             Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
@@ -483,7 +484,13 @@ public partial class MainWindow : Window
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
-    void RegMarks_Click(object s, RoutedEventArgs e) => Redraw();
+    void RegMarks_Click(object s, RoutedEventArgs e)
+    {
+        bool enabled = ((MenuItem)s).Tag as string == "1";
+        RegMarksNone.IsChecked = !enabled;
+        RegMarks1.IsChecked = enabled;
+        Redraw();
+    }
 
     void Window_Loaded(object s, RoutedEventArgs e)
     {

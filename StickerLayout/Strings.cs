@@ -12,6 +12,8 @@ public static class Lang
         ["Title"] = ($"{App.Brand} — Prototipe", $"{App.Brand} — Prototype"),
         ["Lang"] = ("Bahasa", "Language"),
         ["RegMarks"] = ("Tanda registrasi", "Registration marks"),
+        ["RegMarksNone"] = ("Tidak ada", "None"),
+        ["RegMarks1"] = ("Regmark 1", "Regmark 1"),
         ["MFile"] = ("File", "File"),
         ["MEdit"] = ("Edit", "Edit"),
         ["MView"] = ("Tampilan", "View"),

@@ -41,7 +41,10 @@
                         <MenuItem x:Name="LangId" Header="Indonesia" Tag="id" IsChecked="True" Click="Lang_Click"/>
                         <MenuItem x:Name="LangEn" Header="English" Tag="en" Click="Lang_Click"/>
                     </MenuItem>
-                    <MenuItem x:Name="RegMarkToggle" Header="{DynamicResource RegMarks}" IsCheckable="True" IsChecked="True" Click="RegMarks_Click"/>
+                    <MenuItem Header="{DynamicResource RegMarks}">
+                        <MenuItem x:Name="RegMarksNone" Header="{DynamicResource RegMarksNone}" Tag="none" IsCheckable="True" Click="RegMarks_Click"/>
+                        <MenuItem x:Name="RegMarks1" Header="{DynamicResource RegMarks1}" Tag="1" IsCheckable="True" IsChecked="True" Click="RegMarks_Click"/>
+                    </MenuItem>
                 </Menu>
             </DockPanel>
         </Border>
