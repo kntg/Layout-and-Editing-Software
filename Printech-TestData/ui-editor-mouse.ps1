@@ -1,4 +1,4 @@
-﻿param([string]$Exe, [string]$In, [string]$Shots)
+﻿param([string]$Exe, [string]$In, [string]$Shots, [double]$Offset)
 # Uji editor garis potong dengan mouse dan keyboard sungguhan. Node, handle, dan garis dicari dari tangkapan layar (kotak node
 # putih 7 px, node terpilih berisi warna garis, handle = cincin putih bertengah gelap, garis kiss magenta), lalu dibandingkan
 # sebelum dan sesudah. Jangan sentuh mouse dan keyboard selama uji (±2 menit).
@@ -8,7 +8,8 @@
 # - Operasi node: berhenti di batas kotak, Simpan nonaktif saat kiss keluar die, Ctrl+Z/Ctrl+Y, klik di garis menambah node
 #   tanpa mengubah bentuk, kontur dalam terhapus saat sisa < 3 node (EDIT-14).
 # - Smart select dengan klik di kanvas pada gambar uji buatan skrip: donat berwatermark dan kotak terpisah (EDIT-16).
-# Jalankan dengan Windows PowerShell 5.1: powershell -ExecutionPolicy Bypass -File ui-editor-mouse.ps1 -Exe <StickerLayout.exe> -In <folder 01-input> -Shots <folder gambar>
+# Jalankan dengan Windows PowerShell 5.1: powershell -ExecutionPolicy Bypass -File ui-editor-mouse.ps1 -Exe <StickerLayout.exe> -In <folder 01-input> -Shots <folder gambar> [-Offset <mm>]
+# -Offset: offset kiss untuk bagian D (smart select); tanpa argumen ini dipakai offset bawaan aplikasi.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
@@ -17,12 +18,15 @@ public static class M {
   [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint f);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, IntPtr e);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint f, IntPtr e);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT p);
   [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr h, uint f);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  static string Title(IntPtr h) { var t = new System.Text.StringBuilder(256); GetWindowText(h, t, 256); return "'" + t + "'"; }
   public struct RECT { public int L, T, R, B; }
   public struct POINT { public int X, Y; }
   // Jendela tujuan input. Sebelum klik atau tombol, jendela ini harus aktif dan (untuk klik) tidak tertutup jendela lain di
@@ -33,7 +37,8 @@ public static class M {
       if (GetForegroundWindow() == Target && (!point || GetAncestor(WindowFromPoint(new POINT { X = x, Y = y }), 2) == Target)) return;
       SetForegroundWindow(Target); System.Threading.Thread.Sleep(200);
     }
-    throw new InvalidOperationException(point ? "titik (" + x + "," + y + ") bukan jendela editor yang aktif; input dibatalkan" : "jendela editor tidak aktif; tombol dibatalkan");
+    string seen = "jendela aktif " + Title(GetForegroundWindow()) + (point ? ", jendela di titik itu " + Title(GetAncestor(WindowFromPoint(new POINT { X = x, Y = y }), 2)) : "");
+    throw new InvalidOperationException((point ? "titik (" + x + "," + y + ") bukan jendela editor yang aktif" : "jendela editor tidak aktif") + "; input dibatalkan (" + seen + ")");
   }
   public static Bitmap Shot(IntPtr h) {
     RECT r; GetWindowRect(h, out r);
@@ -118,12 +123,21 @@ public static class M {
       }
     return n;
   }
-  public static void Down(int x, int y) { Guard(x, y, true); SetCursorPos(x, y); System.Threading.Thread.Sleep(150); mouse_event(2, 0, 0, 0, IntPtr.Zero); System.Threading.Thread.Sleep(80); }
-  public static void Up() { System.Threading.Thread.Sleep(100); mouse_event(4, 0, 0, 0, IntPtr.Zero); System.Threading.Thread.Sleep(200); }
+  // Posisi kursor terakhir yang diatur uji. Saat tombol dilepas kursor harus masih di sana; bila tidak, mouse disentuh selama uji.
+  static int lastX, lastY;
+  static void Move(int x, int y) { SetCursorPos(x, y); lastX = x; lastY = y; }
+  public static void Down(int x, int y) { Guard(x, y, true); Move(x, y); System.Threading.Thread.Sleep(150); mouse_event(2, 0, 0, 0, IntPtr.Zero); System.Threading.Thread.Sleep(80); }
+  public static void Up() {
+    System.Threading.Thread.Sleep(100);
+    POINT p; GetCursorPos(out p);
+    mouse_event(4, 0, 0, 0, IntPtr.Zero); System.Threading.Thread.Sleep(200);
+    if (Math.Abs(p.X - lastX) > 1 || Math.Abs(p.Y - lastY) > 1)
+      throw new InvalidOperationException("kursor pindah ke (" + p.X + "," + p.Y + "), bukan (" + lastX + "," + lastY + "): mouse disentuh selama uji, hasil tidak sah");
+  }
   public static void Click(int x, int y) { Down(x, y); Up(); }
   public static void Drag(int x0, int y0, int x1, int y1) {
     Down(x0, y0);
-    for (int i = 1; i <= 25; i++) { SetCursorPos(x0 + (x1 - x0) * i / 25, y0 + (y1 - y0) * i / 25); System.Threading.Thread.Sleep(20); }
+    for (int i = 1; i <= 25; i++) { Move(x0 + (x1 - x0) * i / 25, y0 + (y1 - y0) * i / 25); System.Threading.Thread.Sleep(20); }
     Up();
   }
   public static void Shift(bool down) { if (down) Guard(0, 0, false); keybd_event(0x10, 0, down ? 0u : 2u, IntPtr.Zero); System.Threading.Thread.Sleep(80); }
@@ -218,6 +232,9 @@ try {
 # ---------- Bagian A: temuan leader 2026-10-26 ----------
 Launch (Join-Path $In 'png-transparent.png')
 "awal: $(Status)"
+# Lebar desain baru dan offset kiss bawaan aplikasi. Pengaturan tidak disimpan antar-jalan, jadi proses bagian D memakai nilai yang sama.
+function Num($id) { [double]((Find $AE::AutomationIdProperty $id).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value -replace ',', '.') }
+$W = Num 'WidthBox'; $O0 = Num 'KissOff'
 (Find $AE::AutomationIdProperty 'DieOn').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
 Open
 
@@ -343,20 +360,24 @@ Button 'Batal'
 $p.Kill()
 
 # ---------- Bagian D: smart select dengan klik di kanvas (EDIT-16) ----------
-# Gambar uji 600 x 400 px: donat oranye, watermark putih alpha 38 yang menempel di bawahnya, kotak biru terpisah. Lubang donat
-# Ø 32 px = ±1,5 mm jari-jari pada lebar bawaan 50 mm: lebih sempit dari offset + 0,5 mm, jadi garis dalamnya baru muncul saat
-# lubang diklik (seperti donat user). Isi (alpha > 16) = x 40..559, y 70..319, jadi artwork di layar = area itu.
+# Gambar uji 600 x 400 px: donat oranye, watermark putih alpha 38 yang menempel di bawahnya, kotak biru terpisah. Isi (alpha > 16)
+# = x 40..559, y 70..319, jadi artwork di layar = area itu, selebar $W mm. Lubang donat sempit seperti donat user: jari-jari
+# R = (offset + 1,3) / 2 mm, di tengah antara 0,8 mm (garis dalam bisa dibuat dengan klik: R - 0,5 >= 0,3) dan offset + 0,5 mm
+# (lubang selebar itu langsung dapat garis dalam), jadi garis dalamnya baru muncul saat lubang diklik.
+$O = if ($PSBoundParameters.ContainsKey('Offset')) { $Offset } else { $O0 }
+$Rmm = ($O + 1.3) / 2; $Rpx = $Rmm * 520 / $W
 $img = Join-Path $env:TEMP ("printech-smart-" + [guid]::NewGuid().ToString('N') + '.png')
 $bmp = New-Object System.Drawing.Bitmap 600, 400, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::Transparent)
 $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 245, 140, 30))), 60, 70, 240, 240)
 $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
-$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::Transparent)), 164, 174, 32, 32)
+$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::Transparent)), [float](180 - $Rpx), [float](190 - $Rpx), [float](2 * $Rpx), [float](2 * $Rpx))
 $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceOver
 $g.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(38, 255, 255, 255))), 40, 300, 520, 20)
 $g.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 40, 90, 200))), 420, 100, 120, 120)
 $g.Dispose(); $bmp.Save($img, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 Launch $img
+if ($O -ne $O0) { (Find $AE::AutomationIdProperty 'KissOff').GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue("$O") }
 Open
 $sm = (Find $AE::AutomationIdProperty 'SmartBox' $ed).GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern); $sm.Toggle(); Start-Sleep -Milliseconds 300
 # Skala kanvas berubah tiap kali garis berubah, jadi posisi artwork dibaca ulang setiap kali dipakai.
@@ -372,7 +393,7 @@ Save 'smart-dua-objek'
 (Find $AE::AutomationIdProperty 'Tol' $ed).GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(16); Start-Sleep -Milliseconds 800
 $kE = Kiss; $rE = Right
 Save 'smart-toleransi-16'
-Res 'EDIT-16' ($iA -match 'garis manual$' -and $rA -lt 420 -and $kB -gt $kA -and $kC -eq $kA -and $kD -gt $kA -and $rD -ge 540 -and $rE -ge $rD + 10) ("klik donat: kiss {0} node, tepi kanan garis x {1} px gambar (< kotak biru 420, watermark diabaikan); klik lubang: {2} node (garis dalam muncul); klik lagi: {3} (hilang); Shift+klik kotak biru: {4} node, tepi kanan x {5} (>= 540, tepi kotak); Toleransi 16: {6} node, tepi kanan x {7} (watermark sampai 559 ikut)" -f $kA, $rA, $kB, $kC, $kD, $rD, $kE, $rE)
+Res 'EDIT-16' ($iA -match 'garis manual$' -and $rA -lt 420 -and $kB -gt $kA -and $kC -eq $kA -and $kD -gt $kA -and $rD -ge 540 -and $rE -ge $rD + 10) ("lebar {8} mm, offset kiss {9} mm, lubang R {10:N2} mm; klik donat: kiss {0} node, tepi kanan garis x {1} px gambar (< kotak biru 420, watermark diabaikan); klik lubang: {2} node (garis dalam muncul); klik lagi: {3} (hilang); Shift+klik kotak biru: {4} node, tepi kanan x {5} (>= 540, tepi kotak); Toleransi 16: {6} node, tepi kanan x {7} (watermark sampai 559 ikut)" -f $kA, $rA, $kB, $kC, $kD, $rD, $kE, $rE, $W, $O, $Rmm)
 }
 finally {
   if ($p -and -not $p.HasExited) { "responding: " + $p.Responding; $p.Kill() }

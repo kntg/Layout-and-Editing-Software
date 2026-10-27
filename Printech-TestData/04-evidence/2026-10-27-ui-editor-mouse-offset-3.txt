@@ -1,0 +1,11 @@
+awal: 1 stiker di 1 lembar.
+CUT-19 LULUS: Info 'Kiss 10 titik · die 4 titik · Bintang · die Kotak'; saat Die-cut tombol Kotak terpilih True; saat Kiss-cut tombol Bintang terpilih True
+EDIT-20a LULUS: node kiss terdeteksi 10; node atas (1130,119) terpilih: True, masih di tempat: True; Info 'Kiss 10 titik · die 4 titik · Bintang · die Kotak'
+EDIT-20b LULUS: node di (+30,+15) px: True; di posisi kursor (+34,+18): False; Info 'Kiss 10 titik · die 4 titik · garis manual'
+EDIT-20c LULUS: Ctrl+Z: 'Kiss 10 titik · die 4 titik · Bintang · die Kotak'; Shift+klik 2 node lalu seret 25 px: keduanya bergeser True; Delete: 'Kiss 8 titik · die 4 titik · garis manual'
+CUT-19b LULUS: sebelum Simpan 'Kiss 10 titik · die 4 titik · Bintang · die Kotak'; tanda 'Bintang · die Kotak' di daftar desain: 1
+EDIT-18 LULUS: lingkaran 4 node, node atas (1130,155), handle kanan dihitung (1318,155); node atas diklik: terpilih dan 2 handle tampil True; node halus: handle kanan +20 px ke atas, handle kiri ikut segaris dengan panjang tetap True; node sudut: handle kiri tetap True; Jadikan garis: handle hilang True; Jadikan kurva: handle di 1/3 tali busur True; Info 'Kiss 4 titik · die 4 titik · garis manual'
+EDIT-14 LULUS: node diseret jauh: node terpilih berhenti di batas kanan kotak (x 1627) True, Simpan nonaktif True; Ctrl+Z kembali True, Ctrl+Y True; klik di sisi: kiss 10 -> 11, node baru di titik klik True, piksel garis berubah di luar node baru 3; Delete: 10; kontur dalam 2 node: 1 kali Delete lalu seluruh kontur hilang (sisa < 3 node), kiss 14 -> 12, sisa node dalam 0
+EDIT-16 LULUS: lebar 50 mm, offset kiss 3 mm, lubang R 2.15 mm; klik donat: kiss 3 node, tepi kanan garis x 330 px gambar (< kotak biru 420, watermark diabaikan); klik lubang: 5 node (garis dalam muncul); klik lagi: 3 (hilang); Shift+klik kotak biru: 10 node, tepi kanan x 574 (>= 540, tepi kotak); Toleransi 16: 21 node, tepi kanan x 593 (watermark sampai 559 ikut)
+responding: True
+RINGKAS: 8 uji, 0 GAGAL

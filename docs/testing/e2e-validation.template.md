@@ -158,6 +158,10 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 - Stiker tidak lagi kena tanda registrasi: selfcheck S17 lulus (NEST-11).
 - Validasi B-ui kini menyalakan tanda registrasi seperti bawaan aplikasi, jadi lembar 1 menjadi 4 pcs 90%, sama dengan layar (IMP-19). [Bukti](../../Printech-TestData/04-evidence/2026-10-26-validasi-garis-potong-nesting.txt).
 
+**Ujung tajam warna border dan bleed (2026-10-27):** sebelumnya warna border dan bleed menjorok lebih jauh di ujung tajam: ujung Bintang 2,26 mm dan Segitiga 2,00 mm untuk border 1 mm, serta 4,52 mm untuk bleed 2 mm di ujung Bintang. Akibatnya bisa tercetak di stiker tetangga. Sekarang `Sticker.Grow` memakai sambungan bulat, jadi jaraknya tepat 1,00, 1,00, dan 2,00 mm. Selfcheck S16 lulus (CUT-18). Hasil validasi sama persis dengan 2026-10-26. [Bukti selfcheck](../../Printech-TestData/04-evidence/2026-10-27-selfcheck.txt), [bukti validasi](../../Printech-TestData/04-evidence/2026-10-27-validasi-garis-potong-nesting.txt).
+
+**Uji mouse EDIT-16 mengikuti pengaturan aplikasi (2026-10-27):** aplikasi tidak menyimpan pengaturan antar-jalan, jadi `ui-editor-mouse.ps1` membaca lebar dan offset kiss dari aplikasi lalu menghitung ukuran lubang donat uji. Parameter `-Offset` mencoba offset lain. Setelah perbaikan ujung tajam, uji lulus 8/8 pada offset 2 mm dan 8/8 pada offset 3 mm. Skrip juga berhenti bila mouse disentuh selama uji. [Bukti](../../Printech-TestData/04-evidence/2026-10-27-ui-editor-mouse.txt), [bukti offset 3](../../Printech-TestData/04-evidence/2026-10-27-ui-editor-mouse-offset-3.txt).
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -172,7 +176,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 ## 6. Kasus uji
 
-Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26.
+Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27.
 
 Kolom Sumber menunjukkan asal kriterianya:
 

@@ -547,11 +547,24 @@ public static class SelfCheck
             bEdit &= bEd.Border == new Cmyk(0, 0, 0, 1);
             bEd.SetBorder(null);
             bEdit &= bEd.Border == null && bEd.ManualKiss == null;
-            S(16, "warna border: area offset berwarna CMYK, diteruskan di luar garis, artwork dan lubang tetap, layar sama dengan PDF", bOk && bEdit,
+            // Ujung tajam: border dan bleed menjorok sejauh e ke segala arah (sambungan bulat), tanpa lonjakan miter di ujung
+            // (sebelumnya ujung bintang 2,26 mm dan segitiga 2,00 mm untuk e = 1 mm). Batas luar = batas garis kiss + e di keempat sisi.
+            static double Over(Geometry outer, Geometry inner)
+            {
+                Rect o = outer.Bounds, i = inner.Bounds;
+                return Math.Max(Math.Max(i.Top - o.Top, i.Left - o.Left), Math.Max(o.Right - i.Right, o.Bottom - i.Bottom));
+            }
+            var bStar = Loader.Load(cPath, 0, 40, kiss, die, shape: CutShape.Star, border: red);
+            var bTri = Loader.Load(cPath, 0, 40, kiss, die, shape: CutShape.Triangle, border: red);
+            var bStarBleed = Loader.Load(cPath, 0, 40, kiss, die, bleed: 2, shape: CutShape.Star);
+            double oStar = Over(bStar.BorderGeo!, bStar.KissGeo!), oTri = Over(bTri.BorderGeo!, bTri.KissGeo!), oBleed = Over(bStarBleed.ArtClip, bStarBleed.KissGeo!);
+            bool tips = Math.Abs(oStar - 1) < 0.02 && Math.Abs(oTri - 1) < 0.02 && bStarBleed.BleedPng != null && Math.Abs(oBleed - 2) < 0.02;
+            S(16, "warna border: area offset berwarna CMYK, diteruskan di luar garis, artwork dan lubang tetap, layar sama dengan PDF", bOk && bEdit && tips,
                 $"PDF: offset {Pdf(bCircle, 41, 20)}, 0,5 mm di luar kiss {Pdf(bCircle, 42.5, 20)}, 1,5 mm di luar {Pdf(bCircle, 43.5, 20)}, tanpa warna {Pdf(bPlain, 41, 20)}; "
                 + $"artwork sama {Pdf(bCircle, 37, 20) == Pdf(bPlain, 37, 20)}; donat: tepi lubang {Pdf(bDonut, 29.5, 20)}, tengah {Pdf(bDonut, 20, 20)}; "
                 + $"bleed 2: 1,5 mm di luar {Pdf(bBleed, 43.5, 20)}, perluasan warna tepi {(bBleed.S.BleedPng == null ? "tidak" : "ADA")}; "
-                + $"operator 0 1 1 0 k {bContent.Contains("0 1 1 0 k")}; preview JPG offset {Jpg(bCircle, 41, 20)}; editor {(bEdit ? "benar" : "SALAH")}");
+                + $"operator 0 1 1 0 k {bContent.Contains("0 1 1 0 k")}; preview JPG offset {Jpg(bCircle, 41, 20)}; editor {(bEdit ? "benar" : "SALAH")}; "
+                + $"menjorok di ujung tajam (harapan 1/1/2 mm): border bintang {oStar:F2}, segitiga {oTri:F2}, bleed 2 bintang {oBleed:F2} mm");
 
             // S9: stiker besar 300 mm (gambar 3000 px), kiss + die.
             var bigImg = Draw(dc => dc.DrawEllipse(Brushes.Black, null, new Point(1500, 1500), 1400, 1400), 3000, 3000);

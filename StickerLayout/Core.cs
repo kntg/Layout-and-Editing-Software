@@ -72,7 +72,9 @@ public class Sticker
     public const double BorderMin = 1;
     public Geometry? BorderGeo => Border == null ? null : bg ??= Grow(KissGeo ?? DieGeo!, LoadedBleed > 0 ? LoadedBleed : BorderMin);
     Geometry? bg;
-    static Geometry Grow(Geometry g, double e) => Freeze(Geometry.Combine(g, g.GetWidenedPathGeometry(new Pen(null, 2 * e), 0.01, ToleranceType.Absolute),
+    // Sambungan bulat: ujung tajam ikut menjorok tepat e. Miter bawaan Pen membuat lonjakan (ujung bintang 2,26e, segitiga 2e)
+    // yang bisa tercetak di stiker tetangga.
+    static Geometry Grow(Geometry g, double e) => Freeze(Geometry.Combine(g, g.GetWidenedPathGeometry(new Pen(null, 2 * e) { LineJoin = PenLineJoin.Round }, 0.01, ToleranceType.Absolute),
         GeometryCombineMode.Union, null, 0.01, ToleranceType.Absolute));
     static Geometry Freeze(Geometry g) { g.Freeze(); return g; }
 }
