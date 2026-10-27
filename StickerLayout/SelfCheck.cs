@@ -101,7 +101,11 @@ public static class SelfCheck
             Check(pdfItem.Dpi == null && !pdfItem.LowDpi, "PDF vektor tidak boleh punya DPI");
             var wide = Loader.Load(Path.Combine(dir, "circle.png"), 0, 80, kiss, die);
             Check(wide.LowDpi, $"circle 80 mm ({wide.Dpi:0} dpi) harus ditandai resolusi rendah");
-            log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah)");
+            // D6: angka dpi dan warna merahnya memakai pembulatan yang sama (149,6 dpi tampil "150 dpi", jadi tidak merah).
+            Sticker DpiOf(int px) => new() { WidthMm = 254, PxW = px };
+            Check(DpiOf(1496).DpiText == "150 dpi" && !DpiOf(1496).LowDpi && DpiOf(1494).DpiText == "149 dpi" && DpiOf(1494).LowDpi,
+                $"D6: 149,6 dpi tampil {DpiOf(1496).DpiText}, merah {DpiOf(1496).LowDpi}; 149,4 dpi tampil {DpiOf(1494).DpiText}, merah {DpiOf(1494).LowDpi}");
+            log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah); 149,6 dpi = {DpiOf(1496).DpiText} tidak merah");
 
             // Skenario uji garis potong S1-S9 dan S11-S16 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
@@ -643,6 +647,43 @@ public static class SelfCheck
             Check(White(noBleed) && Orange(bleedNear) && White(bleedFar) && vecBleed.BleedPng == null,
                 $"bleed salah: 1,5 mm di luar tepi tanpa bleed {noBleed}, bleed 2 mm {bleedNear}; 4 mm {bleedFar}; vektor {(vecBleed.BleedPng == null ? "tanpa bleed" : "ikut bleed")}");
             log.Add($"bleed: 1,5 mm di luar tepi lingkaran: tanpa bleed {noBleed}, bleed 2 mm {bleedNear}; 4 mm (di luar bleed) {bleedFar}; logo.pdf vektor tidak di-bleed");
+
+            // Bleed tidak membuat bagian semi-transparan jadi pekat (temuan 2026-10-28): bayangan hitam alpha 40 di sekeliling
+            // lingkaran oranye tetap tembus, dan zona bleed berwarna tepi oranye, bukan hitam.
+            var shadowPng = Loader.Png(Draw(dc =>
+            {
+                dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), null, new Point(200, 200), 150, 150);
+                dc.DrawEllipse(Brushes.DarkOrange, null, new Point(200, 200), 100, 100);
+            }, 400, 400));
+            Color Shadow(double bleedMm, double x) // warna di render PDF, x mm dari kiri artwork pada garis tengah
+            {
+                var st = Loader.Load("bayangan.png", 0, 40, thin, none, edited: shadowPng, bleed: bleedMm);
+                var sh = Nest.Run([st], A4W, A4H, Margin, Gap, out _);
+                var pdf = Path.Combine(dir, "bleed.pdf");
+                Export.Pdf(pdf, sh, A4W, [A4H]);
+                return At(RenderPage(pdf, 0, 4), sh[0][0], x * 72 / 25.4, st.ArtH / 2 * 72 / 25.4, 4);
+            }
+            // Artwork 40 mm = bayangan r 150 px: objek (r 50 px) di 26,7 mm, bayangan (r 125 px) di 36,7 mm, zona bleed 41,5 mm
+            // (garis kiss 40,5 mm, batas bleed 42,5 mm).
+            Color sObj = Shadow(2, 26.7), sRing = Shadow(2, 36.7), sOut = Shadow(2, 41.5), sRing0 = Shadow(0, 36.7);
+            Check(Orange(sObj) && sRing.R > 150 && sRing.G < 160 && Orange(sOut) && sRing0.R > 200 && sRing0.G > 200,
+                $"bleed membuat bayangan semi-transparan pekat: objek {sObj}, bayangan {sRing} (tanpa bleed {sRing0}), zona bleed {sOut}");
+            log.Add($"bleed: bayangan alpha 40 tetap tembus: objek {sObj}, bayangan {sRing} (tanpa bleed {sRing0}), zona bleed {sOut}");
+
+            // D9: file rusak memberi pesan yang bisa dipahami operator, bukan pesan teknis PDFium, WIC, atau XML.
+            string LoadError(string name, string content)
+            {
+                var f = Path.Combine(dir, name);
+                File.WriteAllText(f, content);
+                try { Loader.LoadAll(f, 40, kiss, die); return "tanpa error"; }
+                catch (Exception ex) { return ex.Message; }
+                finally { File.Delete(f); }
+            }
+            string eAi = LoadError("rusak.ai", "%!PS-Adobe-3.0\n%%EOF\n"), ePdf = LoadError("rusak.pdf", "bukan pdf"),
+                ePng = LoadError("rusak.png", "bukan gambar"), eJpg = LoadError("rusak.jpg", "bukan gambar"), eSvg = LoadError("rusak.svg", "bukan svg");
+            Check(eAi == Lang.T("BadAi") && ePdf == Lang.T("BadPdf") && ePng == Lang.T("BadImage") && eJpg == Lang.T("BadImage") && eSvg == Lang.T("BadSvg"),
+                $"D9: pesan file rusak: ai '{eAi}', pdf '{ePdf}', png '{ePng}', jpg '{eJpg}', svg '{eSvg}'");
+            log.Add($"file rusak: ai '{eAi}'; pdf '{ePdf}'; png dan jpg '{ePng}'; svg '{eSvg}'");
 
             // Latar opak tidak dibuang otomatis (D10, masukan leader 2026-10-21): putih, abu muda, dan pastel tetap ikut,
             // artwork = seluruh gambar 300x200 px = 60x40 mm (bukan kotak biru 60x60 mm).

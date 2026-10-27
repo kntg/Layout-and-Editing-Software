@@ -1,0 +1,48 @@
+cell 2 mm: 130 stiker -> 8 lembar A4, pemakaian 45,2%, 37 ms
+cell 1 mm: 130 stiker -> 7 lembar A4, pemakaian 51,7%, 63 ms
+memori: managed +0,1 MB untuk 5 desain, total managed 1 MB, working set 106 MB
+circle.png: artwork 40,0x40,0 mm, kotak 53x53 mm, vektor=False
+star.jpg: artwork 40,0x38,0 mm, kotak 53x51 mm, vektor=False
+badge.svg: artwork 40,0x23,3 mm, kotak 53x37 mm, vektor=False
+logo.pdf: artwork 49,5x42,4 mm, kotak 63x56 mm, vektor=True
+logo.ai: artwork 49,5x42,4 mm, kotak 63x56 mm, vektor=True
+node circle.png: kiss 3 (0 sudut), die 4 (0 sudut), 27 ms
+node star.jpg: kiss 17 (0 sudut), die 15 (0 sudut), 29 ms
+node badge.svg: kiss 8 (0 sudut), die 9 (0 sudut), 21 ms
+node logo.pdf: kiss 8 (0 sudut), die 7 (0 sudut), 35 ms
+node rough.jpg: kiss 16 (0 sudut), die 15 (0 sudut), 30 ms
+rapikan: piksel opak 90000 -> latar 41934 -> teks 38820; luas kiss 1936 -> 1509 mm2
+dpi: circle 40 mm = 178 dpi, 80 mm = 89 dpi (rendah); 149,6 dpi = 150 dpi tidak merah
+S1 LULUS: logo JPG kasar: node turun >= 60%, tanpa sudut tajam | kiss 65 -> 16 (75%), die 42 -> 15 (64%)
+S2 LULUS: lingkaran tetap bulat dan node minimal | 3 node, 44,03 x 44,02 mm (harapan 44,0)
+S3 LULUS: teks: node turun, tanpa sudut tajam, huruf tidak terpotong | halus 0 = 43 node, halus 1 = 20 node, artwork di luar garis 0,00 mm2
+S4 LULUS: offset 0,5 mm dan 0 mm: garis tidak masuk artwork | artwork di luar garis: offset 0,5 = 0,00 mm2, offset 0 = 0,25 mm2
+S5 LULUS: halus 0 / 0,5 / 1 / 2 / 4 mm: node selalu di bawah halus 0 | 65 / 29 / 16 / 28 / 44 node
+S6 LULUS: kiss selalu di dalam die | luas kiss di luar die maks 0,00 mm2 dari 9 desain
+S7 LULUS: dua bagian berdekatan tidak pecah | celah 3,0 / 3,3 / 3,6 / 3,9 mm: kontur tidak bertambah
+S11 LULUS: lubang: lubang asli yang tetap terbuka dipotong (donat), rongga dari celah tertutup dan lubang kecil tidak | cincin C: kiss 1, die 1 kontur, kiss di luar die 0,00 mm2; titik melingkar + tengah: kiss 1, die 1 kontur, kiss di luar die 0,00 mm2; donat lubang Ø 21,5 mm: kiss 2, die 2 kontur, kiss di luar die 0,00 mm2; donat lubang Ø 4,6 mm: kiss 1, die 1 kontur, kiss di luar die 0,00 mm2
+S12 LULUS: editor garis potong: node lurus dan kurva, garis manual, skala, kunci offset, export, edit node dan handle | simpangan 0,185 mm (eps 0,2); node logo kasar eps 0,05/0,2/0,5 = 21/17/10, lingkaran 4; M/L/Z True; luas 0,9%; grid 1881 -> 1887 sel; skala 0,001 mm; kunci offset 0,000 mm; die rapat: kiss di luar die 0,00 mm2; export lurus 93 garis lurus, 0 kurva, kurva 11 kurva; belah kurva 0,0066 mm; jadikan kurva/garis/halus True; editor tambah 5, undo/redo/hapus 4, handle benar, Simplify 0,5 2, klik tanpa geser, seret relatif benar, Shift 2 node benar, donat: kontur kiss 2 -> 1 (benar)
+S13 LULUS: smart select: objek, takik diikuti, watermark diabaikan, lubang sempit lewat klik, pulau, objek opak | kiss kiri 8,20 mm (Toleransi 64) / -2,05 mm (16); kontur kiss 1, +lubang 2 (garis dalam 1,00 mm, die 1, kiss di luar die 0,00 mm2), klik lubang 2x 1, +pulau 2, lubang jarum terlalu kecil True; takik: smart memuat titik False, otomatis True; opak: Toleransi 32, kiri 8,11 mm; editor 1/2/1/2/3 kontur, kiri 8,20 -> -2,05 mm, Toleransi awal 64 (benar)
+S14 LULUS: desain kotak: garis kotak tajam sejauh offset, 4 node lurus, tanpa Halus; kotak bersudut bulat tetap kurva | kiss 4 node, die 4 node; selisih kotak maks 0,001 mm (Halus 0/1, margin transparan, die saja, die rapat = kiss + 1 px); luas 0,0%; JPG opak True; badge sudut bulat kurva True; editor 'Kiss 4 titik · die 4 titik · garis otomatis'
+S15 LULUS: preset bentuk: mengelilingi artwork sejauh offset, die membungkus kiss, node sesuai bentuk, ikut offset dan lebar | Rect lingkaran: 4 node, 44,0x44,0 mm, artwork keluar 0,00, kiss di luar die 0,000; RoundRect lingkaran: 8 node, 44,1x44,1 mm, artwork keluar 0,00, kiss di luar die 0,000; Circle lingkaran: 4 node, 44,5x44,5 mm, artwork keluar 0,00, kiss di luar die 0,000; Oval lingkaran: 4 node, 44,6x44,6 mm, artwork keluar 0,00, kiss di luar die 0,000; Triangle lingkaran: 3 node, 76,7x66,4 mm, artwork keluar 0,00, kiss di luar die 0,000; Hexagon lingkaran: 6 node, 51,3x44,4 mm, artwork keluar 0,00, kiss di luar die 0,000; Star lingkaran: 10 node, 84,3x80,2 mm, artwork keluar 0,00, kiss di luar die 0,000; Heart lingkaran: 4 node, 71,4x63,8 mm, artwork keluar 0,00, kiss di luar die 0,000; lingkaran offset 3 = 46,45 mm (harapan 46), lebar 60 = 64,58 mm (64); editor benar; export 9 garis lurus, 12 kurva; kiss bintang + die kotak benar (kiss+1,9 mm di luar die 0,000 mm2; kiss otomatis + die kotak 48,00x48,00 mm, kiss di luar die 0,000 mm2)
+S16 LULUS: warna border: area offset berwarna CMYK, diteruskan di luar garis, artwork dan lubang tetap, layar sama dengan PDF | PDF: offset #FFEE1D23, 0,5 mm di luar kiss #FFEE1D23, 1,5 mm di luar #FFFFFFFF, tanpa warna #FFFFFFFF; artwork sama True; donat: tepi lubang #FFEE1D23, tengah #FFFFFFFF; bleed 2: 1,5 mm di luar #FFEE1D23, perluasan warna tepi tidak; operator 0 1 1 0 k True; preview JPG offset #FFFA0105; editor benar; menjorok di ujung tajam (harapan 1/1/2 mm): border bintang 1,00, segitiga 1,00, bleed 2 bintang 2,00 mm
+S9 LULUS: stiker besar 300 mm dimuat < 5 detik | 873 ms, kiss 8 node, die 8 node
+P1 LULUS: CDR tanpa CorelDRAW: pesan jelas, aplikasi tidak crash | 334 ms: CorelDRAW tidak terpasang. Export file CDR ke PDF dulu, lalu tambahkan PDF-nya.
+P2 LULUS: worker yang melewati batas waktu dihentikan | dihentikan dalam 15 ms, worker tersisa 0
+P3 LULUS: nesting paralel deterministik | 5 kali susun, 1 hasil berbeda
+P4 LULUS: hapus latar paralel identik dengan versi berurutan | kikis 1-3 px: sama, tampilan 1:1: sama
+P5 LULUS: UI thread: susun 130 stiker < 1000 ms, satu langkah Rapikan 4000x3000 < 2000 ms | susun 63 ms, rapikan 167 ms (56% dihapus)
+bleed: 1,5 mm di luar tepi lingkaran: tanpa bleed #FFFFFFFF, bleed 2 mm #FFFFA500; 4 mm (di luar bleed) #FFFFFFFF; logo.pdf vektor tidak di-bleed
+bleed: bayangan alpha 40 tetap tembus: objek #FFFF8C00, bayangan #FFD77600 (tanpa bleed #FFD7D7D7), zona bleed #FFFF8C00
+file rusak: ai 'File AI ini tidak bisa dibaca: biasanya karena disimpan tanpa opsi PDF-compatible. Simpan ulang dari Illustrator dengan "Create PDF Compatible File", atau export ke PDF.'; pdf 'PDF tidak bisa dibuka: file rusak atau dilindungi password.'; png dan jpg 'Gambar rusak atau bukan file PNG/JPG yang valid.'; svg 'SVG rusak atau bukan file SVG yang valid.'
+susun: 26 stiker -> 2 lembar A4, pemakaian 36,2%
+snap: dijatuhkan di atas tetangga -> pindah 47 mm, 0 tabrakan; diputar -> 0 tabrakan
+S17 LULUS: tanda registrasi: stiker tidak masuk area pindai 6 mm di sekitar tanda (susun, Penuhi lembar, snap), stiker di pojok ditandai | jarak terdekat ke tanda: susun 9,78, Penuhi lembar 9,78 (+8 stiker), snap 7,50 mm (batas 6,25); tanpa tanda 2,16 mm; pojok ditandai 1/0; tebal 0,5 mm, panjang 10 mm
+bahan: isi bentuk badge 0,95, circle 0,79, star 0,56; lembar 1 60% (reguler); Print Ticket 1 halaman A4
+S8 LULUS: PDF export: garis potong hanya kurva Bezier, warna DeviceCMYK murni | halaman 1: 301 kurva, 0 garis lurus, warna garis 0 1 0 0 / 1 0 0 0, operator RGB/ruang warna lain 0
+preview: 2 JPG, 1414x2000 px, 351 KB
+multi-halaman: multi.pdf p1 28,3x28,3 mm, multi.pdf p2 63,6x14,2 mm; export menempel halaman yang benar
+PDF diganti lalu dihapus setelah dimuat: muat ulang 49,5 mm dan export tetap dari salinan (49,5 mm); tambah ulang memakai isi baru (28,3 mm)
+penuhi lembar: 26 -> 36 stiker di 2 lembar A4, 5 desain bertambah, isi ulang +0
+print ticket: 18 baris; Total lembar: 2; Total stiker: 26 pcs; Efisiensi bahan: 43% · sisa 57%
+OK

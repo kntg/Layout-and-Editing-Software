@@ -1,0 +1,10 @@
+file: ai-postscript.ai, invalid-file.jpg, invalid-file.png, invalid-file.svg, pdf-encrypted.pdf
+dialog 1 'Gagal memuat' (1.1 s): ai-postscript.ai: File AI ini tidak bisa dibaca: biasanya karena disimpan tanpa opsi PDF-compatible. Simpan ulang dari Illustrator dengan "Create PDF Compatible File", atau export ke PDF.
+dialog 2 'Gagal memuat' (1.7 s): invalid-file.jpg: Gambar rusak atau bukan file PNG/JPG yang valid.
+dialog 3 'Gagal memuat' (2.4 s): invalid-file.png: Gambar rusak atau bukan file PNG/JPG yang valid.
+dialog 4 'Gagal memuat' (3.0 s): invalid-file.svg: SVG rusak atau bukan file SVG yang valid.
+dialog ditutup: 4
+status: 1 stiker di 1 lembar.
+peringatan: 1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)
+daftar desain: 254 dpi | pdf-encrypted.pdf | × 30 mm | pcs |  |  | 
+responding: True

@@ -219,6 +219,9 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | "… tumpang tindih/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
 | "CorelDRAW tidak terpasang…" | Export CDR ke PDF dulu di PC yang ada CorelDRAW-nya, lalu tambahkan PDF-nya. |
 | "CorelDRAW tidak merespons dalam 30 detik…" | Cek jendela CorelDRAW, mungkin ada dialog yang terbuka. Atau export CDR ke PDF secara manual. |
+| "File AI ini tidak bisa dibaca…" | AI disimpan tanpa opsi PDF-compatible. Simpan ulang dari Illustrator dengan "Create PDF Compatible File", atau export ke PDF. |
+| "PDF tidak bisa dibuka: file rusak atau dilindungi password." | Minta file baru ke customer, atau buka password PDF-nya dulu. |
+| "Gambar rusak…" atau "SVG rusak…" | File rusak atau ekstensinya salah. Minta file baru ke customer. |
 | "Aktifkan minimal satu garis potong." | Centang kiss-cut atau die-cut. |
 | "Offset die-cut harus lebih besar dari offset kiss-cut." | Naikkan offset die-cut. |
 | "Bleed tidak boleh lebih besar dari jarak antar stiker." | Kecilkan bleed atau besarkan jarak antar stiker. |

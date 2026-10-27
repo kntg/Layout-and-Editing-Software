@@ -56,7 +56,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 | F14 | Shortcut ala CorelDRAW: Ctrl+I = tambah file, F4 / Shift+F4 = pas layar (selain Ctrl+O dan Ctrl+0) | Ada |
 | F15 | Rapikan gambar (pengganti langkah Photoshop), untuk desain yang ditempel sebagai gambar: hapus latar otomatis, penghapus klik, toleransi warna, kikis tepi 0–3 px, urungkan dan kembalikan. Dibuka lewat ikon penghapus atau dobel-klik thumbnail. Garis potong dihitung ulang dari hasilnya | Ada. Di luar cakupan prototipe: tidak dikembangkan |
 | F16 | Garis potong dengan node sedikit dan kurva mulus untuk pisau Graphtec: tanpa sudut tajam; slider "Halus" sekarang juga menghaluskan bentuk sehingga node berkurang (lihat Keputusan) | Ada |
-| F17 | Bleed untuk gambar PNG/JPG (opsional, 0 = mati): warna tepi diperluas sampai bleed mm di luar garis kiss, supaya pergeseran pisau tidak menyisakan tepi putih. Maksimal sama dengan jarak antar stiker | Ada |
+| F17 | Bleed untuk gambar PNG/JPG (opsional, 0 = mati): warna tepi diperluas sampai bleed mm di luar garis kiss, supaya pergeseran pisau tidak menyisakan tepi putih. Maksimal sama dengan jarak antar stiker. Bagian semi-transparan artwork (bayangan, tepi feather foto) tetap tembus, karena warna perluasan hanya diambil dari piksel pekat (2026-10-28) | Ada |
 | F18 | Indikator bahan: "Bahan terpakai" dihitung terhadap area kertas di dalam margin, berwarna hijau/kuning/merah menurut target bentuk reguler (70–85%, hijau ≥ 75%) atau irregular (55–70%, hijau ≥ 60%). Yield per lembar ("24 pcs / lembar A3+") dan sisa bahan | Ada |
 | F19 | Snap magnet: stiker yang digeser atau diputar pindah ke posisi kosong terdekat (tidak bertabrakan, jarak antar stiker tetap). Preset bahan dihapus 2026-10-23 (tidak diperlukan, masukan user/leader) | Ada |
 | F20 | Print Ticket: PDF A4 1 halaman berisi total lembar, total pcs, efisiensi bahan, rincian per lembar dan per desain, serta pengaturan potong, untuk lampiran nota kasir/SPK | Ada |
@@ -192,7 +192,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - Dengan bleed aktif, ruang antara artwork dan bentuk ikut diisi warna tepi artwork, sama seperti garis manual yang jauh dari artwork. Pakai warna border bila ruang itu harus berwarna rata.
 - Warna border: urungkan/ulangi di dalam editor belum mencakup ganti warna (urungkan global di jendela utama mencakupnya). Print Ticket belum menulis warna border. Warna di layar hanya perkiraan dari CMYK.
 - Smart select membaca transparansi atau beda warna dengan latar; objek di foto berlatar ramai belum bisa dipilih.
-- Bleed: tepi JPG yang sangat kasar (kompresi tinggi) bisa menyisakan garis pucat tipis di area bleed; rapikan gambarnya dulu untuk hasil terbaik. Stiker raster sangat besar (±300 mm) dengan bleed dimuat ±1–2 detik lebih lama.
+- Bleed: tepi JPG yang sangat kasar (kompresi tinggi) bisa menyisakan garis pucat tipis di area bleed; rapikan gambarnya dulu untuk hasil terbaik. Stiker raster sangat besar (±300 mm) dengan bleed dimuat ±1–2 detik lebih lama. Tepi pekat yang bertekstur (misalnya kain, bulu, atau logam pada foto) diperluas lurus ke luar, jadi zona bleed bisa bergaris.
 - Tanda registrasi: area 6 mm di sekitar tanda dikosongkan, jadi stiker di pojok lembar bergeser (uji semua file 01-input: lembar 1 dari 5 pcs 92% menjadi 4 pcs 90%; total tetap 18 stiker, 54%). Toggle tanda tidak menyusun ulang; stiker di area tanda jadi merah sampai Susun otomatis ditekan. Export PDF memuat tanda hitam (K) bila menu aktif.
 
 ## 9. Pertanyaan terbuka

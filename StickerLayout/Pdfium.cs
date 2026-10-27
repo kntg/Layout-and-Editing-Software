@@ -40,7 +40,9 @@ public sealed class Pdfium : IDisposable
         if (doc != IntPtr.Zero) return;
         uint err = FPDF_GetLastError();
         Marshal.FreeHGlobal(mem);
-        throw new InvalidDataException($"PDF tidak bisa dibuka (PDFium error {err}).");
+        // Pesan untuk operator (D9); kode PDFium tetap ada di InnerException.
+        throw new InvalidDataException(Lang.T(Path.GetExtension(path).Equals(".ai", StringComparison.OrdinalIgnoreCase) ? "BadAi" : "BadPdf"),
+            new IOException($"PDFium error {err}"));
     }
 
     public int Pages => FPDF_GetPageCount(doc);

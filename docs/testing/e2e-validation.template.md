@@ -164,6 +164,8 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 **Keputusan D3 dan D5 (2026-10-27):** user menyetujui saran. Jarak garis ke artwork (A4 dan batas bawah pita A5) memakai toleransi galat kurva 0,15 mm, dan target node ≥ 60% hanya berlaku untuk `rough.jpg`. `validasi.py` kini exit 0, jadi CUT-03, CUT-05, dan CUT-10 PASS. A4 tetap melaporkan 43 garis di bawah offset − 0,3 mm (terdalam 0,13 mm). [Bukti](../../Printech-TestData/04-evidence/2026-10-27-validasi-keputusan-d3-d5.txt).
 
+**Bleed, D6, dan D9 (2026-10-28):** bleed sebelumnya membuat bagian semi-transparan artwork jadi pekat. Bayangan tipis menjadi hitam, dan tepi feather foto memperlihatkan latar asli yang tersembunyi (temuan dari tangkapan layar user). Sekarang warna perluasan hanya diambil dari piksel pekat, lalu artwork ditumpuk di atasnya, jadi bayangan tetap tembus (CUT-13). Angka dpi dan warna merahnya kini memakai pembulatan yang sama (D6), dan file rusak memberi pesan untuk operator (D9: IMP-04, IMP-21). Selfcheck 4/4 (21/21), `validasi.py` exit 0 dengan vonis sama persis dengan 2026-10-27. Tepi pekat yang bertekstur masih diperluas lurus ke luar, jadi zona bleed bisa bergaris. [Bukti bleed](../../Printech-TestData/04-evidence/2026-10-28-bukti-bleed-alpha.txt), [bukti file rusak](../../Printech-TestData/04-evidence/2026-10-28-ui-file-khusus.txt).
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -178,7 +180,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 ## 6. Kasus uji
 
-Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27.
+Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, dan IMP-21 per 2026-10-28.
 
 Kolom Sumber menunjukkan asal kriterianya:
 
@@ -245,7 +247,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | 2. Input dan geometri | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. IMP-22 (file customer) NOT RUN. |
 | 3. Export dan kompatibilitas | EXP-\*, HW-01 sampai HW-04 | Belum. Semua EXP lulus; PDF terenkripsi tidak lagi menggagalkan export (D8 diperbaiki 2026-10-21). HW-01 sampai HW-04 BLOCKED. |
 | 4. Produksi fisik | HW-05 sampai HW-08 | Belum. BLOCKED. |
-| 5. Dokumentasi dan defect | Bagian 7 dan 10 | Belum. Defect terbuka: D6, D9 (D1, D2, D4, D8, D10 sudah diperbaiki; D3, D5, D7 diputuskan). |
+| 5. Dokumentasi dan defect | Bagian 7 dan 10 | Belum. Tidak ada defect terbuka (D1, D2, D4, D6, D8, D9, D10 sudah diperbaiki; D3, D5, D7 diputuskan). |
 
 ## 10. Temuan dan defect terbuka
 
@@ -256,10 +258,10 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | D3 | **Diputuskan 2026-10-27:** toleransi galat kurva 0,15 mm diterima; validasi A4 dan batas bawah pita A5 memakai offset − 0,3 − 0,15 mm (CUT-05 dan CUT-10 PASS). Sebelumnya: garis bisa sampai 0,13 mm lebih dekat dari batas offset − 0,3 mm, di sudut lancip dan pada offset kecil. Garis tetap di luar artwork. | validasi A4 | [Core.cs:465-486](../../StickerLayout/Core.cs#L465-L486) (penjaga jarak), [Core.cs:541-562](../../StickerLayout/Core.cs#L541-L562) (Potrace) | Mayor |
 | D4 | **Diperbaiki 2026-10-21:** bitmap resolusi penuh hasil muat langsung dilepas setelah menyusun ([MainWindow.xaml.cs:363-366](../../StickerLayout/MainWindow.xaml.cs#L363-L366)), dan salinan layar tidak lagi memegang bitmap sumber ([Core.cs:359-372](../../StickerLayout/Core.cs#L359-L372)). RAM: semua 19 desain 279 → 84 MB, JPG 24 MP 226 → 41 MB, dua PDF besar 326 → 53 MB. Sebelumnya: GC tidak jalan setelah muat, sehingga bitmap decode/render penuh (JPG 24 MP: 96 MB native + 96 MB heap) tetap terhitung; logo kecil di halaman besar menahan render halaman penuh (±43 MB) selama desainnya ada. Puncak sesaat saat memuat masih tinggi. | [ram-profil](../../Printech-TestData/04-evidence/2026-10-21-ram-profil.txt) | [Core.cs:359-372](../../StickerLayout/Core.cs#L359-L372) | Mayor |
 | D5 | **Diputuskan 2026-10-27:** target node ≥ 60% hanya untuk logo kasar seperti `rough.jpg` (S1); logo bergelombang dicatat sebagai info A2b (CUT-03 PASS). Sebelumnya: node pada logo bertepi bergelombang hanya turun 54% (target 60%). | validasi A2b | — | Minor |
-| D6 | Nilai 149,5–149,99 dpi tampil sebagai "150 dpi" tetapi berwarna merah. | Kode | [Core.cs:49-50](../../StickerLayout/Core.cs#L49-L50) | Minor |
+| D6 | **Diperbaiki 2026-10-28:** warna merah memakai pembulatan yang sama dengan angka dpi yang tampil (selfcheck). Sebelumnya: nilai 149,5–149,99 dpi tampil sebagai "150 dpi" tetapi berwarna merah. | Kode | [Core.cs:49-50](../../StickerLayout/Core.cs#L49-L50) | Minor |
 | D7 | **Diputuskan 2026-10-21:** latar tidak dibuang otomatis, jadi kotak putih di PDF selalu dipertahankan dan garis mengelilingi kotak (dicek probe, IMP-18). Sebelumnya: kotak putih yang tidak memenuhi halaman menghasilkan kotak 84 × 84 mm, sedangkan halaman putih penuh mengikuti logo (44 × 44 mm). | [d7-kotak-putih](../../Printech-TestData/04-evidence/2026-10-21-d7-kotak-putih.txt) | [Core.cs (Fg)](../../StickerLayout/Core.cs) | Mayor |
 | D8 | **Diperbaiki 2026-10-21:** saat dimuat, halaman PDF dicoba ditempel seperti saat export ([Core.cs:321-328](../../StickerLayout/Core.cs#L321-L328)); bila gagal, PDF ditempel sebagai gambar dengan peringatan. Dicek validasi X3 dan UI. Sebelumnya: PDF terenkripsi (hanya kata sandi pemilik) lolos cek vektor saat dimuat, lalu `Export.Pdf` melempar exception "The archive entry was compressed using an unsupported compression method." sehingga seluruh export layout gagal. | [pdf-terenkripsi](../../Printech-TestData/04-evidence/2026-10-21-pdf-terenkripsi.txt) | [Core.cs:321-328](../../StickerLayout/Core.cs#L321-L328) | Mayor |
-| D9 | Pesan error untuk file rusak masih teknis, sebagian berbahasa Inggris: "PDF tidak bisa dibuka (PDFium error 3)." untuk AI tanpa PDF-compatible; "No imaging component suitable…" untuk PNG/JPG; "Data at the root level is invalid…" untuk SVG. | `ui-file-khusus.ps1` | [Pdfium.cs:43](../../StickerLayout/Pdfium.cs#L43), [MainWindow.xaml.cs:239](../../StickerLayout/MainWindow.xaml.cs#L239) | Minor |
+| D9 | **Diperbaiki 2026-10-28:** file rusak memberi pesan untuk operator per jenis file (AI, PDF, PNG/JPG, SVG); pesan teknis tetap di InnerException (selfcheck, `ui-file-khusus.ps1`). Sebelumnya: pesan error untuk file rusak masih teknis, sebagian berbahasa Inggris: "PDF tidak bisa dibuka (PDFium error 3)." untuk AI tanpa PDF-compatible; "No imaging component suitable…" untuk PNG/JPG; "Data at the root level is invalid…" untuk SVG. | `ui-file-khusus.ps1` | [Pdfium.cs:43](../../StickerLayout/Pdfium.cs#L43), [MainWindow.xaml.cs:239](../../StickerLayout/MainWindow.xaml.cs#L239) | Minor |
 | D10 | **Diperbaiki 2026-10-21, lalu digantikan masukan leader hari yang sama:** latar gambar opak tidak pernah dibuang otomatis, termasuk putih ([Core.cs (Fg)](../../StickerLayout/Core.cs)); dicek selfcheck. Laporan tim awal: latar warna muda (abu 242, pink pastel) hilang dari layar dan PDF, tinggal cincin selebar offset kiss, dan lebar stiker dipakai untuk logo saja. | [png-latar](../../Printech-TestData/04-evidence/2026-10-21-png-latar.txt) | [Core.cs (Fg)](../../StickerLayout/Core.cs) | Mayor |
 
 **Batasan yang sudah diketahui** (tercatat di PRD, bukan defect baru):
@@ -279,13 +281,15 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 - D8: PDF yang gagal ditempel saat dimuat jadi gambar + peringatan ([Core.cs:321-328](../../StickerLayout/Core.cs#L321-L328)), 2026-10-21;
 - D4: bitmap hasil muat dilepas setelah menyusun, salinan layar mandiri ([MainWindow.xaml.cs:363-366](../../StickerLayout/MainWindow.xaml.cs#L363-L366)), 2026-10-21;
 - D10: latar PNG/JPG warna muda tidak lagi dibuang (2026-10-21); sejak masukan leader tahap 1 tidak ada latar opak yang dibuang otomatis ([Core.cs:391-393](../../StickerLayout/Core.cs#L391-L393));
-- peringatan PDF yang ditempel sebagai gambar ([Core.cs:32](../../StickerLayout/Core.cs#L32), [MainWindow.xaml.cs:107-108](../../StickerLayout/MainWindow.xaml.cs#L107-L108)).
+- peringatan PDF yang ditempel sebagai gambar ([Core.cs:32](../../StickerLayout/Core.cs#L32), [MainWindow.xaml.cs:107-108](../../StickerLayout/MainWindow.xaml.cs#L107-L108));
+- D6 dan D9 (2026-10-28): warna dpi rendah memakai pembulatan angka yang tampil; pesan file rusak untuk operator ([Core.cs](../../StickerLayout/Core.cs), [Pdfium.cs](../../StickerLayout/Pdfium.cs));
+- bleed tidak lagi membuat bagian semi-transparan artwork jadi pekat (2026-10-28, `Bleed` di [Core.cs](../../StickerLayout/Core.cs)).
 
 ## 11. Urutan perbaikan yang disarankan (berdasarkan risiko produksi)
 
-D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21. Kasus tingkat Operator/hardware di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
+D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21; D6 dan D9 pada 2026-10-28. Kasus tingkat Operator/hardware di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
 
-1. **Pesan error D9; tampilan dpi D6.** Toleransi D3 dan D5 sudah diputuskan 2026-10-27.
+1. **Keputusan di bagian 12:** pemeriksaan wajib untuk rilis, severity, dan lokasi file customer. Toleransi D3 dan D5 sudah diputuskan 2026-10-27.
 
 ## 12. Keputusan yang dibutuhkan
 

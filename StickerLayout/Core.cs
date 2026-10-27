@@ -47,7 +47,8 @@ public class Sticker
     public const double MinDpi = 150;
     public double? Dpi => Pdf == null && WidthMm > 0 ? PxW * 25.4 / WidthMm : null;
     public string DpiText => Dpi is { } d ? $"{d:0} dpi" : "";
-    public bool LowDpi => Dpi < MinDpi;
+    // Pembulatan sama dengan DpiText (D6): angka yang tampil dan warna merahnya selalu cocok.
+    public bool LowDpi => Dpi is { } d && Math.Round(d, MidpointRounding.AwayFromZero) < MinDpi;
     public string Kiss = "", Die = "";           // path SVG garis potong (mm, koordinat kotak)
     // Garis potong hasil editor (node, mm relatif terhadap pojok kiri-atas artwork); null = garis otomatis.
     public List<Node[]>? ManualKiss, ManualDie;
@@ -163,13 +164,21 @@ public static partial class Loader
             (full, nat, media, bool vector) = RenderPdf(pdf, page);
             if (vector) s.Pdf = pdf;
         }
-        else if (edited == null && ext == ".svg") { full = RenderSvg(path, widthMm); s.Raster = Png(full); media = new Rect(0, 0, full.PixelWidth, full.PixelHeight); }
+        else if (edited == null && ext == ".svg")
+        {
+            // File rusak: pesan untuk operator (D9), pesan teknis tetap di InnerException.
+            try { full = RenderSvg(path, widthMm); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T("BadSvg"), ex); }
+            s.Raster = Png(full);
+            media = new Rect(0, 0, full.PixelWidth, full.PixelHeight);
+        }
         else if (edited != null || ext is ".png" or ".jpg" or ".jpeg")
         {
             s.Edited = edited;
             s.Raster = edited ?? File.ReadAllBytes(path);
             using var ms = new MemoryStream(s.Raster);
-            full = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+            try { full = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0]; }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T("BadImage"), ex); }
             media = new Rect(0, 0, full.PixelWidth, full.PixelHeight);
         }
         else throw new NotSupportedException(Lang.T("Unsupported"));
@@ -271,16 +280,18 @@ public static partial class Loader
     const double BleedPxMm = 300 / 25.4; // resolusi maksimal gambar bleed: 300 dpi
 
     // Auto-bleed untuk raster: warna tepi artwork diperluas keluar (dilasi warna, 8 arah) sejauh d mm, supaya
-    // pergeseran pisau tidak menyisakan tepi putih. Lubang di dalam artwork tetap warna aslinya. Saat digambar,
-    // hasilnya di-clip ke garis potong + bleed (Sticker.ArtClip).
+    // pergeseran pisau tidak menyisakan tepi putih. Sumber warnanya hanya piksel pekat (alpha 255); artwork asli lalu
+    // ditumpuk di atas lapisan perluasan. Jadi bayangan dan tepi feather tetap tembus, dan warna latar yang tersembunyi
+    // di bawah piksel semi-transparan tidak muncul (temuan 2026-10-28). Lubang di dalam artwork tetap warna aslinya.
+    // Saat digambar, hasilnya di-clip ke garis potong + bleed (Sticker.ArtClip).
     // ponytail: gambar bleed dibuat ulang penuh (maks 300 dpi); stiker raster ±300 mm jadi ±1-2 detik lebih lambat.
     // Ganti dengan lapisan bawah beresolusi rendah bila operator merasakan lambat.
     static (byte[] png, BitmapSource view, Rect rect) Bleed(BitmapSource crop, double artW, double artH, double d, double off)
     {
         double k = Math.Min(crop.PixelWidth / artW, BleedPxMm);
         var src = new TransformedBitmap(crop, new ScaleTransform(artW * k / crop.PixelWidth, artH * k / crop.PixelHeight));
-        var core = Silhouette(src, out int w, out int h);
-        var (px, _, _) = Pixels(src);
+        var (px, w, h) = Pixels(src);
+        bool Solid(int x, int y) => px[(y * w + x) * 4 + 3] == 255;
         double kx = w / artW, ky = h / artH;
         int p = (int)Math.Ceiling(d * Math.Max(kx, ky)), W = w + 2 * p, H = h + 2 * p;
         var o = new byte[W * H * 4];
@@ -288,15 +299,15 @@ public static partial class Loader
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
-                if (!core[x, y]) continue;
+                if (!Solid(x, y)) continue;
                 int i = (y + p) * W + x + p, j = (y * w + x) * 4;
                 o[i * 4] = px[j]; o[i * 4 + 1] = px[j + 1]; o[i * 4 + 2] = px[j + 2]; o[i * 4 + 3] = 255;
-                bool edge = x == 0 || y == 0 || x == w - 1 || y == h - 1 || !core[x - 1, y] || !core[x + 1, y] || !core[x, y - 1] || !core[x, y + 1];
+                bool edge = x == 0 || y == 0 || x == w - 1 || y == h - 1 || !Solid(x - 1, y) || !Solid(x + 1, y) || !Solid(x, y - 1) || !Solid(x, y + 1);
                 if (edge) front.Add(i);
             }
-        // Lapis demi lapis keluar: piksel baru = rata-rata tetangga yang sudah berwarna (8 arah), jadi satu piksel
-        // tepi yang menyimpang tidak membentuk garis panjang.
-        for (int layer = 0; layer < p && front.Count > 0; layer++)
+        // Lapis demi lapis keluar sampai seluruh gambar terisi (tepi feather bisa lebih lebar dari d): piksel baru =
+        // rata-rata tetangga yang sudah berwarna (8 arah), jadi satu piksel tepi yang menyimpang tidak membentuk garis panjang.
+        while (front.Count > 0)
         {
             var next = new List<int>();
             foreach (int i in front)
@@ -317,6 +328,15 @@ public static partial class Loader
             foreach (int j in next) o[j * 4 + 3] = 255;
             front = next;
         }
+        // Artwork semi-transparan ditumpuk di atas lapisan perluasan. Tanpa lapisan (gambar tanpa piksel pekat): apa adanya.
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                int j = (y * w + x) * 4, a = px[j + 3], i = ((y + p) * W + x + p) * 4;
+                if (a == 0 || a == 255) continue;
+                if (o[i + 3] == 0) { o[i] = px[j]; o[i + 1] = px[j + 1]; o[i + 2] = px[j + 2]; o[i + 3] = (byte)a; continue; }
+                for (int c = 0; c < 3; c++) o[i + c] = (byte)((px[j + c] * a + o[i + c] * (255 - a) + 127) / 255);
+            }
         var bmp = BitmapSource.Create(W, H, 96, 96, PixelFormats.Bgra32, null, o, W * 4);
         bmp.Freeze();
         return (Png(bmp), Proxy(bmp), new Rect(off - p / kx, off - p / ky, W / kx, H / ky));

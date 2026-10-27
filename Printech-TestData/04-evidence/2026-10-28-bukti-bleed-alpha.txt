@@ -1,0 +1,41 @@
+Bukti bleed 2026-10-28: piksel semi-transparan jadi pekat saat bleed aktif.
+
+Gambar uji (600 x 400 px, dibuat skrip, tidak premultiply), dimuat lewat Loader.Load asli:
+kiss 2/1 mm, die mati, lebar 50 mm, bleed 0 lalu 2 mm. Render layar lewat Nest.Sheet 10 px/mm,
+PDF lewat Export.Pdf lalu dirender PyMuPDF 10 px/mm.
+- halo.png: disk oranye opak r 100 px + bayangan hitam alpha 60 -> 18 (r 100-150 px).
+- cutout.png: "foto" bergaris ungu/abu + disk oranye; masker feather alpha 255 -> 17 (r 100-140 px).
+  RGB di bawah alpha rendah = warna latar foto, seperti potongan foto biasa.
+
+halo.png                                   bleed 0          bleed 2 (layar)   bleed 2 (PDF)
+  objek r 50                               (245,140,30)     (245,140,30)      (243,139,35)
+  bayangan r 125, alpha 39, dalam kiss     (216,216,216)    (0,0,0)           (8,6,6)
+  zona bleed r 168, luar kiss              (255,255,255)    (0,0,0)           (8,6,6)
+
+cutout.png
+  objek r 50                               (245,140,30)     (245,140,30)      (243,139,35)
+  feather r 120, alpha 136, dalam kiss     (226,226,231)    (200,200,210)     (202,199,208)
+  zona bleed r 156, luar kiss              (255,255,255)    (200,200,210)     (202,199,208)
+
+Clip bleed = garis kiss + 2,00 mm (benar). Garis kiss 53,7 mm melingkari bayangan (alpha > 16),
+padahal objek yang terlihat hanya 33 mm.
+Gambar: 2026-10-28-bukti-bleed-alpha.png (kiri bleed 0, kanan bleed 2 mm).
+Penyebab: Core.cs Bleed() menyalin setiap piksel alpha > 16 dengan alpha 255 dan RGB tanpa premultiply,
+lalu memperluas warna tepi itu lapis demi lapis (pola garis lurus/zigzag di zona bleed).
+
+Sesudah perbaikan (2026-10-28, Bleed di Core.cs: sumber warna perluasan hanya piksel alpha 255,
+artwork asli ditumpuk di atas lapisan perluasan). Probe yang sama, render layar:
+
+halo.png                                   bleed 0          bleed 2 (sesudah)
+  bayangan r 125, alpha 39, dalam kiss     (216,216,216)    (208,119,25)  bayangan tembus di atas oranye
+  zona bleed r 168, luar kiss              (255,255,255)    (245,140,30)  oranye
+
+cutout.png
+  feather r 120, alpha 136, dalam kiss     (226,226,231)    (182,167,186)
+  zona bleed r 156, luar kiss              (255,255,255)    (146,116,156)
+
+Pada cutout.png, cincin piksel terluar disk ber-alpha 255 tetapi berwarna latar foto (pembulatan alpha di
+gambar uji), jadi warna perluasan = campuran garis latar. Tepi pekat yang bertekstur tetap diperluas lurus
+ke luar, sehingga zona bleed bisa bergaris; ini mekanisme perluasan, bukan lagi soal alpha.
+Selfcheck (2026-10-28-selfcheck.txt): bayangan alpha 40 di render PDF = #D77600 (tanpa bleed #D7D7D7),
+zona bleed #FF8C00. Gambar: 2026-10-28-bukti-bleed-alpha-sesudah.png.
