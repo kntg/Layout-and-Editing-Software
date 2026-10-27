@@ -33,17 +33,40 @@ public static class Shapes
 
     // Garis kiss/die bentuk preset dari mask artwork (piksel ke mm: artW/lebar mask). Kiss mengelilingi artwork sejauh offset
     // kiss; die memakai bentuk dan pusat yang sama sejauh offset die, minimal 1 piksel (1/6 mm) di luar kiss. Halus tidak dipakai.
-    public static (List<Node[]>? Kiss, List<Node[]>? Die) Lines(bool[,] mask, CutShape shape, double artW, double artH, Cut kiss, Cut die)
+    // dieShape (masukan leader 2026-10-26): Auto = sama dengan kiss; bentuk lain membungkus kontur kiss sejauh selisih offset
+    // (kiss otomatis: membungkus artwork sejauh offset die). null = garis itu otomatis atau mati.
+    public static (List<Node[]>? Kiss, List<Node[]>? Die) Lines(bool[,] mask, CutShape shape, double artW, double artH, Cut kiss, Cut die,
+        CutShape dieShape = CutShape.Auto)
     {
         var hull = Hull(mask, artW / mask.GetLength(0), artH / mask.GetLength(1));
-        if (hull.Length < 3 || shape == CutShape.Auto) return (null, null);
+        var ds = dieShape == CutShape.Auto ? shape : dieShape;
+        if (hull.Length < 3 || shape == CutShape.Auto && ds == CutShape.Auto) return (null, null);
         double dk = kiss.Off, dd = kiss.On ? Math.Max(die.Off, kiss.Off + 1 / Loader.PxMm) : die.Off;
         Point? center = null;
         double size = 0;
-        Node[]? k = kiss.On ? Make(shape, hull, dk, ref center, ref size) : null;
+        Node[]? k = kiss.On && shape != CutShape.Auto ? Make(shape, hull, dk, ref center, ref size) : null;
         double kSize = size;
-        Node[]? d = die.On ? Make(shape, hull, dd, ref center, ref size, kSize) : null;
+        Node[]? d = null;
+        if (die.On && ds != CutShape.Auto)
+        {
+            if (ds == shape) d = Make(ds, hull, dd, ref center, ref size, kSize);
+            else
+            {
+                Point? dc = null;
+                double dSize = 0;
+                d = k != null ? Make(ds, Hull(Flat(k)), dd - dk, ref dc, ref dSize) : Make(ds, hull, dd, ref dc, ref dSize);
+            }
+        }
         return (k == null ? null : [k], d == null ? null : [d]);
+    }
+
+    // Nama bentuk untuk daftar desain dan editor: "Bintang", "Bintang · die Kotak", "die Kotak"; "" = otomatis.
+    public static string Label(CutShape kiss, CutShape die)
+    {
+        var k = kiss == CutShape.Auto ? "" : Lang.T("Shape" + kiss);
+        if (die == CutShape.Auto || die == kiss) return k;
+        var d = "die " + Lang.T("Shape" + die);
+        return k == "" ? d : k + " · " + d;
     }
 
     // Satu kontur bentuk yang memuat hull + offset. center/size: pusat dan ukuran hasil kiss, dipakai ulang untuk die supaya
@@ -146,7 +169,13 @@ public static class Shapes
             if (a < 0) continue;
             pts.AddRange([new(a * sx, y * sy), new(a * sx, (y + 1) * sy), new((b + 1) * sx, y * sy), new((b + 1) * sx, (y + 1) * sy)]);
         }
-        pts = [.. pts.Distinct().OrderBy(p => p.X).ThenBy(p => p.Y)];
+        return Hull(pts);
+    }
+
+    // Hull cembung (monotone chain) dari titik bebas.
+    static Point[] Hull(IEnumerable<Point> points)
+    {
+        List<Point> pts = [.. points.Distinct().OrderBy(p => p.X).ThenBy(p => p.Y)];
         if (pts.Count < 3) return [.. pts];
         static double Turn(Point o, Point a, Point b) => Vector.CrossProduct(a - o, b - o);
         var lower = new List<Point>();
@@ -325,9 +354,9 @@ public static class Shapes
 public static partial class Loader
 {
     // Pratinjau bentuk di editor: silhouette dari salinan layar desain (6 px/mm), offset garis yang sedang dipakai.
-    public static (List<Node[]>? Kiss, List<Node[]>? Die) ShapeLines(Sticker s, CutShape shape)
+    public static (List<Node[]>? Kiss, List<Node[]>? Die) ShapeLines(Sticker s, CutShape shape, CutShape dieShape = CutShape.Auto)
     {
         var small = new TransformedBitmap(s.Preview, new ScaleTransform(s.ArtW * PxMm / s.Preview.PixelWidth, s.ArtH * PxMm / s.Preview.PixelHeight));
-        return Shapes.Lines(Silhouette(small, out _, out _), shape, s.ArtW, s.ArtH, s.LoadedKiss, s.LoadedDie);
+        return Shapes.Lines(Silhouette(small, out _, out _), shape, s.ArtW, s.ArtH, s.LoadedKiss, s.LoadedDie, dieShape);
     }
 }

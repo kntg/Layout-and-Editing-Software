@@ -1,0 +1,15 @@
+awal: 2 stiker di 1 lembar.
+posisi awal: lingkaran (302,313) 2092 px, bintang (224,314) 1130 px
+EDIT-01 LULUS: seret ke area kosong: pindah 249 px (target 250); seret ke atas lingkaran: berakhir 79 px dari pusatnya; peringatan '1 desain resolusi rendah'
+EDIT-02 LULUS: rotasi '0°' -> '90°'; peringatan '1 desain resolusi rendah'
+EDIT-03 LULUS: 3 x Shift+kiri + 2 x kiri: posisi 'X 139   Y 9 mm' -> 'X 107   Y 9 mm' (geser 32 mm, harapan 32); peringatan '2 tumpang tindih/keluar margin   1 desain resolusi rendah'
+tombol dialog: Yes / No -> No
+EDIT-07 LULUS: dialog: 'Ada stiker tumpang tindih/keluar margin. Tetap export?'; dialog simpan setelah Tidak: False
+EDIT-06 LULUS: peringatan setelah Ctrl+L: '1 desain resolusi rendah'; status '2 stiker di 1 lembar.'
+EDIT-04 LULUS: bintang terpilih True; status '2 stiker di 1 lembar.' -> '1 stiker di 1 lembar.'
+EDIT-05 LULUS: status '4 stiker di 1 lembar.'; tinggi desain '× 50 mm, × 50 mm' -> '× 50 mm, × 80 mm'
+CUT-12 LULUS: 'Aktifkan minimal satu garis potong.' | 'Offset die-cut harus lebih besar dari offset kiss-cut.' | 'Bleed tidak boleh lebih besar dari jarak antar stiker.'
+EDIT-08 LULUS: kertas 210 x 297; status '4 stiker di 1 lembar.' -> '4 stiker di 1 lembar.'; judul lembar '4 pcs / lembar A4 · 30%'
+EDIT-11 LULUS: status '4 stickers on 1 sheet(s).'; tombol 'Auto layout' ada: True
+responding: True
+RINGKAS: 10 dari 10 LULUS

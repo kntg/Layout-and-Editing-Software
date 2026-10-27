@@ -13,17 +13,23 @@ namespace StickerLayout;
 // Preset bentuk (kotak, lingkaran, dll.) mengelilingi artwork. Koordinat node: mm relatif terhadap pojok kiri-atas artwork.
 public partial class CutEditWindow : Window
 {
-    sealed record State(List<Node[]> Kiss, List<Node[]> Die, bool Auto, CutShape Shape, Point[] Objs, Point[] Holes);
+    sealed record State(List<Node[]> Kiss, List<Node[]> Die, bool Auto, CutShape Shape, CutShape DieShape, Point[] Objs, Point[] Holes);
 
     readonly Sticker auto;      // desain dengan garis otomatis pada pengaturan sekarang: sumber Simplify, bentuk, dan Reset otomatis
     double reach;               // node dan handle tidak bisa keluar sejauh ini dari artwork (kotak desain otomatis atau bentuk)
     List<Node[]> kiss, die;
     bool isAuto;                // belum diedit: Simpan mempertahankan garis otomatis (kurva) atau bentuk preset
-    CutShape shape;             // dasar garis: Auto = garis otomatis, selain itu preset bentuk
+    CutShape shape;             // dasar garis kiss: Auto = garis otomatis, selain itu preset bentuk
+    CutShape dieShape;          // dasar garis die: Auto = mengikuti kiss (garis otomatis atau bentuk yang sama)
     readonly List<State> undo = [], redo = [];
     string? merging;            // geser slider berturut-turut = satu langkah undo
-    (int C, int I)? sel;
+    readonly List<(int C, int I)> sel = []; // node terpilih (Shift+klik menambah)
     (int C, int J, bool Out)? hsel; // handle yang sedang diseret: node pemilik dan sisinya
+    (int C, int I)? grabbed;    // node yang digenggam: semua node terpilih bergeser sejauh node ini
+    Point pressAt;              // titik klik: seret baru dimulai setelah mouse bergeser lebih dari slop
+    Vector grab;                // node/handle yang digenggam dikurangi titik klik, supaya node tidak melompat ke kursor
+    double slop;
+    bool collapse;              // klik node dalam grup tanpa Shift dan tanpa geser: tinggal node itu yang terpilih
     State? before;              // keadaan sebelum node/handle diseret atau node ditambah
     bool dragging, moved, ready, syncing;
     double scale = 1, ox, oy;
@@ -38,16 +44,19 @@ public partial class CutEditWindow : Window
     public List<Node[]>? ManualKiss => isAuto || !auto.LoadedKiss.On ? null : kiss;
     public List<Node[]>? ManualDie => isAuto || !auto.LoadedDie.On ? null : die;
     public CutShape Shape => isAuto ? shape : CutShape.Auto;
+    public CutShape DieShape => isAuto ? dieShape : CutShape.Auto;
     public Cmyk? Border => border;
 
-    public CutEditWindow(Sticker auto, List<Node[]>? manualKiss, List<Node[]>? manualDie, CutShape shape, string name, Cmyk? border = null)
+    public CutEditWindow(Sticker auto, List<Node[]>? manualKiss, List<Node[]>? manualDie, CutShape shape, string name, Cmyk? border = null,
+        CutShape dieShape = CutShape.Auto)
     {
         InitializeComponent();
         Title = Lang.T("CutTitle", name);
         this.auto = auto;
         isAuto = (manualKiss == null || !auto.LoadedKiss.On) && (manualDie == null || !auto.LoadedDie.On); // hanya garis yang tampil
         this.shape = isAuto ? shape : CutShape.Auto;
-        var (k, d) = Base(this.shape);
+        this.dieShape = isAuto ? dieShape : CutShape.Auto;
+        var (k, d) = Base(this.shape, this.dieShape);
         kiss = auto.LoadedKiss.On ? Copy(isAuto ? k : manualKiss ?? k) : [];
         die = auto.LoadedDie.On ? Copy(isAuto ? d : manualDie ?? d) : [];
         reach = Reach();
@@ -81,9 +90,11 @@ public partial class CutEditWindow : Window
 
     bool OnDie => EditDie.IsChecked == true;
     List<Node[]> Active => OnDie ? die : kiss;
+    // Garis yang diedit masih garis otomatis (bukan bentuk): Simplify bisa membuatnya ulang.
+    bool ActiveAuto => shape == CutShape.Auto && (!OnDie || dieShape == CutShape.Auto);
     List<Node[]> Polys(string path) => Curves.Fit(path, auto.Off, Eps.Value);
     static List<Node[]> Copy(List<Node[]> p) => [.. p.Select(c => (Node[])c.Clone())];
-    State Snap() => new(Copy(kiss), Copy(die), isAuto, shape, [.. objs], [.. holes]);
+    State Snap() => new(Copy(kiss), Copy(die), isAuto, shape, dieShape, [.. objs], [.. holes]);
     Point Clamp(Point p) => new(Math.Clamp(p.X, -reach, auto.ArtW + reach), Math.Clamp(p.Y, -reach, auto.ArtH + reach));
     Point Screen(Point p) => new(ox + (p.X + reach) * scale, oy + (p.Y + reach) * scale);
     Point Mm(Point s) => new((s.X - ox) / scale - reach, (s.Y - oy) / scale - reach);
@@ -95,12 +106,11 @@ public partial class CutEditWindow : Window
         return over > auto.Off ? over + 1 : auto.Off;
     }
 
-    // Garis dasar untuk garis yang aktif: garis otomatis (Simplify) atau bentuk preset.
-    (List<Node[]> Kiss, List<Node[]> Die) Base(CutShape s)
+    // Garis dasar: garis otomatis (Simplify) atau bentuk preset; bentuk kiss dan die bisa berbeda, die Auto mengikuti kiss.
+    (List<Node[]> Kiss, List<Node[]> Die) Base(CutShape s, CutShape ds)
     {
-        if (s == CutShape.Auto) return (auto.LoadedKiss.On ? Polys(auto.Kiss) : [], auto.LoadedDie.On ? Polys(auto.Die) : []);
-        var (k, d) = Loader.ShapeLines(auto, s);
-        return (k ?? [], d ?? []);
+        var (k, d) = s == CutShape.Auto && ds == CutShape.Auto ? (null, null) : Loader.ShapeLines(auto, s, ds);
+        return (auto.LoadedKiss.On ? k ?? Polys(auto.Kiss) : [], auto.LoadedDie.On ? d ?? Polys(auto.Die) : []);
     }
 
     void Push(State s)
@@ -114,11 +124,11 @@ public partial class CutEditWindow : Window
     {
         if (from.Count == 0 || dragging) return;
         to.Add(Snap());
-        (kiss, die, isAuto, shape, var o, var h) = from[^1];
+        (kiss, die, isAuto, shape, dieShape, var o, var h) = from[^1];
         objs = [.. o];
         holes = [.. h];
         from.RemoveAt(from.Count - 1);
-        sel = null;
+        sel.Clear();
         merging = null;
         reach = Reach();
         Changed();
@@ -138,25 +148,35 @@ public partial class CutEditWindow : Window
         if (c[j].In != c[j].P) yield return (j, false, c[j].In);
     }
 
-    // Klik: handle node terpilih atau node terdekat (dalam tol mm) dipilih dan bisa diseret; klik di garis atau kurva
-    // menambah node di situ tanpa mengubah bentuk.
-    internal void Press(Point q, double tol)
+    // Klik (masukan leader 2026-10-26): handle node terpilih atau node terdekat (dalam tol mm) dipilih tanpa bergeser; Shift+klik
+    // menambah/melepas node dari pilihan. Klik di garis atau kurva menambah node di situ tanpa mengubah bentuk.
+    internal void Press(Point q, double tol, bool add = false)
     {
         before = Snap();
-        moved = false;
+        moved = collapse = false;
         hsel = null;
+        grabbed = null;
+        pressAt = q;
+        slop = tol / 2;
         var a = Active;
-        if (sel is (int c0, int i0) && c0 < a.Count && i0 < a[c0].Length)
+        if (sel.Count == 1 && sel[0] is var (c0, i0) && c0 < a.Count && i0 < a[c0].Length)
             foreach (var (j, o, h) in HandlesOf(a[c0], i0))
-                if ((h - q).Length <= tol) { hsel = (c0, j, o); break; }
+                if ((h - q).Length <= tol) { hsel = (c0, j, o); grab = h - q; break; }
         if (hsel == null)
         {
-            sel = null;
+            (int C, int I)? hit = null;
             double best = tol;
             for (int c = 0; c < a.Count; c++)
                 for (int i = 0; i < a[c].Length; i++)
-                    if ((a[c][i].P - q).Length is var d && d <= best) (best, sel) = (d, (c, i));
-            if (sel == null)
+                    if ((a[c][i].P - q).Length is var d && d <= best) (best, hit) = (d, (c, i));
+            if (hit is { } n)
+            {
+                if (add) { if (!sel.Remove(n)) sel.Add(n); }
+                else if (!sel.Contains(n)) { sel.Clear(); sel.Add(n); }
+                else collapse = sel.Count > 1; // klik di grup: tetap grup untuk diseret, tanpa geser tinggal node ini
+                if (sel.Contains(n)) (grabbed, grab) = (n, a[n.C][n.I].P - q);
+            }
+            else
             {
                 (int C, int I, double T)? seg = null;
                 best = tol * 0.7;
@@ -165,26 +185,36 @@ public partial class CutEditWindow : Window
                 if (seg is (int sc, int si, double st))
                 {
                     a[sc] = Curves.Split(a[sc], si, st);
-                    sel = (sc, si + 1);
+                    sel.Clear();
+                    sel.Add((sc, si + 1));
+                    (grabbed, grab) = ((sc, si + 1), a[sc][si + 1].P - q);
                     moved = true;
                     isAuto = false;
                 }
+                else if (!add) sel.Clear();
             }
         }
-        dragging = sel != null || hsel != null;
+        dragging = grabbed != null || hsel != null;
         Draw();
     }
 
+    // Seret: node terpilih bergeser sejauh gerakan mouse (tidak melompat ke kursor), bersama handle-nya. Gerakan sampai
+    // slop dari titik klik bukan seret, jadi klik saja tidak mengubah garis.
     internal void DragTo(Point q)
     {
-        if (!dragging) return;
+        if (!dragging || !moved && (q - pressAt).Length <= slop) return;
         var a = Active;
-        if (hsel is (int c, int j, bool o)) a[c][j] = Curves.MoveHandle(a[c][j], o, Clamp(q));
-        else if (sel is (int c2, int i))
+        var target = Clamp(q + grab);
+        if (hsel is (int c, int j, bool o)) a[c][j] = Curves.MoveHandle(a[c][j], o, target);
+        else if (grabbed is (int gc, int gi))
         {
-            var n = a[c2][i];
-            var d = Clamp(q) - n.P; // node bergeser bersama handle-nya
-            a[c2][i] = n with { P = n.P + d, In = n.In + d, Out = n.Out + d };
+            var d = target - a[gc][gi].P;
+            foreach (var (c2, i) in sel)
+            {
+                var n = a[c2][i];
+                var dn = Clamp(n.P + d) - n.P;
+                a[c2][i] = n with { P = n.P + dn, In = n.In + dn, Out = n.Out + dn };
+            }
         }
         else return;
         moved = true;
@@ -198,30 +228,31 @@ public partial class CutEditWindow : Window
         dragging = false;
         hsel = null;
         if (moved) Push(before!);
+        else if (collapse && grabbed is { } g) { sel.Clear(); sel.Add(g); }
+        grabbed = null;
         Changed();
     }
 
-    // Delete: hapus node terpilih. Kontur 3 node ikut terhapus (misalnya garis dalam yang tidak diinginkan),
-    // asal garis masih punya kontur lain.
+    // Delete: hapus semua node terpilih. Kontur yang tersisa kurang dari 3 node ikut terhapus (misalnya garis dalam yang
+    // tidak diinginkan), asal garis masih punya kontur lain.
     internal void DeletePoint()
     {
-        if (dragging || sel is not (int c, int i)) return;
-        var a = Active;
-        if (a[c].Length <= 3 && a.Count == 1) return;
+        if (dragging || sel.Count == 0) return;
+        List<Node[]> rest = [.. Active.Select((c, ci) => c.Where((_, i) => !sel.Contains((ci, i))).ToArray()).Where(c => c.Length >= 3)];
+        if (rest.Count == 0) return;
         Push(Snap());
-        if (a[c].Length <= 3) a.RemoveAt(c);
-        else a[c] = [.. a[c].Where((_, j) => j != i)];
-        sel = null;
+        if (OnDie) die = rest; else kiss = rest;
+        sel.Clear();
         isAuto = false;
         Changed();
     }
 
-    // Tombol node: Jadikan kurva/garis untuk kedua segmen di sisi node terpilih, node halus/sudut.
+    // Tombol node: Jadikan kurva/garis untuk kedua segmen di sisi node terpilih, node halus/sudut; berlaku untuk semua node terpilih.
     void EditNode(Func<Node[], int, Node[]> f)
     {
-        if (dragging || sel is not (int c, int i)) return;
+        if (dragging || sel.Count == 0) return;
         Push(Snap());
-        Active[c] = f(Active[c], i);
+        foreach (var (c, i) in sel) Active[c] = f(Active[c], i);
         isAuto = false;
         Changed();
     }
@@ -230,21 +261,24 @@ public partial class CutEditWindow : Window
     internal void ToLine() => EditNode(Curves.ToLine);
     internal void SetSmooth(bool on) => EditNode((c, i) => Curves.SetSmooth(c, i, on));
 
-    // Preset bentuk (Auto = garis otomatis): garis kiss dan die diganti bentuk yang mengelilingi artwork sejauh offset.
-    internal void ApplyShape(CutShape s)
+    // Preset bentuk (Auto = garis otomatis) untuk garis yang dipilih di "Garis yang diedit" (masukan leader 2026-10-26: kiss dan
+    // die bisa berbeda, misalnya kiss bintang dan die kotak). Kedua garis dibuat ulang dari bentuknya; die Auto mengikuti kiss.
+    internal void ApplyShape(CutShape s) => SetShapes(OnDie ? shape : s, OnDie ? s : dieShape);
+
+    internal void Reset() => SetShapes(CutShape.Auto, CutShape.Auto);
+
+    void SetShapes(CutShape k, CutShape d)
     {
         Push(Snap());
-        (kiss, die) = Base(s);
-        shape = s;
+        (shape, dieShape) = (k, d);
+        (kiss, die) = Base(k, d);
         isAuto = true;
         objs = [];
         holes = [];
-        sel = null;
+        sel.Clear();
         reach = Reach();
         Changed();
     }
-
-    internal void Reset() => ApplyShape(CutShape.Auto);
 
     int Tolerance => (int)Tol.Value;
 
@@ -269,8 +303,8 @@ public partial class CutEditWindow : Window
         holes = h;
         if (auto.LoadedKiss.On) kiss = k;
         if (auto.LoadedDie.On) die = d;
-        shape = CutShape.Auto;
-        sel = null;
+        shape = dieShape = CutShape.Auto;
+        sel.Clear();
         isAuto = false;
         reach = Reach();
         Changed();
@@ -291,12 +325,12 @@ public partial class CutEditWindow : Window
     // Slider Simplify membuat ulang garis yang sedang diedit dari kurva otomatis (bentuk preset tidak disederhanakan).
     void Eps_Changed(object s, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!ready || shape != CutShape.Auto) return;
+        if (!ready || !ActiveAuto) return;
         string tag = OnDie ? "die" : "kiss";
         if (merging != tag) { Push(Snap()); merging = tag; }
         if (objs.Count + holes.Count > 0) { Select(objs, holes); return; } // pilihan smart select disederhanakan ulang
         if (OnDie) die = Polys(auto.Die); else kiss = Polys(auto.Kiss);
-        sel = null;
+        sel.Clear();
         isAuto = false;
         Changed();
     }
@@ -314,14 +348,14 @@ public partial class CutEditWindow : Window
         SaveBtn.IsEnabled = isAuto || inside;
         UndoBtn.IsEnabled = undo.Count > 0;
         RedoBtn.IsEnabled = redo.Count > 0;
-        ResetBtn.IsEnabled = !isAuto || shape != CutShape.Auto;
-        Eps.IsEnabled = shape == CutShape.Auto;
+        ResetBtn.IsEnabled = !isAuto || shape != CutShape.Auto || dieShape != CutShape.Auto;
+        Eps.IsEnabled = ActiveAuto;
         EpsText.Text = $"{Eps.Value:0.00} mm";
         TolText.Text = $"{Tolerance}";
         Info.Text = Lang.T("CutInfo", Curves.Count(kiss), Curves.Count(die),
-            !isAuto ? Lang.T("CutManual") : shape == CutShape.Auto ? Lang.T("CutAuto") : Lang.T("Shape" + shape));
+            !isAuto ? Lang.T("CutManual") : Shapes.Label(shape, dieShape) is { Length: > 0 } l ? l : Lang.T("CutAuto"));
         syncing = true;
-        foreach (RadioButton rb in ShapePanel.Children) rb.IsChecked = isAuto && (CutShape)rb.Tag == shape;
+        foreach (RadioButton rb in ShapePanel.Children) rb.IsChecked = isAuto && (CutShape)rb.Tag == (OnDie ? dieShape : shape);
         foreach (RadioButton rb in BorderPanel.Children) rb.IsChecked = Equals(rb.Tag, border);
         BorderCmyk.Text = border is { } b ? string.Join(" ", new[] { b.C, b.M, b.Y, b.K }.Select(v => (v * 100).ToString("0.#", CultureInfo.InvariantCulture))) : "";
         syncing = false;
@@ -348,16 +382,17 @@ public partial class CutEditWindow : Window
         DiePath.Opacity = OnDie ? 1 : 0.4;
         Handles.Stroke = SelHandle.Fill = (Brush)FindResource(OnDie ? "DieBrush" : "KissBrush");
         Handles.Data = Geo(Active, 3.5);
-        bool picked = sel is (int c, int i) && c < Active.Count && i < Active[c].Length;
-        SelHandle.Data = picked ? Geo([[Active[sel!.Value.C][sel.Value.I]]], 5) : null;
+        var act = Active;
+        var picked = sel.Where(s => s.C < act.Count && s.I < act[s.C].Length).ToList();
+        SelHandle.Data = picked.Count > 0 ? Geo([[.. picked.Select(s => act[s.C][s.I])]], 5) : null;
         var lines = new StreamGeometry();
         var dots = new StreamGeometry();
-        if (picked)
+        if (picked.Count == 1) // handle hanya untuk satu node terpilih
         {
-            var a = Active[sel!.Value.C];
+            var a = act[picked[0].C];
             using var lc = lines.Open();
             using var dc = dots.Open();
-            foreach (var (j, _, h) in HandlesOf(a, sel.Value.I))
+            foreach (var (j, _, h) in HandlesOf(a, picked[0].I))
             {
                 Point s = Screen(h), n = Screen(a[j].P);
                 lc.BeginFigure(n, false, false);
@@ -371,7 +406,7 @@ public partial class CutEditWindow : Window
         dots.Freeze();
         HandleLines.Data = lines;
         HandleDots.Data = dots;
-        ToCurveBtn.IsEnabled = ToLineBtn.IsEnabled = SmoothBtn.IsEnabled = CuspBtn.IsEnabled = picked;
+        ToCurveBtn.IsEnabled = ToLineBtn.IsEnabled = SmoothBtn.IsEnabled = CuspBtn.IsEnabled = picked.Count > 0;
     }
 
     static void Place(FrameworkElement e, Point p, double w, double h)
@@ -409,7 +444,7 @@ public partial class CutEditWindow : Window
     void Board_Down(object s, MouseButtonEventArgs e)
     {
         if (SmartBox.IsChecked == true) { Pick(Mm(e.GetPosition(Board)), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)); return; }
-        Press(Mm(e.GetPosition(Board)), 7 / scale);
+        Press(Mm(e.GetPosition(Board)), 7 / scale, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
         if (dragging) Board.CaptureMouse();
     }
 
@@ -424,8 +459,8 @@ public partial class CutEditWindow : Window
     void Line_Checked(object s, RoutedEventArgs e)
     {
         if (!ready) return;
-        sel = null;
-        Draw();
+        sel.Clear();
+        Changed(); // tombol bentuk dan Simplify mengikuti garis yang dipilih
     }
 
     // Warna border: tombol warna atau kotak CMYK (empat angka 0-100, dipisah spasi/koma). Kosong = tanpa warna.

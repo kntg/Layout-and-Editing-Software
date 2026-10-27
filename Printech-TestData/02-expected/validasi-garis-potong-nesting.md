@@ -113,7 +113,7 @@ Ada 4 desain kotak di skenario A: `jpg-large-24mp.jpg`, `jpg-low-resolution.jpg`
 | A4 | **Gagal** | 43 dari 158 garis sedikit di bawah batas (sebelumnya 65). Desain kotak kini tepat sejauh offset. Terburuk tetap die `pdf-multi-page.pdf p3` 3,57 mm |
 | A5 | **Gagal** (hanya batas bawah pita, A4) | 0 garis lurus pada 136 garis bukan kotak. Kontur dan lubang 100% benar. Keluar pita 5 garis (sebelumnya 27): `pdf-large-a3`, `pdf-oversize` (kiss dan die), `svg-vector` dan `png-152dpi` pada offset kecil |
 | A7 | Lulus | 22 garis desain kotak (termasuk Halus 0–2): 4 garis lurus, kotak ± offset, selisih terbesar 0,10 mm |
-| E1, B1–B7, X1–X5 | Lulus | B-ui sama dengan layar: "18 stiker di 2 lembar.", "54% · sisa 46%", 92% / 16% per lembar (sebelumnya 91% / 16%) |
+| E1, B1–B7, X1–X5 | Lulus | B-ui sama dengan layar: "18 stiker di 2 lembar.", "54% · sisa 46%", 90% / 17% per lembar. Sejak 2026-10-26 B-ui menyalakan tanda registrasi seperti bawaan aplikasi (area 6 mm di sekitar tanda dikosongkan); sebelumnya 92% / 16%, dan 91% / 16% sebelum 2026-10-23 |
 
 ## Hasil 2026-10-18 (build Release)
 

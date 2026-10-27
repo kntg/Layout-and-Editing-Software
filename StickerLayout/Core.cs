@@ -53,7 +53,8 @@ public class Sticker
     public List<Node[]>? ManualKiss, ManualDie;
     public bool Manual => ManualKiss != null || ManualDie != null;
     public CutShape Shape;                       // bentuk preset dari editor (Auto = mengikuti artwork); garis manual menang
-    public string CutBadge => Manual ? Lang.T("CutManual") : Shape != CutShape.Auto ? Lang.T("Shape" + Shape) : "";
+    public CutShape DieShape;                    // bentuk die (Auto = mengikuti kiss)
+    public string CutBadge => Manual ? Lang.T("CutManual") : Shapes.Label(Shape, DieShape);
     public bool[,] Grid = null!;                 // hunian sel nesting dari garis terluar [x,y]
     public int Area;
     Geometry? kg, dg, clip;
@@ -146,7 +147,8 @@ public static partial class Loader
     // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: garis dari editor garis potong, dipakai apa adanya
     // (offset dan Halus tidak mengubahnya).
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
-        string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null)
+        string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null,
+        CutShape dieShape = CutShape.Auto)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -200,12 +202,13 @@ public static partial class Loader
         var mk = kiss.On ? manualKiss : null;
         var md = die.On ? manualDie : null;
         // Bentuk preset, atau desain kotak (masukan 2026-10-23): garis bentuk mengelilingi artwork sejauh offset, tanpa Halus.
-        // Die memakai bentuk yang sama, minimal 1 px di luar kiss.
+        // Die memakai bentuk yang sama, minimal 1 px di luar kiss, atau bentuk die sendiri (masukan 2026-10-26) yang membungkus kiss.
         s.Shape = shape;
+        s.DieShape = dieShape;
         if (manualKiss == null && manualDie == null)
         {
             var use = shape != CutShape.Auto ? shape : Shapes.IsBox(mask) ? CutShape.Rect : CutShape.Auto;
-            if (use != CutShape.Auto) (mk, md) = Shapes.Lines(mask, use, s.ArtW, s.ArtH, kiss, die);
+            if (use != CutShape.Auto || dieShape != CutShape.Auto) (mk, md) = Shapes.Lines(mask, use, s.ArtW, s.ArtH, kiss, die, dieShape);
         }
         double over = Curves.Overhang((mk ?? []).Concat(md ?? []), s.ArtW, s.ArtH);
         static int Reach(Cut c) => c.On ? (int)Math.Ceiling((c.Off + c.Smooth) * PxMm) : 0;
@@ -745,13 +748,30 @@ public static class Nest
     // Jarak (mm) dalam sel grid, dibulatkan ke atas.
     static int CellsOf(double mm) => (int)Math.Ceiling(mm / Cell - 1e-9);
 
-    // Grid hunian area cetak (di dalam margin), dengan stiker ps sudah ditandai.
-    static bool[,] Occupancy(IEnumerable<Placed> ps, double cw, double ch, double margin, int gc)
+    // Grid hunian area cetak (di dalam margin), dengan stiker ps dan area larangan keep (mm lembar) sudah ditandai.
+    static bool[,] Occupancy(IEnumerable<Placed> ps, double cw, double ch, double margin, int gc, List<Rect>? keep = null)
     {
         var occ = new bool[Math.Max(0, (int)((cw - 2 * margin) / Cell)), Math.Max(0, (int)((ch - 2 * margin) / Cell))];
         foreach (var q in ps) Stamp(occ, FootOf(q.S, q.Rot), (int)Math.Round((q.X - margin) / Cell), (int)Math.Round((q.Y - margin) / Cell), gc);
+        foreach (var r in keep ?? [])
+        {
+            int x0 = Math.Max(0, (int)Math.Floor((r.Left - margin) / Cell)), x1 = Math.Min(occ.GetLength(0), (int)Math.Ceiling((r.Right - margin) / Cell));
+            int y0 = Math.Max(0, (int)Math.Floor((r.Top - margin) / Cell)), y1 = Math.Min(occ.GetLength(1), (int)Math.Ceiling((r.Bottom - margin) / Cell));
+            for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) occ[x, y] = true;
+        }
         return occ;
     }
+
+    // Area pindai tanda registrasi (masukan leader 2026-10-26: stiker kena tanda), diperlebar e mm untuk bagian stiker yang ikut
+    // tercetak di luar garis potong. Kosong bila tanda mati.
+    static List<Rect> KeepOut(double cw, double ch, double margin, bool marks, double e) =>
+        marks ? [.. RegistrationMarks.Zones(cw, ch, margin).Select(r => { r.Inflate(e, e); return r; })] : [];
+
+    // Bagian yang tercetak di luar garis potong terluar: bleed raster, atau warna border (sejauh bleed, atau BorderMin).
+    static double Printed(Sticker s) => s.BleedPng != null ? s.LoadedBleed : s.Border != null ? (s.LoadedBleed > 0 ? s.LoadedBleed : Sticker.BorderMin) : 0;
+
+    // Bertumpuk dengan luas > 0 (bersentuhan di tepi tidak dihitung, sama dengan sel grid hunian).
+    static bool Overlap(Rect a, Rect b) => a.Left < b.Right - 1e-9 && b.Left < a.Right - 1e-9 && a.Top < b.Bottom - 1e-9 && b.Top < a.Bottom - 1e-9;
 
     public static bool[,] Rotate(bool[,] g, int rot)
     {
@@ -773,13 +793,14 @@ public static class Nest
     // ponytail: greedy first-fit di grid sel, 4 rotasi, lintas lembar, 3 urutan dicoba. Bukan optimal;
     // ganti dengan NFP/SVGnest bila pemakaian bahan kurang. Masih di UI thread (±50 ms untuk 100 stiker);
     // pindah ke background bila operator merasakan jeda.
-    public static List<List<Placed>> Run(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig)
+    public static List<List<Placed>> Run(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig, bool marks = false)
     {
         var items = stickers.SelectMany(s => Enumerable.Repeat(s, Math.Max(0, s.Copies))).ToList();
         Func<Sticker, double>[] keys = [s => s.Area, s => Math.Max(s.W, s.H), s => s.W + s.H];
         // 3 percobaan dihitung paralel (kerja CPU). Once hanya membaca Sticker dan memakai cache sendiri.
         var trials = new (List<List<Placed>> r, int big)[keys.Length];
-        Parallel.For(0, keys.Length, i => trials[i] = (Once(items.OrderByDescending(keys[i]).ToList(), cw, ch, margin, gap, out int big), big));
+        var keep = KeepOut(cw, ch, margin, marks, items.Select(Printed).DefaultIfEmpty(0).Max());
+        Parallel.For(0, keys.Length, i => trials[i] = (Once(items.OrderByDescending(keys[i]).ToList(), cw, ch, margin, gap, keep, out int big), big));
         // Dipilih menurut urutan percobaan, bukan urutan selesai: hasil sama setiap kali.
         List<List<Placed>> best = [];
         double bestScore = double.MaxValue;
@@ -792,7 +813,7 @@ public static class Nest
         return best;
     }
 
-    static List<List<Placed>> Once(List<Sticker> items, double cw, double ch, double margin, double gap, out int tooBig)
+    static List<List<Placed>> Once(List<Sticker> items, double cw, double ch, double margin, double gap, List<Rect> keep, out int tooBig)
     {
         int gc = CellsOf(gap);
         var sheets = new List<(bool[,] occ, List<Placed> ps, HashSet<Sticker> full)>();
@@ -808,7 +829,7 @@ public static class Nest
                 sh.full.Add(s);
             }
             if (done) continue;
-            var occ = Occupancy([], cw, ch, margin, gc);
+            var occ = Occupancy([], cw, ch, margin, gc, keep);
             var ps = new List<Placed>();
             if (TryPlace(occ, s, cache, gc, margin, ps)) sheets.Add((occ, ps, []));
             else tooBig++;
@@ -840,9 +861,9 @@ public static class Nest
 
     // Snap magnet: pindahkan p ke posisi grid terdekat yang tidak menabrak stiker lain (jarak antar stiker tetap
     // dijaga) dan tetap di dalam margin. Memakai grid hunian yang sama dengan susun otomatis. false = tidak ada tempat.
-    public static bool Snap(List<Placed> ps, Placed p, double cw, double ch, double margin, double gap)
+    public static bool Snap(List<Placed> ps, Placed p, double cw, double ch, double margin, double gap, bool marks = false)
     {
-        var occ = Occupancy(ps.Where(q => q != p), cw, ch, margin, CellsOf(gap));
+        var occ = Occupancy(ps.Where(q => q != p), cw, ch, margin, CellsOf(gap), KeepOut(cw, ch, margin, marks, Printed(p.S)));
         int cols = occ.GetLength(0), rows = occ.GetLength(1);
         var f = FootOf(p.S, p.Rot);
         double px = (p.X - margin) / Cell, py = (p.Y - margin) / Cell, best = double.MaxValue;
@@ -862,13 +883,14 @@ public static class Nest
     // Penuhi lembar (tombol Compact): customer membayar per lembar, jadi ruang kosong di semua lembar diisi salinan desain
     // (jumlah > 0) bergiliran sampai tidak ada yang muat. Grid hunian dan TryPlace sama dengan susun otomatis.
     // Mengembalikan jumlah stiker yang ditambahkan.
-    public static int Fill(List<List<Placed>> sheets, IEnumerable<Sticker> designs, double cw, double ch, double margin, double gap)
+    public static int Fill(List<List<Placed>> sheets, IEnumerable<Sticker> designs, double cw, double ch, double margin, double gap, bool marks = false)
     {
         int gc = CellsOf(gap), added = 0;
         var cache = new Dictionary<(Sticker, int), Foot>();
+        var keep = KeepOut(cw, ch, margin, marks, designs.Select(Printed).DefaultIfEmpty(0).Max());
         foreach (var ps in sheets)
         {
-            var occ = Occupancy(ps, cw, ch, margin, gc);
+            var occ = Occupancy(ps, cw, ch, margin, gc, keep);
             var turn = designs.Where(s => s.Copies > 0).ToList();
             for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
                 if (TryPlace(occ, turn[i], cache, gc, margin, ps)) { added++; i++; }
@@ -883,16 +905,20 @@ public static class Nest
         return true;
     }
 
-    // Tandai stiker yang tumpang tindih (jejak garis terluar) atau yang jejaknya (ditambah bleed) keluar margin.
-    // Kembalikan jumlahnya.
-    public static int Check(List<Placed> ps, double cw, double ch, double margin)
+    // Tandai stiker yang tumpang tindih (jejak garis terluar), yang jejaknya (ditambah bleed) keluar margin, atau yang masuk
+    // area pindai tanda registrasi (marks). Kembalikan jumlahnya.
+    public static int Check(List<Placed> ps, double cw, double ch, double margin, bool marks = false)
     {
         var feet = ps.Select(p => FootOf(p.S, p.Rot)).ToList();
+        var keep = KeepOut(cw, ch, margin, marks, 0);
         for (int i = 0; i < ps.Count; i++)
         {
             var (p, f) = (ps[i], feet[i]);
-            double m = margin + f.Bleed * Cell - 0.01;
+            double m = margin + f.Bleed * Cell - 0.01, e = Printed(p.S);
             p.Bad = p.X + f.MinX * Cell < m || p.Y + f.MinY * Cell < m || p.X + (f.MaxX + 1) * Cell > cw - m || p.Y + (f.MaxY + 1) * Cell > ch - m;
+            // Jejak padat dan area larangan menempel di luar area cetak: cukup sel tepi jejak yang dicek.
+            Rect Box(int x0, int y0, int x1, int y1) => new(p.X + x0 * Cell - e, p.Y + y0 * Cell - e, (x1 - x0 + 1) * Cell + 2 * e, (y1 - y0 + 1) * Cell + 2 * e);
+            p.Bad |= keep.Any(r => Overlap(r, Box(f.MinX, f.MinY, f.MaxX, f.MaxY)) && f.Edge.Any(c => Overlap(r, Box(c.X, c.Y, c.X, c.Y))));
         }
         var owner = new Dictionary<(int, int), Placed>();
         for (int i = 0; i < ps.Count; i++)
@@ -957,28 +983,37 @@ public static class Nest
 
 public static class RegistrationMarks
 {
+    // ponytail: nilai dari Graphtec CE7000 User's Manual (CE7000-UM-151) bab 5: tebal garis 0,3-1,0 mm, ukuran tanda 5-20 mm,
+    // area pindai a = 6 mm di sekitar tanda tidak boleh dicetak (masukan leader 2026-10-26: stiker kena tanda). Sesuaikan dengan
+    // mesin dan pengaturan Cutting Master 5 operator.
     public const double Length = 10;
     public const double Clearance = 1;
-    public const double Stroke = 0.25;
+    public const double Stroke = 0.5;
+    public const double ScanClear = 6;
+
+    // Garis tanda (mm lembar): siku L di 4 pojok, di luar area cetak sejauh Clearance. Kosong bila margin atau lembar terlalu kecil.
+    public static List<(Point A, Point B)> Lines(double width, double height, double margin)
+    {
+        if (margin <= Clearance || width <= 2 * (margin - Clearance + Length) || height <= 2 * (margin - Clearance + Length)) return [];
+        double l = margin - Clearance, t = margin - Clearance, r = width - margin + Clearance, b = height - margin + Clearance;
+        return [(new(l, t), new(l + Length, t)), (new(l, t), new(l, t + Length)), (new(r, t), new(r - Length, t)), (new(r, t), new(r, t + Length)),
+            (new(l, b), new(l + Length, b)), (new(l, b), new(l, b - Length)), (new(r, b), new(r - Length, b)), (new(r, b), new(r, b - Length))];
+    }
+
+    // Area pindai: tiap garis tanda diperlebar setengah tebal garis + ScanClear. Stiker tidak boleh masuk ke sini.
+    public static IEnumerable<Rect> Zones(double width, double height, double margin) => Lines(width, height, margin).Select(s =>
+    {
+        var r = new Rect(s.A, s.B);
+        r.Inflate(Stroke / 2 + ScanClear, Stroke / 2 + ScanClear);
+        return r;
+    });
 
     public static void Draw(Canvas canvas, double width, double height, double margin)
     {
-        if (margin <= Clearance || width <= 2 * (margin - Clearance + Length) || height <= 2 * (margin - Clearance + Length)) return;
-        double left = margin - Clearance, top = margin - Clearance;
-        double right = width - margin + Clearance, bottom = height - margin + Clearance;
-
-        void Line(double x1, double y1, double x2, double y2) => canvas.Children.Add(new System.Windows.Shapes.Line
-        {
-            X1 = x1, Y1 = y1, X2 = x2, Y2 = y2, Stroke = Brushes.Black, StrokeThickness = Stroke, IsHitTestVisible = false
-        });
-
-        Line(left, top, left + Length, top);
-        Line(left, top, left, top + Length);
-        Line(right, top, right - Length, top);
-        Line(right, top, right, top + Length);
-        Line(left, bottom, left + Length, bottom);
-        Line(left, bottom, left, bottom - Length);
-        Line(right, bottom, right - Length, bottom);
-        Line(right, bottom, right, bottom - Length);
+        foreach (var (a, b) in Lines(width, height, margin))
+            canvas.Children.Add(new System.Windows.Shapes.Line
+            {
+                X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y, Stroke = Brushes.Black, StrokeThickness = Stroke, IsHitTestVisible = false
+            });
     }
 }

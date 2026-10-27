@@ -62,16 +62,17 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 | F20 | Print Ticket: PDF A4 1 halaman berisi total lembar, total pcs, efisiensi bahan, rincian per lembar dan per desain, serta pengaturan potong, untuk lampiran nota kasir/SPK | Ada |
 | F22 | Undo/redo global: Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, dan menu Edit. Mencakup tambah/hapus desain, susun, penuhi lembar, geser, putar, hapus stiker, Rapikan, editor garis potong, ganti kertas. Maksimal 30 langkah. Di kotak teks, Ctrl+Z tetap undo teks | Ada (2026-10-21) |
 | F21 | Penuhi lembar (tombol Compact): ruang kosong di semua lembar diisi salinan desain bergiliran sampai penuh, karena customer membayar per lembar | Ada (2026-10-21) |
-| F23 | Editor garis potong (ikon pensil di daftar desain): garis kiss dan die menjadi node yang bisa digeser, ditambah (klik di garis atau kurva, bentuk tidak berubah), dan dihapus (Delete). Sejak 2026-10-23 seperti CorelDRAW: segmen lurus atau kurva Bezier, node terpilih menampilkan handle untuk mengatur lengkung, tombol Jadikan kurva/Jadikan garis dan Node halus/Node sudut. Slider Simplify (toleransi 0,05–0,5 mm, Kompleks–Sederhana), urungkan/ulangi di editor, dan Reset otomatis. Berlaku untuk semua salinan desain; daftar desain menandai "garis manual" | Ada (2026-10-21, kurva 2026-10-23) |
+| F23 | Editor garis potong (ikon pensil di daftar desain): garis kiss dan die menjadi node yang bisa digeser, ditambah (klik di garis atau kurva, bentuk tidak berubah), dan dihapus (Delete). Sejak 2026-10-23 seperti CorelDRAW: segmen lurus atau kurva Bezier, node terpilih menampilkan handle untuk mengatur lengkung, tombol Jadikan kurva/Jadikan garis dan Node halus/Node sudut. Slider Simplify (toleransi 0,05–0,5 mm, Kompleks–Sederhana), urungkan/ulangi di editor, dan Reset otomatis. Berlaku untuk semua salinan desain; daftar desain menandai "garis manual". Sejak 2026-10-26 (temuan leader): klik node hanya memilih (node tidak melompat ke kursor; seret baru dimulai setelah mouse bergeser ±3,5 px dan menggeser node sejauh gerakan mouse), Shift+klik memilih beberapa node, lalu seret, Delete, dan tombol node berlaku untuk semua node terpilih | Ada (2026-10-21, kurva 2026-10-23, pilih banyak 2026-10-26) |
 | F24 | Smart select di editor garis potong (kotak centang di panel kiri): klik objek, garis kiss dan die mengikuti bentuknya dengan jarak offset (lekukan diikuti, sudut luar bulat); Shift+klik menambah objek; klik di dalam lubang menambah atau menghapus garis dalam, termasuk lubang yang lebih sempit dari offset; slider Toleransi mengabaikan piksel tipis seperti watermark. Tanpa AI | Ada (2026-10-22) |
 | F25 | Desain kotak otomatis: foto, JPG/PNG opak, PNG kotak, dan PDF berlatar kotak putih mendapat garis kotak bersudut tajam (4 node lurus) sejauh offset, tanpa operator memilih apa pun | Ada (2026-10-23) |
-| F26 | Preset bentuk garis potong di editor: kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam. Bentuk mengelilingi artwork sejauh offset (artwork tidak terpotong), die memakai bentuk yang sama, dan bentuk ikut menyesuaikan bila offset atau lebar diubah. Daftar desain menampilkan nama bentuk | Ada (2026-10-23) |
+| F26 | Preset bentuk garis potong di editor: kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam. Bentuk mengelilingi artwork sejauh offset (artwork tidak terpotong), die memakai bentuk yang sama, dan bentuk ikut menyesuaikan bila offset atau lebar diubah. Daftar desain menampilkan nama bentuk. Sejak 2026-10-26 (temuan leader) bentuk dipilih per garis lewat "Garis yang diedit": kiss dan die bisa berbeda, misalnya kiss bintang dan die kotak ("Bintang · die Kotak"). Die Otomatis mengikuti bentuk kiss; die bentuk lain membungkus kontur kiss sejauh selisih offset (kiss otomatis: sejauh offset die dari artwork) | Ada (2026-10-23, per garis 2026-10-26) |
 | F27 | Warna border per desain (editor garis potong): area antara artwork dan garis kiss dicetak dengan warna CMYK pilihan (merah, hitam, biru, kuning, hijau, atau CMYK kustom), diteruskan sejauh bleed (bila bleed 0: 1 mm) di luar garis. Tampil di layar, preview JPG, dan PDF | Ada (2026-10-23) |
+| F28 | Tanda registrasi (menu Tanda registrasi, PR #2 Jonathan, aktif secara bawaan): siku L hitam (K 100%) di 4 pojok, 1 mm di luar area cetak, tampil di layar, preview JPG, dan PDF. Panjang 10 mm, tebal 0,5 mm. Susun otomatis, Penuhi lembar, dan snap tidak menaruh stiker dalam 6 mm dari garis tanda; stiker yang masuk area itu ditandai merah (temuan leader 2026-10-26: stiker kena tanda). Nilai dari Graphtec CE7000 User's Manual bab 5: tebal garis 0,3–1,0 mm, ukuran 5–20 mm, area pindai a = 6 mm tidak boleh dicetak | Ada (2026-10-26) |
 
 ## 6. Keputusan
 
 - **Platform:** Windows, C#/.NET 10, WPF.
-- **Reg mark:** tidak dibuat oleh aplikasi. Reg mark dibuat oleh Cutting Master 5 di CorelDRAW/Illustrator, yang mendukung FCX2000 dan CE7000. Aplikasi hanya menyisakan margin tepi kertas (default 10 mm, Unverified).
+- **Reg mark:** awalnya tidak dibuat oleh aplikasi; reg mark dibuat oleh Cutting Master 5 di CorelDRAW/Illustrator, yang mendukung FCX2000 dan CE7000. Sejak 2026-10-26 aplikasi bisa menggambar tanda registrasi sendiri (F28, menu Tanda registrasi; pilih "Tidak ada" bila reg mark tetap dibuat lewat Cutting Master 5). Margin tepi kertas (default 10 mm, Unverified) tetap berlaku. Jarak tanda ke tepi kertas belum disesuaikan dengan mesin: manual CE7000 untuk kertas lembar menyebut minimal 15 mm (sisi belakang 35 mm), tergantung model dan arah masuk kertas.
 - **Batas aplikasi** (keputusan leader proyek, 2026-10-14): aplikasi hanya membuat layout. Pengaturan dan urusan mesin tetap dikerjakan operator; profil mesin dihapus dari aplikasi.
 - **Cutting Master 5:** bisa mengatur kondisi potong, urutan, dan potong/tidak per warna atau per layer.
 - **Export:** PDF menggantikan SVG dari v1. Alasannya: vektor dan CMYK tetap terjaga, dan satu file bisa berisi banyak halaman.
@@ -137,7 +138,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
     - median jarak = offset −0,19 s.d. +0,02 mm;
     - setelah kurva Potrace, garis bisa sampai 0,13 mm lebih dekat dari offset - 0,3 mm. Ini terjadi di sudut lancip dan pada offset kecil (galat mask 6 px/mm).
   - Hasil di app (kiss 2/1 mm, die 4/2 mm), node kiss/die sebelum -> sesudah: rough.jpg 64/43 -> 16/13 (-73%), lingkaran 11/10 -> 3/4 (-67%), logo.pdf 21/15 -> 8/7 (-58%), bintang 29/27 -> 15/17 (-43%), badge 9/8 -> 8/8. Sudut tajam 2 -> 0. Sejak 2026-10-18 (penjaga dibulatkan ke atas, die minimal 1 px di luar kiss) rough.jpg 17/16. Muat per desain 20-70 ms, stiker 300 mm ±1 detik (Release).
-  - Skenario uji S1–S16 beserta hasilnya: [UJI-GARIS-POTONG.md](UJI-GARIS-POTONG.md).
+  - Skenario uji S1–S17 beserta hasilnya: [UJI-GARIS-POTONG.md](UJI-GARIS-POTONG.md).
 - **Stabilitas dan performa** (2026-10-17, spesifikasi leader bagian 2):
   - CorelDRAW COM berjalan di proses worker (exe yang sama dengan argumen `--cdr2pdf`), bukan di proses utama. Selama menunggu, UI tetap jalan. Lewat 30 detik, worker dihentikan dan operator mendapat pesan; Printech tetap jalan. CorelDRAW sendiri tidak dimatikan supaya pekerjaan operator yang belum disimpan aman.
   - 3 percobaan nesting dan hapus latar dihitung paralel dengan `Parallel.For`. Spesifikasi menyebut `Parallel.ForEachAsync`, tetapi API itu untuk kerja async (I/O), sedangkan kerja ini murni CPU. Hasilnya identik bit per bit dengan versi berurutan.
@@ -155,7 +156,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - Snap memakai grid nesting 1 mm (posisi kosong terdekat), bukan NFP poligon. Geser dengan panah keyboard tetap bebas. Bila tidak ada tempat kosong, stiker tetap di posisinya dan ditandai merah.
   - Preset bahan dihapus 2026-10-23: menurut user/leader tidak diperlukan, karena offset, Halus, margin, dan jarak diatur langsung. Nilai awalnya tetap dicatat di [RESEARCH.md](RESEARCH.md) bagian 13 sebagai riwayat riset.
 - **Ditunda sampai ada kebutuhan nyata:** hapus latar foto dengan AI dan memperbesar gambar pecah. Untuk gambar pecah, cara tercepat tetap meminta file asli ke customer; angka dpi merah memberi tahu kapan perlu.
-- **Tidak dibangun:** hide copy, simpan proyek, reg mark buatan aplikasi, dan mode nametag/kartu.
+- **Tidak dibangun:** hide copy, simpan proyek, dan mode nametag/kartu. Reg mark buatan aplikasi awalnya tidak dibangun, lalu ditambahkan 2026-10-26 (F28).
 
 ## 7. Dependensi dan lisensi
 
@@ -181,16 +182,18 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - Muat ulang desain dan nesting masih berjalan di UI thread (nesting 130 stiker ±85 ms; desain sangat besar bisa ±1 detik).
 - Jarak nyata antar stiker masih lebih lebar dari yang diminta (median +1,2 mm), karena jejak stiker dibulatkan ke grid 1 mm.
 - Editor garis potong:
-  - Menggeser node dan handle, menambah, dan menghapus node dengan mouse belum diuji otomatis (uji UI tanpa mouse); logikanya diuji selfcheck S12 dan S15.
+  - Memilih beberapa node hanya lewat Shift+klik; memilih dengan menyeret kotak belum ada.
   - Print Ticket tetap menulis offset dan Halus dari pengaturan, juga untuk desain bergaris manual atau berbentuk preset; nama bentuk tidak ditulis.
 - Preset bentuk:
   - Bentuk bisa sampai ±0,6 mm lebih besar dari ukuran minimal, karena hull dihitung dari sudut piksel.
   - Ukuran bentuk belum bisa diketik, dan bentuk belum bisa diputar.
   - Bentuk selalu mengelilingi artwork. Memotong foto menjadi bentuk (crop) belum ada.
+  - Memilih bentuk (untuk kiss atau die) membuat ulang kedua garis dari dasarnya, jadi edit node sebelumnya hilang; Urungkan mengembalikannya.
   - Dengan bleed aktif, ruang antara artwork dan bentuk ikut diisi warna tepi artwork, sama seperti garis manual yang jauh dari artwork. Pakai warna border bila ruang itu harus berwarna rata.
 - Warna border: urungkan/ulangi di dalam editor belum mencakup ganti warna (urungkan global di jendela utama mencakupnya). Print Ticket belum menulis warna border. Warna di layar hanya perkiraan dari CMYK.
-- Smart select membaca transparansi atau beda warna dengan latar; objek di foto berlatar ramai belum bisa dipilih. Klik di kanvas belum diuji dengan mouse sungguhan (logikanya diuji selfcheck S13).
+- Smart select membaca transparansi atau beda warna dengan latar; objek di foto berlatar ramai belum bisa dipilih.
 - Bleed: tepi JPG yang sangat kasar (kompresi tinggi) bisa menyisakan garis pucat tipis di area bleed; rapikan gambarnya dulu untuk hasil terbaik. Stiker raster sangat besar (±300 mm) dengan bleed dimuat ±1–2 detik lebih lama.
+- Tanda registrasi: area 6 mm di sekitar tanda dikosongkan, jadi stiker di pojok lembar bergeser (uji semua file 01-input: lembar 1 dari 5 pcs 92% menjadi 4 pcs 90%; total tetap 18 stiker, 54%). Toggle tanda tidak menyusun ulang; stiker di area tanda jadi merah sampai Susun otomatis ditekan. Export PDF memuat tanda hitam (K) bila menu aktif.
 
 ## 9. Pertanyaan terbuka
 
@@ -235,4 +238,4 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - **Membuat zip untuk operator:** `dotnet publish StickerLayout -c Release -r win-x64 --self-contained -o publish\Printech`, lalu zip folder `publish\Printech`. Folder `publish/` tidak masuk git.
 - **Menjalankan aplikasi:** `dotnet run --project StickerLayout` (perlu .NET 10). File juga bisa dibuka sebagai argumen, misalnya lewat "Open with" atau dengan menyeret file ke ikon aplikasi.
 - **File contoh:** folder `samples/` (circle.png, star.jpg, badge.svg, logo.pdf, logo.ai, logo-on-blue.jpg untuk mencoba Rapikan, dan lainnya).
-- **Cek otomatis:** `StickerLayout\bin\Debug\net10.0-windows\StickerLayout.exe --selfcheck samples`. Hasilnya ditulis ke `samples/selfcheck.txt`. Skenario garis potong (S1–S9, S11–S16) dan stabilitas (P1–P5) ikut dijalankan; satu saja gagal, exit code 1.
+- **Cek otomatis:** `StickerLayout\bin\Debug\net10.0-windows\StickerLayout.exe --selfcheck samples`. Hasilnya ditulis ke `samples/selfcheck.txt`. Skenario garis potong (S1–S9, S11–S17) dan stabilitas (P1–P5) ikut dijalankan; satu saja gagal, exit code 1.

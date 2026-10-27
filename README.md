@@ -152,8 +152,10 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 
 - **Bentuk.**
   - Pilihan: Otomatis, kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam.
+  - Bentuk berlaku untuk garis yang dipilih di **Garis yang diedit**, jadi kiss dan die bisa berbeda. Contoh: pilih Kiss-cut lalu Bintang, kemudian Die-cut lalu Kotak.
+  - Die Otomatis mengikuti bentuk kiss. Die dengan bentuk lain membungkus garis kiss sejauh selisih offset.
   - Bentuk mengelilingi artwork sejauh offset, dan ikut menyesuaikan bila offset atau lebar diubah, selama node-nya tidak diedit.
-  - Nama bentuk tampil di daftar desain.
+  - Nama bentuk tampil di daftar desain, misalnya "Bintang · die Kotak".
 - **Warna border.**
   - Pilihan: tanpa warna, merah, hitam, biru, kuning, hijau, atau CMYK kustom (empat angka persen, misalnya `0 100 100 0`, lalu Enter).
   - Area antara artwork dan garis kiss (tanpa kiss: garis die) dicetak dengan warna itu, diteruskan sejauh bleed di luar garis (bila bleed 0: 1 mm).
@@ -163,9 +165,11 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
   - Centang, lalu klik objek: garis hanya mengikuti objek itu. Piksel tipis seperti watermark diabaikan; atur lewat slider Toleransi.
   - Shift+klik menambah objek. Klik di dalam lubang menambah atau menghapus garis dalamnya.
 - **Node** (dengan mouse di kanvas).
-  - Seret node untuk menggeser. Klik di garis atau kurva untuk menambah node. Delete menghapus node terpilih.
-  - Node terpilih menampilkan handle (titik bulat) untuk mengatur lengkung.
-  - Tombol **Jadikan kurva / Jadikan garis** dan **Node halus / Node sudut** berlaku untuk node terpilih.
+  - Klik node untuk memilihnya; klik saja tidak menggeser node. Shift+klik menambah atau melepas node dari pilihan.
+  - Seret node terpilih untuk menggeser semuanya sejauh gerakan mouse.
+  - Klik di garis atau kurva untuk menambah node. Delete menghapus semua node terpilih.
+  - Bila tepat satu node terpilih, handle (titik bulat) tampil untuk mengatur lengkung.
+  - Tombol **Jadikan kurva / Jadikan garis** dan **Node halus / Node sudut** berlaku untuk semua node terpilih.
 - **Urungkan / Ulangi** (Ctrl+Z / Ctrl+Y) dan **Reset otomatis**. Ganti warna border belum ikut urungkan di editor; Urungkan di jendela utama mencakupnya.
 - **Simpan** nonaktif selama garis kiss keluar dari garis die.
 
@@ -183,6 +187,9 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 - **Alat Zoom (Z):** klik untuk memperbesar, Alt+klik untuk memperkecil.
 - **Penggaris (mm):** tampil di atas dan kiri lembar. Bisa disembunyikan lewat tombol penggaris di batang alat kiri.
 - **Bahasa:** menu **Bahasa**, pilih Indonesia atau English.
+- **Tanda registrasi:** menu **Tanda registrasi**, pilih Regmark 1 (bawaan) atau Tidak ada.
+  - Regmark 1 menggambar siku L hitam di 4 pojok lembar, ikut di layar, preview JPG, dan PDF.
+  - Stiker tidak ditaruh dalam 6 mm dari tanda (area pindai menurut manual Graphtec). Stiker yang masuk area itu ditandai merah; klik Susun otomatis untuk memindahkannya.
 
 ## Shortcut
 
@@ -221,7 +228,7 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 
 - [PRD](docs/PRD.md): tujuan, fitur, keputusan, batasan, checklist uji operator, dan cara menjalankan (§11).
 - [Riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Uji garis potong](docs/UJI-GARIS-POTONG.md): skenario uji S1–S16 dan hasilnya.
+- [Uji garis potong](docs/UJI-GARIS-POTONG.md): skenario uji S1–S17 dan hasilnya.
 - [Uji stabilitas](docs/UJI-STABILITAS.md): skenario uji P1–P10 (worker CDR, paralel, RAM) dan hasilnya.
 - [Validasi end-to-end](docs/testing/e2e-validation.md): semua kasus uji dari import sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [CSV](docs/testing/e2e-test-results-template.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji UI.

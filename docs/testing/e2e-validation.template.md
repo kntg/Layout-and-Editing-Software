@@ -85,7 +85,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 | Garis potong | [Core.cs:413-562](../../StickerLayout/Core.cs#L413-L562), editor [Curves.cs](../../StickerLayout/Curves.cs) dan [CutEditWindow.xaml.cs](../../StickerLayout/CutEditWindow.xaml.cs), bentuk [Shapes.cs](../../StickerLayout/Shapes.cs), smart select [SmartSelect.cs](../../StickerLayout/SmartSelect.cs) | S1–S9, S11–S15; validasi A1–A7 | Potong fisik (S10) |
 | Bleed | [Core.cs:249-301](../../StickerLayout/Core.cs#L249-L301) | selfcheck (SelfCheck.cs:338-352); validasi B4 | Cetak/potong fisik |
 | Nesting dan pemeriksaan geometri | [Core.cs:683-892](../../StickerLayout/Core.cs#L683-L892) | selfcheck (SelfCheck.cs:364-390), P3, P5; validasi B1–B7 | — |
-| Edit layout (UI) | [MainWindow.xaml.cs:380-704](../../StickerLayout/MainWindow.xaml.cs#L380-L704) | Fungsi `Snap`/`Check`/`Fill` dan logika editor garis potong lewat selfcheck; alur UI lewat `ui-edit-layout.ps1` (EDIT-01..08, EDIT-11, CUT-12), `ui-undo.ps1` (EDIT-12), dan `ui-editor-garis.ps1` (EDIT-13) | Uji UI tidak masuk self-check: dijalankan terpisah, butuh desktop tanpa gangguan mouse |
+| Edit layout (UI) | [MainWindow.xaml.cs:380-704](../../StickerLayout/MainWindow.xaml.cs#L380-L704) | Fungsi `Snap`/`Check`/`Fill` dan logika editor garis potong lewat selfcheck; alur UI lewat `ui-edit-layout.ps1` (EDIT-01..08, EDIT-11, CUT-12), `ui-undo.ps1` (EDIT-12), `ui-editor-garis.ps1` (EDIT-13), dan `ui-editor-mouse.ps1` (EDIT-14, EDIT-16, EDIT-18, EDIT-20) | Uji UI tidak masuk self-check: dijalankan terpisah, butuh desktop tanpa gangguan mouse |
 | Export PDF | [Export.cs:75-141](../../StickerLayout/Export.cs#L75-L141) | selfcheck S8 (SelfCheck.cs:408-439), salinan PDF (SelfCheck.cs:466-480); validasi E1, X1–X3 | CorelDRAW |
 | Preview JPG dan Print Ticket | [Export.cs:21-71](../../StickerLayout/Export.cs#L21-L71), [Export.cs:144-176](../../StickerLayout/Export.cs#L144-L176) | selfcheck (SelfCheck.cs:401-403, 446-450); validasi X4–X5 | Ticket dengan > 10 lembar / > 20 desain |
 | Rapikan gambar (dibekukan) | [Cleanup.cs](../../StickerLayout/Cleanup.cs), [CleanupWindow.xaml.cs](../../StickerLayout/CleanupWindow.xaml.cs) | selfcheck (SelfCheck.cs:74-94), P4, P5 | Dialog UI |
@@ -149,6 +149,15 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 **Warna border (2026-10-23):** selfcheck S16 lulus (CUT-18); tombol warna lewat UI Automation lulus, `ui-editor-garis.ps1` 8/8 (EDIT-19); cetak dan potong di Develop/Graphtec BLOCKED (HW-18). [Bukti](../../Printech-TestData/04-evidence/2026-10-23-warna-border.txt).
 
+**Temuan leader (2026-10-26):**
+
+- Kiss dan die bisa beda bentuk: selfcheck S15 lulus (CUT-19).
+- Klik node tanpa geser, seret relatif, dan Shift+klik untuk beberapa node: logika lulus di selfcheck S12, dan uji dengan mouse dan keyboard sungguhan `ui-editor-mouse.ps1` lulus (EDIT-20, CUT-19). [Bukti](../../Printech-TestData/04-evidence/2026-10-26-ui-editor-mouse.txt).
+- Uji mouse dan keyboard yang lama diulang di versi ini: `ui-edit-layout.ps1` 10/10 dan `ui-undo.ps1` 3/3.
+- Kasus editor yang sebelumnya NOT RUN kini diuji dengan mouse sungguhan dan lulus: EDIT-14 (operasi node), EDIT-16 (smart select dengan klik di kanvas), dan EDIT-18 (handle kurva). Total `ui-editor-mouse.ps1` 8/8. Skrip berhenti sendiri bila jendela editor tidak aktif, supaya klik tidak masuk ke aplikasi lain.
+- Stiker tidak lagi kena tanda registrasi: selfcheck S17 lulus (NEST-11).
+- Validasi B-ui kini menyalakan tanda registrasi seperti bawaan aplikasi, jadi lembar 1 menjadi 4 pcs 90%, sama dengan layar (IMP-19). [Bukti](../../Printech-TestData/04-evidence/2026-10-26-validasi-garis-potong-nesting.txt).
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -163,7 +172,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 ## 6. Kasus uji
 
-Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23.
+Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26.
 
 Kolom Sumber menunjukkan asal kriterianya:
 

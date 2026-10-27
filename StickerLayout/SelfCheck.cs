@@ -289,6 +289,33 @@ public static class SelfCheck
             edLog.Add($"Simplify 0,5 {Pts(ed.ManualKiss)}");
             ed.Reset();
             edOk &= ed.ManualKiss == null && ed.ManualDie == null && ed.CanSave;
+            // Temuan leader 2026-10-26: klik node hanya memilih (getaran kecil tidak menggeser), seret menggeser node sejauh gerakan
+            // mouse (tidak lompat ke kursor), Shift+klik memilih beberapa node; seret dan Delete berlaku untuk semua node terpilih.
+            var rk = Curves.Fit(rough1.Kiss, rough1.Off, 0.2)[0];
+            var ed3 = new CutEditWindow(rough1, null, null, CutShape.Auto, "klik");
+            Point n0 = rk[0].P, n2 = rk[2].P;
+            Vector off = new(0.05, 0.03), dv = new(1, 0.5);
+            static bool Has(CutEditWindow w, Point p) => w.ManualKiss?[0].Any(n => (n.P - p).Length < 1e-6) == true;
+            ed3.Press(n0 + off, 0.3);
+            ed3.DragTo(n0 + off);
+            ed3.Release();
+            bool clickOk = ed3.ManualKiss == null;
+            ed3.Press(n0 + off, 0.3);
+            ed3.DragTo(n0 + off + dv);
+            ed3.Release();
+            bool grabOk = Has(ed3, n0 + dv);
+            ed3.Undo();
+            ed3.Press(n0, 0.3);
+            ed3.Release();
+            ed3.Press(n2, 0.3, add: true);
+            ed3.DragTo(n2 + dv);
+            ed3.Release();
+            bool multiOk = Has(ed3, n0 + dv) && Has(ed3, n2 + dv);
+            int nMulti = Pts(ed3.ManualKiss);
+            ed3.DeletePoint();
+            multiOk &= Pts(ed3.ManualKiss) == nMulti - 2;
+            edOk &= clickOk && grabOk && multiOk;
+            edLog.Add($"klik {(clickOk ? "tanpa geser" : "MENGGESER")}, seret relatif {(grabOk ? "benar" : "SALAH")}, Shift 2 node {(multiOk ? "benar" : "SALAH")}");
             // Donat: garis dalam yang tidak diinginkan dihapus node demi node sampai konturnya hilang.
             var dn = Png(Donut(70), 40, kiss, die);
             var dk = Curves.Fit(dn.Kiss, dn.Off, 0.2);
@@ -439,12 +466,35 @@ public static class SelfCheck
             edShape &= edS.Shape == CutShape.Auto && edS.ManualKiss != null;
             edS.Undo();
             edShape &= edS.Shape == CutShape.Circle && new CutEditWindow(circle40, null, null, CutShape.Star, "bintang").Shape == CutShape.Star;
+            // Temuan leader 2026-10-26: bentuk kiss dan die terpisah (kiss bintang, die kotak). Die bentuk lain membungkus kiss sejauh
+            // selisih offset; die Otomatis mengikuti bentuk kiss. Bentuk berlaku untuk garis yang dipilih di "Garis yang diedit".
+            var edD = new CutEditWindow(circle40, null, null, CutShape.Auto, "dua bentuk");
+            edD.ApplyShape(CutShape.Star);
+            edD.EditDie.IsChecked = true;
+            edD.ApplyShape(CutShape.Rect);
+            bool rectOn = edD.ShapePanel.Children.OfType<System.Windows.Controls.RadioButton>().Single(r => (CutShape)r.Tag == CutShape.Rect).IsChecked == true;
+            bool twoOk = edD.Shape == CutShape.Star && edD.DieShape == CutShape.Rect && edD.ManualKiss == null && edD.KissInside && rectOn
+                && edD.Info.Text.StartsWith("Kiss 10 titik · die 4 titik");
+            // Kiss diperlebar d mm (sambungan bulat = jarak sebenarnya; sambungan miter memanjang di ujung bintang) yang keluar dari die.
+            static double OutsideBy(Sticker s, double d) => Geometry.Combine(Geometry.Combine(s.KissGeo!,
+                s.KissGeo!.GetWidenedPathGeometry(new Pen(null, 2 * d) { LineJoin = PenLineJoin.Round }), GeometryCombineMode.Union, null),
+                s.DieGeo!, GeometryCombineMode.Exclude, null).GetArea();
+            // Kiss bintang: die kotak membungkus kontur kiss sejauh selisih offset (2 mm). Kiss otomatis: die kotak sejauh offset die dari
+            // artwork (Ø 40 + 2 x 4 = 48 mm), kiss tetap di dalam die.
+            var starRect = Loader.Load(cPath, 0, 40, kiss, die, shape: CutShape.Star, dieShape: CutShape.Rect);
+            var autoRect = Loader.Load(cPath, 0, 40, kiss, die, dieShape: CutShape.Rect);
+            double twoOut = OutsideBy(starRect, 1.9), autoOut = Geometry.Combine(autoRect.KissGeo!, autoRect.DieGeo!, GeometryCombineMode.Exclude, null).GetArea();
+            var adb = autoRect.DieGeo!.Bounds;
+            twoOk &= Curves.Parse(starRect.Kiss, 0)[0].Length == 10 && Curves.Parse(starRect.Die, 0)[0].Length == 4 && Curves.Parse(autoRect.Die, 0)[0].Length == 4
+                && twoOut < 0.05 && autoOut < 0.01 && Near(adb.Width, 48, 0.1) && Near(adb.Height, 48, 0.1)
+                && starRect.CutBadge == "Bintang · die Kotak" && autoRect.CutBadge == "die Kotak";
             var (sl, scv) = ExportOps([new Placed { S = ShapeOf(cPath, 40, kiss, die, CutShape.Rect), X = Margin, Y = Margin },
                 new Placed { S = ShapeOf(cPath, 40, kiss, die, CutShape.Circle), X = Margin + 60, Y = Margin }]);
             S(15, "preset bentuk: mengelilingi artwork sejauh offset, die membungkus kiss, node sesuai bentuk, ikut offset dan lebar",
-                shapeOk && Near(c3, 46, 0.7) && Near(c60, 64, 0.7) && edShape && sl > 0 && scv > 0,
+                shapeOk && Near(c3, 46, 0.7) && Near(c60, 64, 0.7) && edShape && sl > 0 && scv > 0 && twoOk,
                 string.Join("; ", shapeLog) + $"; lingkaran offset 3 = {c3:F2} mm (harapan 46), lebar 60 = {c60:F2} mm (64); editor {(edShape ? "benar" : "SALAH")}; "
-                + $"export {sl} garis lurus, {scv} kurva");
+                + $"export {sl} garis lurus, {scv} kurva; kiss bintang + die kotak {(twoOk ? "benar" : "SALAH")} (kiss+1,9 mm di luar die {twoOut:F3} mm2; "
+                + $"kiss otomatis + die kotak {adb.Width:F2}x{adb.Height:F2} mm, kiss di luar die {autoOut:F3} mm2)");
 
             // S16: warna border (masukan 2026-10-23). Area di dalam garis kiss di luar artwork dicetak CMYK pilihan, diteruskan
             // 1 mm di luar garis (bleed 0) atau sejauh bleed; artwork tetap; tengah lubang donat tetap putih; tanpa perluasan warna tepi.
@@ -616,6 +666,33 @@ public static class SelfCheck
             int afterRot = Nest.Check(two, A4W, A4H, Margin);
             Check(snapped && afterDrop == 0 && snappedRot && afterRot == 0, $"snap gagal: jatuh {afterDrop} tabrakan, putar {afterRot} tabrakan");
             log.Add($"snap: dijatuhkan di atas tetangga -> pindah {jump:F0} mm, 0 tabrakan; diputar -> 0 tabrakan");
+
+            // S17: tanda registrasi (temuan leader 2026-10-26: stiker kena tanda). Area pindai Graphtec di sekitar tanda (a = 6 mm,
+            // manual CE7000 bab 5) tidak boleh terisi stiker: susun, Penuhi lembar, dan snap menjauhinya; Check menandai stiker di dalamnya.
+            var regLines = RegistrationMarks.Lines(A4W, A4H, Margin);
+            double regClear = RegistrationMarks.Stroke / 2 + RegistrationMarks.ScanClear;
+            double ToMarks(IEnumerable<Placed> ps) => ps.Select(p =>
+            {
+                var g = p.S.Outer.Clone();
+                g.Transform = Nest.Xf(p);
+                return g.GetFlattenedPathGeometry(0.05, ToleranceType.Absolute).Figures
+                    .SelectMany(f => f.Segments.SelectMany(s => s is PolyLineSegment pl ? pl.Points : s is LineSegment l ? [l.Point] : (IEnumerable<Point>)[]).Prepend(f.StartPoint))
+                    .Min(q => regLines.Min(l => (q - Loader.Nearest(q, l.A, l.B)).Length));
+            }).DefaultIfEmpty(double.MaxValue).Min();
+            var regRun = Nest.Run(items, A4W, A4H, Margin, Gap, out _, marks: true);
+            var regFill = regRun.Select(sh => sh.ToList()).ToList();
+            int regAdded = Nest.Fill(regFill, items, A4W, A4H, Margin, Gap, marks: true);
+            var corner = new Placed { S = bx, X = Margin, Y = Margin };
+            int badOn = Nest.Check([corner], A4W, A4H, Margin, marks: true), badOff = Nest.Check([corner], A4W, A4H, Margin);
+            bool snapOut = Nest.Snap([corner], corner, A4W, A4H, Margin, Gap, marks: true);
+            double dRun = regRun.Min(ToMarks), dFill = regFill.Min(ToMarks), dSnap = ToMarks([corner]), dOld = sheets.Min(ToMarks);
+            double regStroke = RegistrationMarks.Stroke, regLen = RegistrationMarks.Length; // rentang Graphtec: tebal 0,3-1,0 mm, ukuran 5-20 mm
+            bool regOk = regLines.Count == 8 && regStroke is >= 0.3 and <= 1 && regLen is >= 5 and <= 20
+                && dRun >= regClear && dFill >= regClear && regAdded > 0 && snapOut && dSnap >= regClear && badOn == 1 && badOff == 0 && dOld < regClear
+                && regRun.All(sh => Nest.Check(sh, A4W, A4H, Margin, marks: true) == 0);
+            S(17, "tanda registrasi: stiker tidak masuk area pindai 6 mm di sekitar tanda (susun, Penuhi lembar, snap), stiker di pojok ditandai",
+                regOk, $"jarak terdekat ke tanda: susun {dRun:F2}, Penuhi lembar {dFill:F2} (+{regAdded} stiker), snap {dSnap:F2} mm (batas {regClear:F2}); "
+                + $"tanpa tanda {dOld:F2} mm; pojok ditandai {badOn}/{badOff}; tebal {regStroke} mm, panjang {regLen} mm");
 
             // Indikator bahan: bentuk reguler vs irregular, warna target, Print Ticket 1 halaman A4.
             var fillOf = items.ToDictionary(s => s.Name, s => s.Fill);

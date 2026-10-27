@@ -55,12 +55,13 @@ function LastSheet($sheets, [double]$cw, [double]$ch, [double]$margin, [double]$
 # $sheets: null = susun otomatis dengan Nest.Run; atau daftar lembar berisi Placed buatan sendiri.
 # -fill: ruang kosong diisi salinan desain bergiliran seperti tombol "Penuhi lembar"; jumlah per desain ikut hasil
 # (MainWindow.Compact_Click). Skenario B-* juga membuat preview JPG dan Print Ticket dengan isi pengaturan yang sama
-# seperti MainWindow.Ticket_Click.
-function Run([string]$name, $designs, [double]$cw, [double]$ch, [double]$margin = 10, [double]$gap = 2, $sheets = $null, [switch]$fill) {
+# seperti MainWindow.Ticket_Click. -marks: susun dan cek menjauhi area pindai tanda registrasi (menu Tanda registrasi aktif);
+# PDF tetap tanpa tanda supaya preflight X2 hanya menilai garis potong.
+function Run([string]$name, $designs, [double]$cw, [double]$ch, [double]$margin = 10, [double]$gap = 2, $sheets = $null, [switch]$fill, [switch]$marks) {
   $tb = 0
-  if (-not $sheets) { $sheets = [StickerLayout.Nest]::Run($designs, $cw, $ch, $margin, $gap, [ref]$tb) }
+  if (-not $sheets) { $sheets = [StickerLayout.Nest]::Run($designs, $cw, $ch, $margin, $gap, [ref]$tb, $marks.IsPresent) }
   if ($fill -and $sheets.Count) {
-    [StickerLayout.Nest]::Fill($sheets, $designs, $cw, $ch, $margin, $gap) | Out-Null
+    [StickerLayout.Nest]::Fill($sheets, $designs, $cw, $ch, $margin, $gap, $marks.IsPresent) | Out-Null
     foreach ($d in $designs) { $n = @($sheets | ForEach-Object { $_ } | Where-Object { $_.S -eq $d }).Count; if ($n -gt 0) { $d.Copies = $n } }
   }
   $h = [System.Collections.Generic.List[double]]::new(); foreach ($s in $sheets) { $h.Add($ch) }
@@ -89,7 +90,7 @@ function Run([string]$name, $designs, [double]$cw, [double]$ch, [double]$margin 
       pdfAsImage = $_.PdfAsImage
     } })
     sheets = @(for ($i = 0; $i -lt $sheets.Count; $i++) { $ps = $sheets[$i]; [ordered]@{
-      h = $h[$i]; bad = [StickerLayout.Nest]::Check($ps, $cw, $h[$i], $margin); use = [StickerLayout.Yield]::Use($ps, $cw, $h[$i], $margin)
+      h = $h[$i]; bad = [StickerLayout.Nest]::Check($ps, $cw, $h[$i], $margin, $marks.IsPresent); use = [StickerLayout.Yield]::Use($ps, $cw, $h[$i], $margin)
       placements = @($ps | ForEach-Object { [ordered]@{ d = $ids[$_.S]; x = $_.X; y = $_.Y; rot = $_.Rot } })
     } })
   })
@@ -142,10 +143,10 @@ Run 'B-rotasi' $rd @A3 -sheets $sheets
 # (dengan peringatan), PDF biasa tetap vektor. Export harus tetap jadi.
 Run 'X-pdf-diputar' (Load 'pdf-rotated.pdf', 'pdf-single-page.pdf', 'khusus\pdf-encrypted.pdf' (Cut 2 1) (Cut 4 2)) @A3
 
-# Sama dengan uji UI: semua file 01-input sekaligus (urutan nama), pengaturan bawaan aplikasi (kiss 2/1, die mati).
-# invalid-file.cdr tidak ikut karena gagal dimuat.
+# Sama dengan uji UI: semua file 01-input sekaligus (urutan nama), pengaturan bawaan aplikasi (kiss 2/1, die mati, tanda
+# registrasi aktif). invalid-file.cdr tidak ikut karena gagal dimuat.
 $all = Get-ChildItem $in -File | Where-Object { $_.Extension -in '.pdf', '.ai', '.png', '.jpg', '.svg' } | Sort-Object Name | ForEach-Object Name
-Run 'B-ui' (Load $all (Cut 2 1) $off) @A3
+Run 'B-ui' (Load $all (Cut 2 1) $off) @A3 -marks
 
 $scenarios | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 "$Out\validasi.json"
 "tersimpan: $Out\validasi.json"

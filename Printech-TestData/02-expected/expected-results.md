@@ -108,7 +108,7 @@ Toleransi:
   - status "18 stiker di 2 lembar.";
   - peringatan "1 lebih besar dari kertas   2 desain resolusi rendah   1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)";
   - pemakaian bahan "54% · sisa 46%";
-  - judul lembar "5 pcs / lembar A3+ · 92%" dan "13 pcs / lembar A3+ · 16%". Sebelum 2026-10-23 lembar 1 = 91%; sudut garis kotak yang tajam menambah sedikit luas.
+  - judul lembar "4 pcs / lembar A3+ · 90%" dan "14 pcs / lembar A3+ · 17%". Sejak 2026-10-26 tanda registrasi aktif secara bawaan, jadi area 6 mm di sekitar tanda di pojok lembar dikosongkan; sebelumnya 5 pcs 92% dan 13 pcs 16%. Sebelum 2026-10-23 lembar 1 = 91%; sudut garis kotak yang tajam menambah sedikit luas.
 
   Asal angka-angka ini:
   - 2 lembar diketahui dari ukuran: artwork A3 hanya menyisakan jalur selebar 14 mm dan 34 mm, sehingga desain 54 × 54 mm butuh lembar kedua.

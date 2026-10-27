@@ -201,7 +201,7 @@ public partial class MainWindow : Window
         sheets = [.. d.Sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList())];
         (sheetH, sheetW, tooBig) = ([.. d.SheetH], d.SheetW, d.TooBig);
         sel = drag = null;
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
@@ -284,7 +284,7 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border));
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border, dieShape: it.DieShape));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -302,19 +302,19 @@ public partial class MainWindow : Window
         {
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
             var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, loadedPdf: it.Pdf);
-            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border) { Owner = this };
+            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape) { Owner = this };
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         finally { Mouse.OverrideCursor = null; }
         bool ok = w.ShowDialog() == true;
-        var (mk, md, shape, border) = (w.ManualKiss, w.ManualDie, w.Shape, w.Border);
+        var (mk, md, shape, dieShape, border) = (w.ManualKiss, w.ManualDie, w.Shape, w.DieShape, w.Border);
         w = null;
         FreeMemory(); // desain otomatis untuk editor memuat ulang gambar penuh
         if (!ok) return;
         try
         {
             Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
-                manualKiss: mk, manualDie: md, shape: shape, border: border));
+                manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -349,13 +349,13 @@ public partial class MainWindow : Window
                     // Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
                     double k = it.WidthMm / it.LoadedW;
                     Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
-                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border));
+                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape));
                 }
             }
             sheetW = CW;
-            sheets = Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig);
+            sheets = Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
             sheetH = sheets.Select(_ => CH).ToList();
-            for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
+            for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
             sel = null;
             Redraw(Summary());
         }
@@ -374,10 +374,10 @@ public partial class MainWindow : Window
     void Compact_Click(object s, RoutedEventArgs e)
     {
         if (sheets.Count == 0) return;
-        int added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm);
+        int added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
         foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
         List.Items.Refresh();
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
         Redraw(Lang.T("Filled", added) + "  " + Summary());
         Commit();
     }
@@ -386,7 +386,7 @@ public partial class MainWindow : Window
     {
         if (sel == null) return;
         act(sel);
-        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm);
+        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
         Redraw(Summary());
         Commit();
     }
@@ -397,13 +397,13 @@ public partial class MainWindow : Window
         sheets[selSheet].Remove(sel);
         sel = null;
         DropEmpty();
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm);
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
         Redraw(sheets.Count > 0 ? Summary() : "");
         Commit();
     }
 
     // Putar 90°, lalu snap ke posisi kosong terdekat (tidak menabrak, jarak antar stiker tetap).
-    void RotateSel() => EditSel(p => { p.Rot = (p.Rot + 90) % 360; Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm); });
+    void RotateSel() => EditSel(p => { p.Rot = (p.Rot + 90) % 360; Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks); });
     void Rotate_Click(object s, RoutedEventArgs e) => RotateSel();
 
     // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK.
@@ -489,7 +489,9 @@ public partial class MainWindow : Window
         bool enabled = ((MenuItem)s).Tag as string == "1";
         RegMarksNone.IsChecked = !enabled;
         RegMarks1.IsChecked = enabled;
-        Redraw();
+        // Stiker di area pindai tanda jadi merah; Susun otomatis memindahkannya.
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
     void Window_Loaded(object s, RoutedEventArgs e)
@@ -741,11 +743,11 @@ public partial class MainWindow : Window
     {
         if (drag == null) return;
         // Snap magnet: stiker yang digeser pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap).
-        if (moved) Nest.Snap(sheets[selSheet], drag, sheetW, sheetH[selSheet], MarginMm, GapMm);
+        if (moved) Nest.Snap(sheets[selSheet], drag, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
         drag = null;
         moved = false;
         Sheets.ReleaseMouseCapture();
-        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm);
+        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
         Redraw(Summary());
         Commit();
     }
