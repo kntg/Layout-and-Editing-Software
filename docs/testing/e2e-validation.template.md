@@ -162,6 +162,8 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 **Uji mouse EDIT-16 mengikuti pengaturan aplikasi (2026-10-27):** aplikasi tidak menyimpan pengaturan antar-jalan, jadi `ui-editor-mouse.ps1` membaca lebar dan offset kiss dari aplikasi lalu menghitung ukuran lubang donat uji. Parameter `-Offset` mencoba offset lain. Setelah perbaikan ujung tajam, uji lulus 8/8 pada offset 2 mm dan 8/8 pada offset 3 mm. Skrip juga berhenti bila mouse disentuh selama uji. [Bukti](../../Printech-TestData/04-evidence/2026-10-27-ui-editor-mouse.txt), [bukti offset 3](../../Printech-TestData/04-evidence/2026-10-27-ui-editor-mouse-offset-3.txt).
 
+**Keputusan D3 dan D5 (2026-10-27):** user menyetujui saran. Jarak garis ke artwork (A4 dan batas bawah pita A5) memakai toleransi galat kurva 0,15 mm, dan target node ≥ 60% hanya berlaku untuk `rough.jpg`. `validasi.py` kini exit 0, jadi CUT-03, CUT-05, dan CUT-10 PASS. A4 tetap melaporkan 43 garis di bawah offset − 0,3 mm (terdalam 0,13 mm). [Bukti](../../Printech-TestData/04-evidence/2026-10-27-validasi-keputusan-d3-d5.txt).
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -176,7 +178,7 @@ Repo ini tidak punya project unit test (xUnit/NUnit) dan tidak punya CI. Satu-sa
 
 ## 6. Kasus uji
 
-Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27.
+Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27.
 
 Kolom Sumber menunjukkan asal kriterianya:
 
@@ -232,18 +234,18 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
    - PDF sumber berubah sebelum export (EXP-05);
    - AI tanpa PDF-compatible (IMP-04);
    - konfirmasi sebelum Susun menimpa edit manual (EDIT-06).
-6. Target reduksi node 60%: berlaku untuk jenis logo apa (CUT-03).
+6. **Diputuskan 2026-10-27:** target reduksi node 60% berlaku untuk logo kasar seperti `rough.jpg` (S1); logo bergelombang dicatat saja (CUT-03, D5).
 7. Definisi severity (bagian 1), dan daftar pemeriksaan otomatis yang wajib untuk rilis.
 
 ## 9. Checklist rilis E2E (usulan) dan status 2026-10-19
 
 | Butir | Kasus uji | Status |
 | --- | --- | --- |
-| 1. Build dan pengujian otomatis | Bagian 4 | Belum. `validasi.py` exit 1 (A2b, A4, A5). Build, self-check, dan uji regresi lulus setelah perbaikan D1/D2. |
-| 2. Input dan geometri | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 FAIL. IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. IMP-22 (file customer) NOT RUN. |
+| 1. Build dan pengujian otomatis | Bagian 4 | Lulus 2026-10-27: build 0 warning, self-check 4/4, `validasi.py` exit 0 setelah keputusan D3 dan D5. |
+| 2. Input dan geometri | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. IMP-22 (file customer) NOT RUN. |
 | 3. Export dan kompatibilitas | EXP-\*, HW-01 sampai HW-04 | Belum. Semua EXP lulus; PDF terenkripsi tidak lagi menggagalkan export (D8 diperbaiki 2026-10-21). HW-01 sampai HW-04 BLOCKED. |
 | 4. Produksi fisik | HW-05 sampai HW-08 | Belum. BLOCKED. |
-| 5. Dokumentasi dan defect | Bagian 7 dan 10 | Belum. Defect terbuka: D3, D5, D6, D7, D9 (D1, D2, D4, D8, D10 sudah diperbaiki). |
+| 5. Dokumentasi dan defect | Bagian 7 dan 10 | Belum. Defect terbuka: D6, D9 (D1, D2, D4, D8, D10 sudah diperbaiki; D3, D5, D7 diputuskan). |
 
 ## 10. Temuan dan defect terbuka
 
@@ -251,9 +253,9 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 | --- | --- | --- | --- | --- |
 | D1 | **Diperbaiki 2026-10-19:** cache sekarang memakai versi file ([Core.cs:598-599](../../StickerLayout/Core.cs#L598-L599)); bukti dengan CorelDRAW menunggu IMP-09. Sebelumnya: cache konversi CDR hanya memakai path file sebagai kunci. Bila CDR diedit lalu ditambah ulang di sesi yang sama, hasil konversi lama yang dipakai. | Kode | [Core.cs:599](../../StickerLayout/Core.cs#L599) | Blocker |
 | D2 | **Diperbaiki 2026-10-19:** PDF/AI disalin saat dimuat ([Core.cs:115-128](../../StickerLayout/Core.cs#L115-L128)); dicek selfcheck (SelfCheck.cs:466-480). Sebelumnya: file PDF dibaca ulang saat export, sedangkan garis potong dihitung saat dimuat. Bila file diubah di antaranya, artwork dan garis bisa tidak cocok. Bila file dipindah, export memakai render layar RGB beresolusi rendah dan hanya memberi peringatan. | Kode | [Export.cs:131](../../StickerLayout/Export.cs#L131), [Export.cs:107-111](../../StickerLayout/Export.cs#L107-L111) | Mayor |
-| D3 | Garis bisa sampai 0,13 mm lebih dekat dari batas offset − 0,3 mm, di sudut lancip dan pada offset kecil. Garis tetap di luar artwork. | validasi A4 | [Core.cs:465-486](../../StickerLayout/Core.cs#L465-L486) (penjaga jarak), [Core.cs:541-562](../../StickerLayout/Core.cs#L541-L562) (Potrace) | Mayor |
+| D3 | **Diputuskan 2026-10-27:** toleransi galat kurva 0,15 mm diterima; validasi A4 dan batas bawah pita A5 memakai offset − 0,3 − 0,15 mm (CUT-05 dan CUT-10 PASS). Sebelumnya: garis bisa sampai 0,13 mm lebih dekat dari batas offset − 0,3 mm, di sudut lancip dan pada offset kecil. Garis tetap di luar artwork. | validasi A4 | [Core.cs:465-486](../../StickerLayout/Core.cs#L465-L486) (penjaga jarak), [Core.cs:541-562](../../StickerLayout/Core.cs#L541-L562) (Potrace) | Mayor |
 | D4 | **Diperbaiki 2026-10-21:** bitmap resolusi penuh hasil muat langsung dilepas setelah menyusun ([MainWindow.xaml.cs:363-366](../../StickerLayout/MainWindow.xaml.cs#L363-L366)), dan salinan layar tidak lagi memegang bitmap sumber ([Core.cs:359-372](../../StickerLayout/Core.cs#L359-L372)). RAM: semua 19 desain 279 → 84 MB, JPG 24 MP 226 → 41 MB, dua PDF besar 326 → 53 MB. Sebelumnya: GC tidak jalan setelah muat, sehingga bitmap decode/render penuh (JPG 24 MP: 96 MB native + 96 MB heap) tetap terhitung; logo kecil di halaman besar menahan render halaman penuh (±43 MB) selama desainnya ada. Puncak sesaat saat memuat masih tinggi. | [ram-profil](../../Printech-TestData/04-evidence/2026-10-21-ram-profil.txt) | [Core.cs:359-372](../../StickerLayout/Core.cs#L359-L372) | Mayor |
-| D5 | Node pada logo bertepi bergelombang hanya turun 54% (target 60%). | validasi A2b | — | Minor |
+| D5 | **Diputuskan 2026-10-27:** target node ≥ 60% hanya untuk logo kasar seperti `rough.jpg` (S1); logo bergelombang dicatat sebagai info A2b (CUT-03 PASS). Sebelumnya: node pada logo bertepi bergelombang hanya turun 54% (target 60%). | validasi A2b | — | Minor |
 | D6 | Nilai 149,5–149,99 dpi tampil sebagai "150 dpi" tetapi berwarna merah. | Kode | [Core.cs:49-50](../../StickerLayout/Core.cs#L49-L50) | Minor |
 | D7 | **Diputuskan 2026-10-21:** latar tidak dibuang otomatis, jadi kotak putih di PDF selalu dipertahankan dan garis mengelilingi kotak (dicek probe, IMP-18). Sebelumnya: kotak putih yang tidak memenuhi halaman menghasilkan kotak 84 × 84 mm, sedangkan halaman putih penuh mengikuti logo (44 × 44 mm). | [d7-kotak-putih](../../Printech-TestData/04-evidence/2026-10-21-d7-kotak-putih.txt) | [Core.cs (Fg)](../../StickerLayout/Core.cs) | Mayor |
 | D8 | **Diperbaiki 2026-10-21:** saat dimuat, halaman PDF dicoba ditempel seperti saat export ([Core.cs:321-328](../../StickerLayout/Core.cs#L321-L328)); bila gagal, PDF ditempel sebagai gambar dengan peringatan. Dicek validasi X3 dan UI. Sebelumnya: PDF terenkripsi (hanya kata sandi pemilik) lolos cek vektor saat dimuat, lalu `Export.Pdf` melempar exception "The archive entry was compressed using an unsupported compression method." sehingga seluruh export layout gagal. | [pdf-terenkripsi](../../Printech-TestData/04-evidence/2026-10-21-pdf-terenkripsi.txt) | [Core.cs:321-328](../../StickerLayout/Core.cs#L321-L328) | Mayor |
@@ -283,12 +285,12 @@ Lembar kerja yang sama, untuk diisi saat menguji: [e2e-test-results-template.csv
 
 D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21. Kasus tingkat Operator/hardware di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
 
-1. **Keputusan toleransi D3 dan D5; pesan error D9; tampilan dpi D6.**
+1. **Pesan error D9; tampilan dpi D6.** Toleransi D3 dan D5 sudah diputuskan 2026-10-27.
 
 ## 12. Keputusan yang dibutuhkan
 
-1. **A4/D3:** terima toleransi 0,15 mm dan tulis di aturan (saran), atau uji mask 10 px/mm (lebih berat, belum diuji)?
-2. **A2b/D5:** target node ≥ 60% berlaku hanya untuk `rough.jpg` (S1)?
+1. **A4/D3, diputuskan 2026-10-27:** toleransi 0,15 mm diterima dan ditulis di aturan.
+2. **A2b/D5, diputuskan 2026-10-27:** target node ≥ 60% hanya untuk `rough.jpg` (S1).
 3. **Pemeriksaan otomatis yang wajib untuk rilis:** self-check saja, atau ditambah `validasi.py` exit 0 dan `ui-edit-layout.ps1` 11/11?
 4. **Severity:** apakah usulan severity D1–D10 dan definisinya (bagian 1) disetujui?
 5. **File customer:** di mana lokasi file customer yang sudah diizinkan untuk pengujian?

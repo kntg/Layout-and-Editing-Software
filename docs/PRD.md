@@ -136,7 +136,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
   - Penjaga jarak: di mask, penghalusan tidak boleh membawa garis lebih dekat dari offset - 0,3 mm ke artwork (jari-jari dibulatkan ke atas sejak 2026-10-18). Garis die selalu membungkus garis kiss, minimal 1 piksel (0,17 mm) di luarnya.
   - Diukur 2026-10-18 per titik garis terhadap geometri asli file ([validasi-garis-potong-nesting.md](../Printech-TestData/02-expected/validasi-garis-potong-nesting.md)):
     - median jarak = offset −0,19 s.d. +0,02 mm;
-    - setelah kurva Potrace, garis bisa sampai 0,13 mm lebih dekat dari offset - 0,3 mm. Ini terjadi di sudut lancip dan pada offset kecil (galat mask 6 px/mm).
+    - setelah kurva Potrace, garis bisa sampai 0,13 mm lebih dekat dari offset - 0,3 mm. Ini terjadi di sudut lancip dan pada offset kecil (galat mask 6 px/mm). Galat sampai 0,15 mm diterima (keputusan D3, 2026-10-27), jadi validasi memakai batas offset - 0,45 mm.
   - Hasil di app (kiss 2/1 mm, die 4/2 mm), node kiss/die sebelum -> sesudah: rough.jpg 64/43 -> 16/13 (-73%), lingkaran 11/10 -> 3/4 (-67%), logo.pdf 21/15 -> 8/7 (-58%), bintang 29/27 -> 15/17 (-43%), badge 9/8 -> 8/8. Sudut tajam 2 -> 0. Sejak 2026-10-18 (penjaga dibulatkan ke atas, die minimal 1 px di luar kiss) rough.jpg 17/16. Muat per desain 20-70 ms, stiker 300 mm ±1 detik (Release).
   - Skenario uji S1–S17 beserta hasilnya: [UJI-GARIS-POTONG.md](UJI-GARIS-POTONG.md).
 - **Stabilitas dan performa** (2026-10-17, spesifikasi leader bagian 2):
@@ -177,7 +177,7 @@ Tahap sekarang: prototipe → cek kualitas → uji oleh operator. Status "produc
 - Stiker belum bisa dipindah antar-lembar. Rotasi hanya kelipatan 90°.
 - Warna di layar hanya preview. Akurasi warna dijaga di file export.
 - Rapikan gambar: latar foto yang ramai (bukan warna polos) belum bisa dihapus otomatis; gambar di atas 4000 px diperkecil ke 4000 px saat dirapikan.
-- Reduksi node: target 60-80% tercapai pada logo kasar dan bentuk bulat. Teks dan bintang turun 33-59% karena sudutnya adalah detail asli. Logo dengan gelombang tepi yang nyata (Printech-TestData `png-rough-edge.png`) hanya turun 54%. Di area cekung garis bisa bergeser keluar sampai ±0,5 mm (kiss) atau ±0,7 mm (die): border sedikit lebih lebar. Halus 0 mematikan penghalusan bentuk.
+- Reduksi node: target 60-80% tercapai pada logo kasar dan bentuk bulat. Teks dan bintang turun 33-59% karena sudutnya adalah detail asli. Logo dengan gelombang tepi yang nyata (Printech-TestData `png-rough-edge.png`) hanya turun 54%. Target 60% hanya berlaku untuk logo kasar seperti `rough.jpg` (selfcheck S1); logo bergelombang dicatat saja (keputusan D5, 2026-10-27). Di area cekung garis bisa bergeser keluar sampai ±0,5 mm (kiss) atau ±0,7 mm (die): border sedikit lebih lebar. Halus 0 mematikan penghalusan bentuk.
 - CDR: batas 30 detik belum dikalibrasi di PC operator. Bila CorelDRAW menggantung karena dialog yang tidak terlihat, tutup CorelDRAW lalu tambahkan file lagi.
 - Muat ulang desain dan nesting masih berjalan di UI thread (nesting 130 stiker ±85 ms; desain sangat besar bisa ±1 detik).
 - Jarak nyata antar stiker masih lebih lebar dari yang diminta (median +1,2 mm), karena jejak stiker dibulatkan ke grid 1 mm.

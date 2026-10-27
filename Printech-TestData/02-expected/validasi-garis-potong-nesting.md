@@ -44,10 +44,10 @@ Semua jarak dalam mm. Garis potong diambil sampelnya setiap 0,05 mm, lalu jarak 
 | --- | --- | --- |
 | A1 | Offset sesuai nilai yang dipilih | Pada bentuk sederhana dengan offset kiss 1/2/3 dan die 3/4/6: median jarak garis ke artwork = offset ± 0,25 mm, dan jarak terjauh tidak lebih dari offset + 0,5 mm. Toleransi ini menampung resolusi mask 6 px/mm (0,17 mm) dan piksel gambar sumber. Desain kotak (A7, sejak 2026-10-23): jarak terjauh ≤ offset × √2 + 0,5 mm, karena sudut garis kotak berjarak offset × √2 dari sudut artwork. |
 | A2a | Halus benar-benar mengubah kontur | Pada logo bertepi kasar dan bintang (kiss dan die): panjang garis selalu turun dari Halus 0 → 0,5 → 1 → 2, karena lekukan kecil ditutup. Node Halus 1 dan 2 lebih sedikit dari Halus 0. |
-| A2b | Target reduksi node | Kiss logo kasar: node Halus 1 ≤ 40% dari Halus 0 (target PRD dan S1: turun ≥ 60%). |
+| A2b | Reduksi node logo bergelombang (info) | Dicatat, bukan kriteria lulus: berapa persen node kiss `png-rough-edge.png` turun dari Halus 0 ke Halus 1. Target turun ≥ 60% hanya berlaku untuk logo kasar seperti `rough.jpg` di selfcheck S1 (keputusan D5, 2026-10-27). |
 | A3 | Die membungkus kiss | Tidak ada titik garis kiss di luar garis die pada semua desain dan pengaturan, termasuk kiss halus 3 + die halus 0. |
-| A4 | Jarak minimum ke artwork | Pada setiap garis: jarak terdekat ke artwork ≥ offset − 0,3 mm. Tanpa toleransi tambahan. |
-| A5 | Reduksi node tidak merusak bentuk | Garis hanya berisi kurva, tanpa garis lurus atau sudut tajam. Jumlah kontur benar: 1 per desain; untuk elemen berdekatan, bagian dengan celah < 2 × (offset + halus) menyatu. Lubang asli yang tetap terbuka setelah offset + halus dipotong (garis dalam, sejak 2026-10-21), dan lubang die ikut tertutup bila lubang kiss tertutup (die membungkus kiss). Cincin C: celahnya ditutup bila 5 mm < 2 × (offset + halus). Garis bentuk sederhana tetap di dalam pita [offset − 0,3; offset + 0,5]. Desain kotak (A7) memang terdiri dari garis lurus, jadi tidak dihitung pada aturan "tanpa garis lurus", dan batas atas pitanya offset × √2 + 0,5. Gambar overlay disimpan untuk dicek mata. |
+| A4 | Jarak minimum ke artwork | Pada setiap garis: jarak terdekat ke artwork ≥ offset − 0,3 mm, dengan toleransi galat kurva 0,15 mm, jadi batas uji offset − 0,45 mm (keputusan D3, 2026-10-27). Jumlah garis di bawah offset − 0,3 mm tetap dilaporkan. |
+| A5 | Reduksi node tidak merusak bentuk | Garis hanya berisi kurva, tanpa garis lurus atau sudut tajam. Jumlah kontur benar: 1 per desain; untuk elemen berdekatan, bagian dengan celah < 2 × (offset + halus) menyatu. Lubang asli yang tetap terbuka setelah offset + halus dipotong (garis dalam, sejak 2026-10-21), dan lubang die ikut tertutup bila lubang kiss tertutup (die membungkus kiss). Cincin C: celahnya ditutup bila 5 mm < 2 × (offset + halus). Garis bentuk sederhana tetap di dalam pita [offset − 0,3; offset + 0,5]; batas bawahnya memakai toleransi 0,15 mm seperti A4. Desain kotak (A7) memang terdiri dari garis lurus, jadi tidak dihitung pada aturan "tanpa garis lurus", dan batas atas pitanya offset × √2 + 0,5. Gambar overlay disimpan untuk dicek mata. |
 | A6 | Opsi sesuai pilihan operator | Kiss saja: hanya garis magenta (CMYK 0 1 0 0). Die saja: hanya garis cyan (1 0 0 0). Keduanya: dua garis per stiker. Keduanya mati: muncul pesan, tidak ada desain. Dicek di data dan di PDF export. |
 | A7 | Desain kotak (masukan 2026-10-23) | Desain yang artwork-nya memenuhi kotak dinilai di sini. Syaratnya: alpha > 16 di semua piksel tepi dan isinya ≥ 99,5 %; PDF/AI dirender PyMuPDF 6 px/mm dengan latar transparan, dihitung sendiri oleh `validasi.py`. Garis kiss dan die desain ini harus berupa 1 kontur dengan 4 garis lurus. Kotaknya = bbox artwork ± offset (die minimal offset kiss + 1/6 mm), dengan selisih ≤ 0,15 mm, juga pada Halus 0–2. |
 | E1 | PDF export = data yang dinilai | Di setiap PDF export, garis potong, gambar, dan path artwork berada di posisi dan rotasi yang sama dengan data (selisih ≤ 0,05 mm). Jumlahnya juga sama. |
@@ -98,6 +98,19 @@ Skenario: semua PDF di atas. Preview dan Print Ticket dibuat untuk skenario B-*.
 
 - **Ukuran grid:** kode memakai grid nesting 1 mm (`Nest.Cell = 1`, [Core.cs](../../StickerLayout/Core.cs)). Angka "grid 2 mm" berasal dari versi sebelum 2026-10-18.
 - **Uji tabrakan sebelumnya:** `Printech-Deskripsi.pdf` versi sekarang (di luar repo) menulis "grid 1 mm" dan "0 tabrakan dari 236 pasangan".
+
+## Hasil 2026-10-27 (keputusan D3 dan D5)
+
+Laporan lengkap: [2026-10-27-validasi-keputusan-d3-d5.txt](../04-evidence/2026-10-27-validasi-keputusan-d3-d5.txt). Export-nya sama dengan [2026-10-27-validasi-garis-potong-nesting.txt](../04-evidence/2026-10-27-validasi-garis-potong-nesting.txt), sesudah perbaikan ujung tajam. Yang berubah hanya kriteria A2b, A4, dan A5, sesuai keputusan user.
+
+| ID | Hasil | Angka |
+| --- | --- | --- |
+| A2b | Info | Kiss logo bergelombang turun 54%. `rough.jpg` di selfcheck S1 turun 74% (target ≥ 60%) |
+| A4 | Lulus | 158 dari 158 garis di atas batas dengan toleransi. 43 garis di bawah offset − 0,3 mm, terdalam 0,13 mm. Terdekat: die `pdf-multi-page.pdf p3` 3,57 mm (batas 3,70, dengan toleransi 3,55) |
+| A5 | Lulus | 0 garis keluar pita (sebelumnya 5, semuanya di batas bawah = A4) |
+| Lainnya | Lulus | Sama dengan sebelumnya |
+
+`validasi.py` exit 0.
 
 ## Hasil 2026-10-23 (build Release, sesudah desain kotak otomatis)
 
@@ -157,6 +170,8 @@ Laporan lengkap: [2026-10-18-validasi-garis-potong-nesting.txt](../04-evidence/2
    - Sekarang status bar menampilkan "1 PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)". Dicek di uji UI.
 
 ### Perlu keputusan
+
+Diputuskan 2026-10-27: A4 memakai pilihan (a), toleransi 0,15 mm; target A2b hanya untuk `rough.jpg` (S1). Hasilnya di bagian Hasil 2026-10-27.
 
 - **A4: sisa ≤ 0,13 mm berasal dari resolusi mask 6 px/mm dan penghalusan kurva Potrace, bukan dari penjaga.**
   - Penjaga dicoba sama dengan offset penuh. Hasilnya: A4 tetap gagal (−0,08 mm, karena piksel JPG 0,25 mm), dan reduksi node turun ke 40–45% sehingga S1 dan S2 gagal.

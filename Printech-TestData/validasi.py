@@ -29,6 +29,7 @@ DAY = datetime.date.today().isoformat()
 PT = 25.4 / 72      # mm per point
 STEP = 0.05         # jarak titik sampel garis (mm)
 MAX_IN = 0.3        # aturan implementasi: garis tidak lebih dekat dari (offset - 0,3 mm) ke artwork
+TOL = 0.15          # galat kurva Potrace dan mask 6 px/mm yang diterima di atas MAX_IN (keputusan D3, 2026-10-27)
 SIMPLE = {"pdf-single-page.pdf", "pdf-multi-page.pdf p1", "pdf-multi-page.pdf p2", "ai-compatible.ai", "svg-vector.svg",
           "png-152dpi.png", "png-147dpi.png", "jpg-low-resolution.jpg", "pdf-large-a3.pdf", "pdf-oversize.pdf", "jpg-large-24mp.jpg"}
 GROUP = {"sederhana": SIMPLE,
@@ -345,7 +346,8 @@ for name in ("png-rough-edge.png", "pdf-irregular-shapes.pdf p1"):
         msgs.append(f"{name} {kind} halus 0/0,5/1/2: node {'/'.join(map(str, nodes))}, panjang {'/'.join(f2(v) for v in length)}, "
                     f"jarak maks {'/'.join(f2(v) for v in dmax)}{'' if good else ' <- tidak sesuai'}")
 verdict("A2a", ok, "Halus mengubah kontur: makin besar Halus, garis makin pendek (lekukan kecil ditutup), node berkurang. " + "; ".join(msgs))
-verdict("A2b", red >= 0.6, f"node kiss logo kasar turun {red:.0%} dari Halus 0 ke Halus 1 (target PRD/S1 >= 60%)")
+# Target turun >= 60% hanya untuk logo kasar seperti rough.jpg (selfcheck S1); logo bergelombang ini dicatat saja (keputusan D5, 2026-10-27).
+out(f"A2b INFO: node kiss logo kasar bergelombang turun {red:.0%} dari Halus 0 ke Halus 1 (target >= 60% hanya untuk rough.jpg di selfcheck S1)")
 
 # A3 die membungkus kiss
 wr = [(s, n, M[s, n]["wrap"]) for s, n in M if "wrap" in M[s, n]]
@@ -354,13 +356,15 @@ verdict("A3", not badw, f"die membungkus kiss pada {len(wr)} desain x pengaturan
         f"{sum(w['outside'] for _, _, w in wr)}, jarak kiss-die terkecil {f2(min(w['gap'] for _, _, w in wr))}"
         + "".join(f"; {s} {n}: {w['outside']} titik di luar" for s, n, w in badw))
 
-# A4 jarak minimum ke artwork >= offset - 0,3
+# A4 jarak minimum ke artwork >= offset - 0,3, dengan toleransi galat kurva TOL. Garis di bawah offset - 0,3 tetap dilaporkan.
 worst = sorted(rows, key=lambda r: r[3]["dmin"] - (r[3]["off"] - MAX_IN))
-badm = [r for r in rows if r[3]["dmin"] < r[3]["off"] - MAX_IN]
+badm = [r for r in rows if r[3]["dmin"] < r[3]["off"] - MAX_IN - TOL]
+near = [r for r in rows if r[3]["dmin"] < r[3]["off"] - MAX_IN]
 s0, n0, k0, x0 = worst[0]
-verdict("A4", not badm, f"jarak garis ke artwork tidak kurang dari offset - 0,3 mm pada {len(rows)} garis. Paling dekat: {s0} {n0} {k0} "
-        f"{f2(x0['dmin'])} mm (offset {f2(x0['off'])}, batas {f2(x0['off'] - MAX_IN)})"
-        + (f"; {len(badm)} garis di bawah batas: " + ", ".join(f"{s} {n} {k} {f2(x['dmin'])}/{f2(x['off'] - MAX_IN)}" for s, n, k, x in badm[:12]) if badm else ""))
+verdict("A4", not badm, f"jarak garis ke artwork tidak kurang dari offset - 0,3 mm, toleransi galat kurva 0,15 mm, pada {len(rows)} garis. "
+        f"Paling dekat: {s0} {n0} {k0} {f2(x0['dmin'])} mm (offset {f2(x0['off'])}, batas {f2(x0['off'] - MAX_IN)}, dengan toleransi {f2(x0['off'] - MAX_IN - TOL)}); "
+        f"{len(near)} garis di bawah offset - 0,3 mm, terdalam {f2(max([x['off'] - MAX_IN - x['dmin'] for _, _, _, x in near], default=0))} mm"
+        + (f"; {len(badm)} garis di bawah batas toleransi: " + ", ".join(f"{s} {n} {k} {f2(x['dmin'])}/{f2(x['off'] - MAX_IN - TOL)}" for s, n, k, x in badm[:12]) if badm else ""))
 
 # A5 reduksi node tidak mengubah bentuk: tanpa sudut/garis lurus, jumlah kontur dan lubang benar, bentuk sederhana dalam pita offset.
 # Desain kotak memang 4 garis lurus (masukan 2026-10-23); garisnya dinilai di A7.
@@ -387,11 +391,11 @@ for (s, n), m in M.items():
                 hole_bad.append(f"{s} {n} {kind}")
             if s == "A-standar" or want is False:
                 hole_txt.append(f"{s} {n} {kind}: lubang {'tidak dipotong' if got else 'dipotong, ada garis dalam' if hole_r else 'ikut dikelilingi garis (celah terbuka)'}")
-band = [(s, n, k, x) for s, n, k, x in rows if n in SIMPLE and not (x["off"] - MAX_IN <= x["dmin"] and x["dmax"] <= lim_max(n, x))]
+band = [(s, n, k, x) for s, n, k, x in rows if n in SIMPLE and not (x["off"] - MAX_IN - TOL <= x["dmin"] and x["dmax"] <= lim_max(n, x))]
 verdict("A5", straight == 0 and not cont_bad and not hole_bad and not band,
         f"bentuk tetap benar setelah reduksi node: {straight} garis lurus/sudut di {sum(n not in BOXES for _, n, _, _ in rows)} garis bukan kotak; "
         f"jumlah kontur salah {len(cont_bad)}; lubang salah {len(hole_bad)}; "
-        f"bentuk sederhana keluar pita [offset - 0,3; offset + 0,5, kotak: offset x akar 2 + 0,5]: {len(band)} (batas bawah pita = A4"
+        f"bentuk sederhana keluar pita [offset - 0,3 - toleransi 0,15; offset + 0,5, kotak: offset x akar 2 + 0,5]: {len(band)} (batas bawah pita = A4"
         + (": " + ", ".join(f"{s} {n} {k} {f2(x['dmin'])}-{f2(x['dmax'])}" for s, n, k, x in band) if band else "") + "). "
         + "; ".join(cont_bad + hole_bad + hole_txt))
 
