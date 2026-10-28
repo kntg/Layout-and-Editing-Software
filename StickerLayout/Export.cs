@@ -123,8 +123,16 @@ public static class Export
             }
             if (regMarks)
             {
+                // Satu XGraphicsPath per siku (A → C → B) agar tiap tanda jadi satu subpath:
+                // titik sudut C muncul sekali, sehingga di vektor PDF garis benar-benar menyambung.
                 var pen = new XPen(XColor.FromCmyk(0, 0, 0, 1), RegistrationMarks.Stroke);
-                foreach (var (a, b) in RegistrationMarks.Lines(cw, sheetH[i], margin)) g.DrawLine(pen, a.X, a.Y, b.X, b.Y);
+                foreach (var (a, c, b) in RegistrationMarks.Corners(cw, sheetH[i], margin))
+                {
+                    var mark = new XGraphicsPath();
+                    mark.AddLine(new XPoint(a.X, a.Y), new XPoint(c.X, c.Y));
+                    mark.AddLine(new XPoint(c.X, c.Y), new XPoint(b.X, b.Y));
+                    g.DrawPath(pen, mark);
+                }
             }
         }
         doc.Save(path);
