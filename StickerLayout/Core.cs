@@ -1013,7 +1013,7 @@ public static class RegistrationMarks
     public const double Stroke = 1;
     public const double ScanClear = 6;
 
-        // Garis tanda (mm lembar): siku L di 4 pojok, di luar area cetak sejauh Clearance. Kosong bila margin atau lembar terlalu kecil.
+    // Garis tanda (mm lembar): siku L di 4 pojok, di luar area cetak sejauh Clearance. Kosong bila margin atau lembar terlalu kecil.
     public static List<(Point A, Point B)> Lines(double width, double height, double margin)
     {
         if (margin <= Clearance || width <= 2 * (margin - Clearance + Length) || height <= 2 * (margin - Clearance + Length)) return [];
@@ -1028,6 +1028,20 @@ public static class RegistrationMarks
             (new(l, b + half), new(l, b - Length)),          // BL vertikal ← diperpanjang ke bawah
             (new(r, b),        new(r - Length, b)),          // BR horizontal
             (new(r, b + half), new(r, b - Length))           // BR vertikal ← diperpanjang ke bawah
+        ];
+    }
+
+    // Satu sudut sebagai satu path: ujung horizontal (A), titik sudut (C), ujung vertikal (B).
+    // Dipakai export PDF agar tiap siku jadi satu subpath (vektor benar-benar menyambung, bukan dua garis berpotongan).
+    public static List<(Point A, Point C, Point B)> Corners(double width, double height, double margin)
+    {
+        if (margin <= Clearance || width <= 2 * (margin - Clearance + Length) || height <= 2 * (margin - Clearance + Length)) return [];
+        double l = margin - Clearance, t = margin - Clearance, r = width - margin + Clearance, b = height - margin + Clearance;
+        return [
+            (new(l + Length, t), new(l, t), new(l, t + Length)),   // TL
+            (new(r - Length, t), new(r, t), new(r, t + Length)),   // TR
+            (new(l + Length, b), new(l, b), new(l, b - Length)),   // BL
+            (new(r - Length, b), new(r, b), new(r, b - Length))    // BR
         ];
     }
 
