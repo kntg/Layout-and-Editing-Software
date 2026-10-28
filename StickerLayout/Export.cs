@@ -163,6 +163,24 @@ public static class Export
         return files;
     }
 
+    static void DrawRegistrationMarks(XGraphics g, double width, double height, double margin)
+    {
+        if (margin <= RegistrationMarks.Clearance
+            || width <= 2 * (margin - RegistrationMarks.Clearance + RegistrationMarks.Length)
+            || height <= 2 * (margin - RegistrationMarks.Clearance + RegistrationMarks.Length)) return;
+        double left = margin - RegistrationMarks.Clearance, top = margin - RegistrationMarks.Clearance;
+        double right = width - margin + RegistrationMarks.Clearance, bottom = height - margin + RegistrationMarks.Clearance;
+        var pen = new XPen(XColor.FromCmyk(0, 0, 0, 1), RegistrationMarks.Stroke);
+        g.DrawLine(pen, left, top, left + RegistrationMarks.Length, top);
+        g.DrawLine(pen, left, top, left, top + RegistrationMarks.Length);
+        g.DrawLine(pen, right, top, right - RegistrationMarks.Length, top);
+        g.DrawLine(pen, right, top, right, top + RegistrationMarks.Length);
+        g.DrawLine(pen, left, bottom, left + RegistrationMarks.Length, bottom);
+        g.DrawLine(pen, left, bottom, left, bottom - RegistrationMarks.Length);
+        g.DrawLine(pen, right, bottom, right - RegistrationMarks.Length, bottom);
+        g.DrawLine(pen, right, bottom, right, bottom - RegistrationMarks.Length);
+    }
+
     // Render elemen WPF (satuan mm) ke bitmap; k = pixel per mm.
     public static BitmapSource Snapshot(FrameworkElement el, double w, double h, double k)
     {
