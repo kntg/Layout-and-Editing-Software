@@ -278,12 +278,12 @@ public static partial class Loader
     }
 
     const double BleedPxMm = 300 / 25.4; // resolusi maksimal gambar bleed: 300 dpi
+    const double ExtendPxMm = 4;         // resolusi grid lapisan perluasan (pull-push): ±0,25 mm per sel
 
-    // Auto-bleed untuk raster: warna tepi artwork diperluas keluar (dilasi warna, 8 arah) sejauh d mm, supaya
-    // pergeseran pisau tidak menyisakan tepi putih. Sumber warnanya hanya piksel pekat (alpha 255); artwork asli lalu
-    // ditumpuk di atas lapisan perluasan. Jadi bayangan dan tepi feather tetap tembus, dan warna latar yang tersembunyi
-    // di bawah piksel semi-transparan tidak muncul (temuan 2026-10-28). Lubang di dalam artwork tetap warna aslinya.
-    // Saat digambar, hasilnya di-clip ke garis potong + bleed (Sticker.ArtClip).
+    // Auto-bleed untuk raster: warna tepi artwork diperluas keluar sejauh d mm, supaya pergeseran pisau tidak menyisakan
+    // tepi putih. Sumber warnanya hanya piksel pekat (alpha 255); artwork asli lalu ditumpuk di atas lapisan perluasan.
+    // Jadi bayangan dan tepi feather tetap tembus, dan warna latar yang tersembunyi di bawah piksel semi-transparan tidak
+    // muncul (temuan 2026-10-28). Saat digambar, hasilnya di-clip ke garis potong + bleed (Sticker.ArtClip).
     // ponytail: gambar bleed dibuat ulang penuh (maks 300 dpi); stiker raster ±300 mm jadi ±1-2 detik lebih lambat.
     // Ganti dengan lapisan bawah beresolusi rendah bila operator merasakan lambat.
     static (byte[] png, BitmapSource view, Rect rect) Bleed(BitmapSource crop, double artW, double artH, double d, double off)
@@ -291,55 +291,103 @@ public static partial class Loader
         double k = Math.Min(crop.PixelWidth / artW, BleedPxMm);
         var src = new TransformedBitmap(crop, new ScaleTransform(artW * k / crop.PixelWidth, artH * k / crop.PixelHeight));
         var (px, w, h) = Pixels(src);
-        bool Solid(int x, int y) => px[(y * w + x) * 4 + 3] == 255;
         double kx = w / artW, ky = h / artH;
         int p = (int)Math.Ceiling(d * Math.Max(kx, ky)), W = w + 2 * p, H = h + 2 * p;
-        var o = new byte[W * H * 4];
-        var front = new List<int>();
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-            {
-                if (!Solid(x, y)) continue;
-                int i = (y + p) * W + x + p, j = (y * w + x) * 4;
-                o[i * 4] = px[j]; o[i * 4 + 1] = px[j + 1]; o[i * 4 + 2] = px[j + 2]; o[i * 4 + 3] = 255;
-                bool edge = x == 0 || y == 0 || x == w - 1 || y == h - 1 || !Solid(x - 1, y) || !Solid(x + 1, y) || !Solid(x, y - 1) || !Solid(x, y + 1);
-                if (edge) front.Add(i);
-            }
-        // Lapis demi lapis keluar sampai seluruh gambar terisi (tepi feather bisa lebih lebar dari d): piksel baru =
-        // rata-rata tetangga yang sudah berwarna (8 arah), jadi satu piksel tepi yang menyimpang tidak membentuk garis panjang.
-        while (front.Count > 0)
-        {
-            var next = new List<int>();
-            foreach (int i in front)
-                for (int v = Math.Max(0, i / W - 1); v <= Math.Min(H - 1, i / W + 1); v++)
-                    for (int u = Math.Max(0, i % W - 1); u <= Math.Min(W - 1, i % W + 1); u++)
-                        if (o[(v * W + u) * 4 + 3] == 0) { o[(v * W + u) * 4 + 3] = 1; next.Add(v * W + u); } // 1 = antre
-            foreach (int j in next)
-            {
-                int b = 0, g = 0, r = 0, n = 0;
-                for (int v = Math.Max(0, j / W - 1); v <= Math.Min(H - 1, j / W + 1); v++)
-                    for (int u = Math.Max(0, j % W - 1); u <= Math.Min(W - 1, j % W + 1); u++)
-                    {
-                        int t = (v * W + u) * 4;
-                        if (o[t + 3] == 255) { b += o[t]; g += o[t + 1]; r += o[t + 2]; n++; }
-                    }
-                o[j * 4] = (byte)(b / n); o[j * 4 + 1] = (byte)(g / n); o[j * 4 + 2] = (byte)(r / n);
-            }
-            foreach (int j in next) o[j * 4 + 3] = 255;
-            front = next;
-        }
-        // Artwork semi-transparan ditumpuk di atas lapisan perluasan. Tanpa lapisan (gambar tanpa piksel pekat): apa adanya.
+        var o = Extend(px, w, h, p, W, H, Math.Max(1, (int)Math.Round(Math.Max(kx, ky) / ExtendPxMm)));
+        // Artwork ditumpuk di atas lapisan perluasan. Tanpa lapisan (gambar tanpa piksel pekat): apa adanya.
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
                 int j = (y * w + x) * 4, a = px[j + 3], i = ((y + p) * W + x + p) * 4;
-                if (a == 0 || a == 255) continue;
+                if (a == 0) continue;
                 if (o[i + 3] == 0) { o[i] = px[j]; o[i + 1] = px[j + 1]; o[i + 2] = px[j + 2]; o[i + 3] = (byte)a; continue; }
                 for (int c = 0; c < 3; c++) o[i + c] = (byte)((px[j + c] * a + o[i + c] * (255 - a) + 127) / 255);
             }
         var bmp = BitmapSource.Create(W, H, 96, 96, PixelFormats.Bgra32, null, o, W * 4);
         bmp.Freeze();
         return (Png(bmp), Proxy(bmp), new Rect(off - p / kx, off - p / ky, W / kx, H / ky));
+    }
+
+    // Lapisan perluasan tanpa garis (pull-push): warna piksel pekat dirata-rata ke luar pada beberapa skala. Dekat tepi
+    // dipakai skala halus (warna tepi setempat), makin jauh makin kasar. Dilasi 8 arah sebelumnya meneruskan tepi yang
+    // bertekstur (kain, bulu, logam) sebagai garis dan baji lurus (temuan 2026-10-28). Dihitung di grid f x f piksel per
+    // sel, lalu diperbesar bilinear ke W x H. Hasil BGRA; semua alpha 0 bila tidak ada piksel pekat.
+    static byte[] Extend(byte[] px, int w, int h, int p, int W, int H, int f)
+    {
+        var o = new byte[W * H * 4];
+        int gw = (W + f - 1) / f, gh = (H + f - 1) / f;
+        var c = new float[gw * gh * 3];
+        var m = new float[gw * gh];
+        float a = 1f / (f * f);
+        bool any = false;
+        bool Solid(int x, int y) => px[(y * w + x) * 4 + 3] == 255;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                // Sumber warna = piksel pekat di tepi (warna tepi), bukan warna bagian dalam artwork.
+                if (!Solid(x, y) || x > 0 && y > 0 && x < w - 1 && y < h - 1 && Solid(x - 1, y) && Solid(x + 1, y) && Solid(x, y - 1) && Solid(x, y + 1)) continue;
+                int j = (y * w + x) * 4, g = (y + p) / f * gw + (x + p) / f;
+                m[g] += a;
+                for (int ch = 0; ch < 3; ch++) c[g * 3 + ch] += px[j + ch] * a;
+                any = true;
+            }
+        if (!any) return o;
+        // Pull: piramida rata-rata 2x2; warna sudah dikali bobot, bobot <= 1.
+        var lv = new List<(float[] C, float[] M, int W, int H)> { (c, m, gw, gh) };
+        while (lv[^1].W > 1 || lv[^1].H > 1)
+        {
+            var (pc, pm, pw, ph) = lv[^1];
+            int nw = (pw + 1) / 2, nh = (ph + 1) / 2;
+            var nc = new float[nw * nh * 3];
+            var nm = new float[nw * nh];
+            for (int y = 0; y < ph; y++)
+                for (int x = 0; x < pw; x++)
+                {
+                    int s = y * pw + x, t = y / 2 * nw + x / 2;
+                    nm[t] += pm[s] / 4;
+                    for (int ch = 0; ch < 3; ch++) nc[t * 3 + ch] += pc[s * 3 + ch] / 4;
+                }
+            lv.Add((nc, nm, nw, nh));
+        }
+        // Push, dari skala kasar ke halus: E = C + (1 - M) x E skala di atasnya. Skala terkasar = rata-rata warna pekat.
+        var (tc, tm, _, _) = lv[^1];
+        float[] e = [tc[0] / tm[0], tc[1] / tm[0], tc[2] / tm[0]];
+        int ew = 1, eh = 1;
+        for (int l = lv.Count - 2; l >= 0; l--)
+        {
+            var (lc, lm, lw, lh) = lv[l];
+            var ne = new float[lw * lh * 3];
+            for (int y = 0; y < lh; y++)
+                for (int x = 0; x < lw; x++)
+                {
+                    int i = y * lw + x;
+                    for (int ch = 0; ch < 3; ch++)
+                        ne[i * 3 + ch] = lc[i * 3 + ch] + (1 - lm[i]) * Sample(e, ew, eh, (x + 0.5) / 2 - 0.5, (y + 0.5) / 2 - 0.5, ch);
+                }
+            (e, ew, eh) = (ne, lw, lh);
+        }
+        Parallel.For(0, H, y =>
+        {
+            for (int x = 0; x < W; x++)
+            {
+                int i = (y * W + x) * 4;
+                for (int ch = 0; ch < 3; ch++) o[i + ch] = (byte)Math.Clamp(Sample(e, ew, eh, (x + 0.5) / f - 0.5, (y + 0.5) / f - 0.5, ch) + 0.5, 0, 255);
+                o[i + 3] = 255;
+            }
+        });
+        return o;
+    }
+
+    // Nilai bilinear kanal ch dari grid w x h (3 kanal) di titik (x, y) dalam satuan sel; di luar grid = sel tepi.
+    static float Sample(float[] g, int w, int h, double x, double y, int ch)
+    {
+        x = Math.Clamp(x, 0, w - 1);
+        y = Math.Clamp(y, 0, h - 1);
+        int x0 = (int)x, y0 = (int)y, x1 = Math.Min(x0 + 1, w - 1), y1 = Math.Min(y0 + 1, h - 1);
+        double fx = x - x0, fy = y - y0;
+        double top = g[(y0 * w + x0) * 3 + ch] * (1 - fx) + g[(y0 * w + x1) * 3 + ch] * fx;
+        double bot = g[(y1 * w + x0) * 3 + ch] * (1 - fx) + g[(y1 * w + x1) * 3 + ch] * fx;
+        return (float)(top * (1 - fy) + bot * fy);
     }
 
     // PDFium merender CropBox; PDFsharp menempel MediaBox. Kembalikan posisi MediaBox relatif terhadap render.

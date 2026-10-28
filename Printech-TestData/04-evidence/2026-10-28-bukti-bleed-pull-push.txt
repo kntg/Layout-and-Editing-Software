@@ -1,0 +1,27 @@
+Bleed tanpa garis 2026-10-28: perluasan warna tepi diganti dari dilasi 8 arah menjadi rata-rata multi-skala (pull-push).
+
+Masalah: tepi pekat yang bertekstur (kain, bulu, logam pada foto) diteruskan lurus ke luar oleh dilasi 8 arah, jadi
+zona bleed bergaris dan membentuk baji. Blur +-1 mm saja tidak cukup: pada gambar uji 120 juring hitam/putih
+kecerahan zona bleed masih 39-214 di 1,5 mm dari tepi, dan 8-244 di 3 mm (baji makin besar makin jauh).
+
+Perbaikan (Core.cs Extend): warna piksel pekat di tepi dirata-rata pada beberapa skala di grid +-4 px/mm, dekat tepi
+skala halus, makin jauh makin kasar, lalu diperbesar bilinear. Artwork asli tetap ditumpuk di atasnya.
+
+Selfcheck (render PDF):
+bleed: 1,5 mm di luar tepi lingkaran: tanpa bleed #FFFFFFFF, bleed 2 mm #FFFFA500; 4 mm (di luar bleed) #FFFFFFFF; logo.pdf vektor tidak di-bleed
+bleed: bayangan alpha 40 tetap tembus: objek #FFFF8C00, bayangan #FFD77600 (tanpa bleed #FFD7D7D7), zona bleed #FFFF8C00
+bleed: tepi bertekstur 120 juring hitam/putih, kecerahan zona bleed 124-130 (selisih 6)
+
+Probe layar (sama dengan 2026-10-28-bukti-bleed-alpha.txt), bleed 2 mm:
+  halo.png   bayangan r 125 dalam kiss (208,119,25), zona bleed r 168 (245,140,30)
+  cutout.png feather r 120 dalam kiss (218,173,133), zona bleed r 156 (239,142,44): oranye rata, tanpa garis
+Gambar: 2026-10-28-bukti-bleed-pull-push.png (kiri bleed 0, kanan bleed 2 mm).
+
+Waktu muat jpg-large-24mp.jpg lebar 300 mm (terbaik dari 3): tanpa bleed 211 ms, bleed 2 mm 594 ms.
+Validasi: dijalankan ulang dengan kode ini, laporannya sama persis dengan 2026-10-28-validasi-garis-potong-nesting.txt.
+
+Pemeriksaan sebelum push: build Release dan Debug 0 warning, self-check Release 4/4, validasi.py exit 0 (SEMUA LULUS).
+Self-check Debug tidak stabil di P5 (susun 130 stiker < 1000 ms). Kode ini: 4/4 di 1 dari 4 jalan, susun 624-1510 ms.
+Commit 2033e84 tanpa perubahan ini, diuji bergantian pada jam yang sama: 4/4 di 1 dari 3 jalan, susun 448-1109 ms.
+Jadi P5 Debug bergantung pada beban PC, bukan pada perubahan bleed (diff ini tidak mengubah Nest). Release, kode ini:
+susun 92-131 ms. Batas P5 tidak diubah.

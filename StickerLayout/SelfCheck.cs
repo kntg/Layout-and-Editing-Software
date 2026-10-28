@@ -670,6 +670,38 @@ public static class SelfCheck
                 $"bleed membuat bayangan semi-transparan pekat: objek {sObj}, bayangan {sRing} (tanpa bleed {sRing0}), zona bleed {sOut}");
             log.Add($"bleed: bayangan alpha 40 tetap tembus: objek {sObj}, bayangan {sRing} (tanpa bleed {sRing0}), zona bleed {sOut}");
 
+            // Tepi pekat bertekstur (120 juring hitam/putih, ±1 mm per juring di tepi) tidak membentuk garis lurus di zona bleed:
+            // lapisan perluasan dihaluskan ±1 mm, jadi zona bleed abu rata, bukan selang-seling hitam/putih.
+            var raysPng = Loader.Png(Draw(dc =>
+            {
+                for (int i = 0; i < 120; i++)
+                {
+                    var g = new StreamGeometry();
+                    using (var sg = g.Open())
+                    {
+                        sg.BeginFigure(new Point(200, 200), true, true);
+                        sg.LineTo(new Point(200 + 150 * Math.Cos(i * Math.PI / 60), 200 + 150 * Math.Sin(i * Math.PI / 60)), false, false);
+                        sg.LineTo(new Point(200 + 150 * Math.Cos((i + 1) * Math.PI / 60), 200 + 150 * Math.Sin((i + 1) * Math.PI / 60)), false, false);
+                    }
+                    dc.DrawGeometry(i % 2 == 0 ? Brushes.Black : Brushes.White, null, g);
+                }
+            }, 400, 400));
+            var rays = Loader.Load("juring.png", 0, 40, thin, none, edited: raysPng, bleed: 2);
+            var raySheet = Nest.Run([rays], A4W, A4H, Margin, Gap, out _);
+            var rayPdf = Path.Combine(dir, "bleed.pdf");
+            Export.Pdf(rayPdf, raySheet, A4W, [A4H]);
+            var rayPage = RenderPage(rayPdf, 0, 4);
+            // Artwork 40 mm, pusat (20; 20) mm, tepi r 20 mm, garis kiss r 20,5, batas bleed r 22,5: sampel di r 21,5 pada tengah tiap juring.
+            var rayLum = Enumerable.Range(0, 120).Select(i =>
+            {
+                double t = (i + 0.5) * Math.PI / 60;
+                var c = At(rayPage, raySheet[0][0], (20 + 21.5 * Math.Cos(t)) * 72 / 25.4, (20 + 21.5 * Math.Sin(t)) * 72 / 25.4, 4);
+                return (c.R + c.G + c.B) / 3;
+            }).ToList();
+            int rayRange = rayLum.Max() - rayLum.Min();
+            Check(rayRange < 60, $"bleed bergaris: kecerahan di zona bleed dari {rayLum.Min()} sampai {rayLum.Max()} (harapan rata, selisih < 60)");
+            log.Add($"bleed: tepi bertekstur 120 juring hitam/putih, kecerahan zona bleed {rayLum.Min()}-{rayLum.Max()} (selisih {rayRange})");
+
             // D9: file rusak memberi pesan yang bisa dipahami operator, bukan pesan teknis PDFium, WIC, atau XML.
             string LoadError(string name, string content)
             {

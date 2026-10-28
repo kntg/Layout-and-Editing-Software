@@ -60,15 +60,18 @@ File bisa langsung dibuka lewat argumen: `dotnet run --project StickerLayout -- 
 
 ### Cek sebelum push
 
+Wajib sebelum push ke repo tim atau sebelum presentasi (keputusan 2026-10-28):
+
 ```powershell
 dotnet build StickerLayout -c Release            # harus 0 warning, 0 error
 pwsh -File Printech-TestData/run-selfcheck.ps1   # harus "RINGKAS: 4/4 hasil sesuai harapan"
+pwsh Printech-TestData/validasi.ps1              # data uji diexport ke 03-exports/validasi
+python Printech-TestData/validasi.py             # harus "RINGKAS: SEMUA LULUS" (exit 0)
 ```
 
 Tambahan sesuai bagian yang diubah:
 
-- **Tampilan atau alur UI:** uji UI di `Printech-TestData`, dijalankan dengan Windows PowerShell 5.1. Jangan sentuh mouse dan keyboard selama uji. Daftarnya ada di [README data uji](Printech-TestData/README.md).
-- **Garis potong, nesting, atau export:** validasi (`validasi.ps1` lalu `validasi.py`).
+- **Tampilan, editor, atau alur UI:** juga `ui-edit-layout.ps1` (10/10 langkah lulus), yang memakai mouse dan keyboard sungguhan, ditambah uji UI lain yang terkait. Jalankan dengan Windows PowerShell 5.1, dan jangan pakai PC selama uji. Daftarnya ada di [README data uji](Printech-TestData/README.md).
 - **Dokumen:** markdownlint. Bila kasus uji e2e berubah, ubah `docs/testing/gen_e2e.py` atau template-nya, lalu jalankan generatornya.
 
 ### Membuat zip operator
