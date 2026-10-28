@@ -1,6 +1,6 @@
 # Riset Fitur Lanjutan — StickerLayout / Printech
 
-Riset awal: 2026-10-12. Pembaruan: 2026-10-13. Dokumen ini bahan belajar. Keputusan resminya ada di [PRD.md](PRD.md).
+Riset awal: 2026-10-12. Pembaruan: 2026-10-13. Dokumen ini bahan belajar. Keputusan resminya ada di [kebutuhan aplikasi](kebutuhan-aplikasi.md).
 
 Cara membaca: setiap topik berisi konsep, cara software profesional mengerjakannya, kondisi prototipe, dan pilihan yang diurutkan dari yang paling murah. **Unverified** berarti sumbernya pihak ketiga atau belum diuji. Kolom "kondisi sekarang" di bawah menggambarkan prototipe **v1**.
 

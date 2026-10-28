@@ -5,7 +5,7 @@ param(
 # Menjalankan mesin Printech (Loader, Nest, Export dari build Release) pada file 01-input untuk skenario
 # validasi garis potong (A-*) dan nesting (B-*). Hasil mentah: validasi.json + satu PDF export per skenario di $Out.
 # Penilaian dilakukan terpisah oleh validasi.py dengan geometri asli file input, bukan dengan kode Printech.
-# Kriteria: 02-expected/validasi-garis-potong-nesting.md.
+# Kriteria: 02-expected/validasi-garis-potong-susunan.md.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationCore, PresentationFramework, WindowsBase
 [System.Runtime.InteropServices.NativeLibrary]::Load("$Bin\runtimes\win-x64\native\pdfium.dll") | Out-Null

@@ -6,145 +6,51 @@ Alat internal untuk membuat layout stiker print & cut. Operator menambahkan file
 
 Isi README ini:
 
-- [Setup untuk operator](#setup-untuk-operator)
-- [Setup untuk developer](#setup-untuk-developer)
-- [Alur kerja tim](#alur-kerja-tim)
-- [Panduan pemakaian](#panduan-pemakaian)
+- [Cara pakai](#cara-pakai)
 - [Shortcut](#shortcut)
 - [Arti pesan dan peringatan](#arti-pesan-dan-peringatan)
+- [Daftar istilah](#daftar-istilah)
+- [Memasang di PC operator (nanti)](#memasang-di-pc-operator-nanti)
 - [Dokumentasi](#dokumentasi)
-- [Alat pengembang](#alat-pengembang)
+- [Untuk pengembang](#untuk-pengembang)
 
-## Setup untuk operator
-
-Belum dipakai: untuk presentasi, prototipe dijalankan dari laptop tim (lihat [Setup untuk developer](#setup-untuk-developer)). Bagian ini untuk nanti, bila Printech dipasang di PC tanpa .NET SDK, misalnya PC toko.
-
-Operator tidak perlu memasang .NET. Yang dibutuhkan:
-
-- Windows 10/11 64-bit.
-- CorelDRAW terpasang, hanya bila ingin menambahkan file CDR.
-
-Langkah:
-
-1. Minta `Printech-win-x64.zip` ke developer (cara membuatnya ada di [Membuat zip operator](#membuat-zip-operator)).
-2. Klik kanan zip → **Properties** → centang **Unblock** → **OK**. Exe belum ditandatangani, jadi tanpa langkah ini Windows SmartScreen bisa memblokirnya.
-3. Ekstrak, lalu jalankan `Printech\StickerLayout.exe`. Bila SmartScreen tetap muncul, pilih **More info → Run anyway**.
-
-## Setup untuk developer
-
-### Kebutuhan
-
-| Untuk | Yang dipasang |
-| --- | --- |
-| Build dan menjalankan aplikasi | Windows 10/11 64-bit, [Git](https://git-scm.com), [.NET 10 SDK](https://dotnet.microsoft.com/download) |
-| Runner self-check dan validasi | PowerShell 7 (`pwsh`) |
-| Uji UI (`Printech-TestData/ui-*.ps1`) | Windows PowerShell 5.1 (bawaan Windows) |
-| Validasi, generator e2e, uji negatif runner | Python 3 dengan PyMuPDF, Pillow, NumPy, dan SciPy: `pip install pymupdf pillow numpy scipy` |
-| Lint Markdown | Node.js (`npx`) |
-| Menguji file CDR | CorelDRAW terpasang |
-
-Editor kode bebas; semua build lewat `dotnet` CLI. Paket NuGet (PDFium, PDFsharp, BitmapToVector/Potrace, SharpVectors) diunduh otomatis saat build pertama.
-
-### Ambil kode dan jalankan
-
-Clone ke folder berpath pendek, misalnya `C:\src`. Windows membatasi panjang path 260 karakter, dan path file terpanjang di repo (termasuk hasil build) sekitar 120 karakter. Bila path folder terlalu panjang, Git gagal dengan pesan `Filename too long`.
-
-```powershell
-git clone https://github.com/kntg/Layout-and-Editing-Software.git
-cd Layout-and-Editing-Software
-dotnet build StickerLayout
-dotnet run --project StickerLayout
-```
-
-File bisa langsung dibuka lewat argumen: `dotnet run --project StickerLayout -- samples\circle.png samples\logo.pdf`. Folder `samples/` berisi file contoh kecil.
-
-### Cek sebelum push
-
-Wajib sebelum push ke repo tim atau sebelum presentasi (keputusan 2026-10-28):
-
-```powershell
-dotnet build StickerLayout -c Release            # harus 0 warning, 0 error
-pwsh -File Printech-TestData/run-selfcheck.ps1   # harus "RINGKAS: 4/4 hasil sesuai harapan"
-pwsh Printech-TestData/validasi.ps1              # data uji diexport ke 03-exports/validasi
-python Printech-TestData/validasi.py             # harus "RINGKAS: SEMUA LULUS" (exit 0)
-```
-
-Tambahan sesuai bagian yang diubah:
-
-- **Tampilan, editor, atau alur UI:** juga `ui-edit-layout.ps1` (10/10 langkah lulus), yang memakai mouse dan keyboard sungguhan, ditambah uji UI lain yang terkait. Jalankan dengan Windows PowerShell 5.1, dan jangan pakai PC selama uji. Daftarnya ada di [README data uji](Printech-TestData/README.md).
-- **Dokumen:** markdownlint. Bila kasus uji e2e berubah, ubah `docs/testing/gen_e2e.py` atau template-nya, lalu jalankan generatornya.
-
-### Membuat zip operator
-
-```powershell
-dotnet publish StickerLayout -c Release -r win-x64 --self-contained -o publish\Printech
-Compress-Archive -Path publish\Printech -DestinationPath publish\Printech-win-x64.zip -Force
-```
-
-Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publish/` tidak masuk git, jadi zip tidak ikut ter-commit. Bagikan zip hanya di dalam perusahaan. BitmapToVector (Potrace) berlisensi GPL-3.0, jadi zip tidak boleh diunggah ke GitHub Release publik atau dibagikan ke luar.
-
-### Struktur folder
-
-| Lokasi | Isi |
-| --- | --- |
-| `StickerLayout/Core.cs` | Memuat desain, garis potong otomatis (mask, penghalusan, Potrace), susun otomatis (nesting), worker CorelDRAW |
-| `StickerLayout/Curves.cs`, `Shapes.cs`, `SmartSelect.cs` | Node garis potong (lurus/kurva), preset bentuk dan desain kotak, smart select |
-| `StickerLayout/Export.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket; render PDF/AI |
-| `StickerLayout/Cleanup.cs` | Rapikan gambar (hapus latar, penghapus klik, kikis tepi) |
-| `StickerLayout/MainWindow.*`, `CutEditWindow.*`, `CleanupWindow.*`, `RulerControl.cs`, `Theme.xaml` | Tampilan: jendela utama, editor garis potong, jendela Rapikan, penggaris, tema |
-| `StickerLayout/Strings.cs` | Semua teks UI dalam bahasa Indonesia dan English |
-| `StickerLayout/SelfCheck.cs` | Uji otomatis bawaan (`StickerLayout.exe --selfcheck <folder>`) |
-| `samples/` | File contoh. Self-check juga menulis hasilnya di sini; hasil itu diabaikan git |
-| `Printech-TestData/` | Data uji dengan hasil benar, skrip validasi dan uji UI, bukti uji |
-| `docs/` | PRD, riset, skenario uji, validasi e2e, spesifikasi fitur |
-
-## Alur kerja tim
-
-- **Repo tim:** [kntg/Layout-and-Editing-Software](https://github.com/kntg/Layout-and-Editing-Software). Repo ini **publik**. `main` harus selalu bisa di-build dan lulus self-check.
-- **Branch:** kerjakan di branch sendiri (`feature/<nama>`, `fix/<nama>`), lalu gabungkan ke `main` lewat pull request.
-- **Sebelum push:** jalankan `git fetch`, gabungkan `main` terbaru ke branch Anda (merge), lalu jalankan [cek sebelum push](#cek-sebelum-push).
-- **Jangan `git push --force`** ke `main`, karena commit rekan lain bisa hilang.
-- **Jangan commit:** file customer, data internal toko, atau kata sandi. File customer untuk uji disimpan di `Printech-TestData/01-input/customer/`; folder itu diabaikan git.
-- **Fitur yang mengubah perilaku:** perbarui juga [PRD](docs/PRD.md), skenario uji, dan kasus e2e.
-- **Pesan commit:** bahasa Indonesia, satu baris ringkas, lalu penjelasan alasannya.
-
-## Panduan pemakaian
+## Cara pakai
 
 ### Alur singkat
 
 1. **Tambah file.** Ada tiga cara: tarik file ke jendela, klik **Tambah file…** (Ctrl+O atau Ctrl+I), atau buka file lewat "Open with". File langsung disusun di lembar.
-   - Format: PDF, AI (PDF-compatible), CDR, PNG, JPG, SVG. PDF banyak halaman menjadi satu desain per halaman.
+   - Format: PDF, AI (yang disimpan PDF-compatible), CDR, PNG, JPG, SVG. PDF dengan banyak halaman menjadi satu desain per halaman.
    - CDR dibuka lewat CorelDRAW yang terpasang. Jendela Printech tidak macet selama menunggu.
 2. **Atur desain** di panel **Desain**.
    - Setiap desain punya lebar artwork (mm) dan jumlah (pcs).
-   - PDF/AI/CDR memakai ukuran asli. PNG/JPG/SVG memakai "Lebar awal" (bawaan 50 mm).
-   - Angka dpi merah berarti resolusi di bawah 150 dpi, dan hasil cetaknya akan pecah.
+   - PDF/AI/CDR memakai ukuran aslinya. PNG/JPG/SVG memakai "Lebar awal" (bawaan 50 mm).
+   - Angka dpi merah berarti resolusinya di bawah 150 dpi, dan hasil cetaknya akan pecah.
 3. **Pilih kertas** di panel **Kertas**.
-   - Pilihan: A3+ 320 × 480 mm (bawaan, kertas Develop), A0–A6, SRA3, SRA4, atau Custom. Ada juga tombol putar kertas.
-   - Margin tepi (bawaan 10 mm) adalah area kosong untuk reg mark Cutting Master 5 dan printer. Margin yang pas untuk format reg mark operator belum dipastikan.
+   - Pilihan: A3+ 320 × 480 mm (bawaan, kertas Develop), A0–A6, SRA3, SRA4, atau Custom (ukuran bebas). Ada juga tombol putar kertas.
+   - Margin tepi (bawaan 10 mm) adalah area kosong untuk tanda registrasi dari Cutting Master 5 dan untuk printer. Margin yang pas untuk format tanda registrasi operator belum dipastikan.
 4. **Atur garis potong** di panel **Garis potong**.
    - Kiss-cut: bawaan aktif, offset 2 mm, Halus 1 mm.
-   - Die-cut: bawaan mati, 4/2 mm.
+   - Die-cut: bawaan mati, offset 4 mm, Halus 2 mm.
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
-   - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Ganti atau putar kertas langsung menyusun ulang.
+   - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang.
 5. **Periksa layout.**
-   - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (Shift: 10 mm).
-   - **Stiker bertanda merah:** tumpang tindih atau keluar margin.
-   - **Penuhi lembar:** mengisi ruang kosong semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah.
+   - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Stiker bertanda merah:** tumpang tindih dengan stiker lain atau keluar margin.
+   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah.
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
 6. **Export.**
    - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
    - **Export preview JPG…** (Ctrl+Shift+E): untuk konfirmasi ke customer lewat WhatsApp.
-   - **Export Print Ticket** (menu File): ringkasan A4 untuk lampiran SPK.
+   - **Export Print Ticket** (menu File): ringkasan satu halaman A4 untuk lampiran SPK.
 7. **Cetak dan potong.**
-   - Buka PDF di CorelDRAW, lalu pasang reg mark lewat Cutting Master 5.
+   - Buka PDF di CorelDRAW, lalu pasang tanda registrasi lewat Cutting Master 5.
    - Cetak di Develop.
    - Potong di Graphtec dengan memilih garis per warna: magenta = kiss-cut, cyan = die-cut.
 
 ### Garis potong otomatis
 
 - **Bentuk garis:** mengikuti bentuk artwork (bagian yang tidak transparan) sejauh offset. Halus menghaluskan lekukan kecil; disarankan 1–2 mm, 0 = mati.
-- **Latar gambar opak tidak dibuang otomatis.** Gambar opak adalah JPG atau PNG tanpa transparansi. Gambar ini dipakai utuh, dan desain kotak mendapat garis kotak bersudut tajam.
+- **Latar gambar tanpa bagian transparan tidak dibuang otomatis.** Contohnya JPG, atau PNG tanpa transparansi. Gambar seperti ini dipakai utuh, dan desain berbentuk kotak mendapat garis kotak bersudut tajam.
 - **Garis yang mengikuti objek:** buang latar dulu lewat Rapikan gambar, atau pakai smart select di editor garis potong.
 - **Lubang:** lubang asli artwork yang masih terbuka setelah offset (misalnya stiker donat) mendapat garis dalam.
 - **Kiss dan die:** garis die-cut selalu membungkus garis kiss-cut.
@@ -157,30 +63,30 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
   - Pilihan: Otomatis, kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam.
   - Bentuk berlaku untuk garis yang dipilih di **Garis yang diedit**, jadi kiss dan die bisa berbeda. Contoh: pilih Kiss-cut lalu Bintang, kemudian Die-cut lalu Kotak.
   - Die Otomatis mengikuti bentuk kiss. Die dengan bentuk lain membungkus garis kiss sejauh selisih offset.
-  - Bentuk mengelilingi artwork sejauh offset, dan ikut menyesuaikan bila offset atau lebar diubah, selama node-nya tidak diedit.
+  - Bentuk mengelilingi artwork sejauh offset, dan ikut menyesuaikan bila offset atau lebar diubah, selama titiknya tidak diedit.
   - Nama bentuk tampil di daftar desain, misalnya "Bintang · die Kotak".
 - **Warna border.**
-  - Pilihan: tanpa warna, merah, hitam, biru, kuning, hijau, atau CMYK kustom (empat angka persen, misalnya `0 100 100 0`, lalu Enter).
+  - Pilihan: tanpa warna, merah, hitam, biru, kuning, hijau, atau CMYK pilihan sendiri (empat angka persen, misalnya `0 100 100 0`, lalu Enter).
   - Area antara artwork dan garis kiss (tanpa kiss: garis die) dicetak dengan warna itu, diteruskan sejauh bleed di luar garis (bila bleed 0: 1 mm).
 - **Garis yang diedit:** kiss-cut atau die-cut.
-- **Simplify** (hanya untuk bentuk Otomatis): makin ke kanan (Sederhana), node makin sedikit. Garis dibuat ulang dari garis otomatis.
+- **Simplify** (hanya untuk bentuk Otomatis): makin ke kanan (Sederhana), titik garisnya makin sedikit. Garis dibuat ulang dari garis otomatis.
 - **Smart select.**
   - Centang, lalu klik objek: garis hanya mengikuti objek itu. Piksel tipis seperti watermark diabaikan; atur lewat slider Toleransi.
   - Shift+klik menambah objek. Klik di dalam lubang menambah atau menghapus garis dalamnya.
-- **Node** (dengan mouse di kanvas).
-  - Klik node untuk memilihnya; klik saja tidak menggeser node. Shift+klik menambah atau melepas node dari pilihan.
-  - Seret node terpilih untuk menggeser semuanya sejauh gerakan mouse.
-  - Klik di garis atau kurva untuk menambah node. Delete menghapus semua node terpilih.
-  - Bila tepat satu node terpilih, handle (titik bulat) tampil untuk mengatur lengkung.
-  - Tombol **Jadikan kurva / Jadikan garis** dan **Node halus / Node sudut** berlaku untuk semua node terpilih.
+- **Titik garis (node)**, diatur dengan mouse di kanvas.
+  - Klik titik untuk memilihnya; klik saja tidak menggeser titik. Shift+klik menambah atau melepas titik dari pilihan.
+  - Seret titik yang dipilih untuk menggeser semuanya sejauh gerakan mouse.
+  - Klik di garis atau kurva untuk menambah titik. Delete menghapus semua titik yang dipilih.
+  - Bila tepat satu titik dipilih, pegangan kurva (handle, berupa titik bulat) tampil untuk mengatur lengkung.
+  - Tombol **Jadikan kurva / Jadikan garis** dan **Node halus / Node sudut** berlaku untuk semua titik yang dipilih.
 - **Urungkan / Ulangi** (Ctrl+Z / Ctrl+Y) dan **Reset otomatis**. Ganti warna border belum ikut urungkan di editor; Urungkan di jendela utama mencakupnya.
 - **Simpan** nonaktif selama garis kiss keluar dari garis die.
 
 ### Rapikan gambar
 
-- **Untuk:** desain gambar, yaitu PNG, JPG, SVG, dan PDF yang ditempel sebagai gambar.
-- **Cara membuka:** ikon penghapus di baris desain, atau dobel-klik thumbnail.
-- **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, toleransi warna, kikis tepi 0–3 px, lalu **Pakai**.
+- **Untuk:** desain berupa gambar, yaitu PNG, JPG, SVG, dan PDF yang ditempel sebagai gambar.
+- **Cara membuka:** ikon penghapus di baris desain, atau klik dua kali gambar kecil desainnya.
+- **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**.
 - **Catatan:** file vektor (PDF/AI/CDR) dirapikan di CorelDRAW supaya warnanya tetap utuh. Fitur ini dibekukan, tidak dikembangkan lagi.
 
 ### Tampilan dan bahasa
@@ -208,9 +114,9 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | Ctrl++, Ctrl+-, Ctrl + roda mouse | Zoom |
 | V / H / Z | Alat Pilih / Geser tampilan / Zoom |
 | Spasi (tahan), tombol tengah mouse | Geser tampilan sementara |
-| R | Putar stiker terpilih 90° |
-| Delete | Hapus stiker terpilih (di editor: hapus node terpilih) |
-| Panah, Shift+panah | Geser stiker terpilih 1 mm / 10 mm |
+| R | Putar stiker yang dipilih 90° |
+| Delete | Hapus stiker yang dipilih (di editor: hapus titik yang dipilih) |
+| Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
 
 ## Arti pesan dan peringatan
 
@@ -230,23 +136,143 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | "Bleed tidak boleh lebih besar dari jarak antar stiker." | Kecilkan bleed atau besarkan jarak antar stiker. |
 | "Jarak antar stiker minimal 1 mm bila warna border dipakai tanpa bleed." | Besarkan jarak antar stiker, atau isi bleed. |
 
+## Daftar istilah
+
+| Istilah | Arti |
+| --- | --- |
+| Artwork | Gambar atau desain yang dicetak. |
+| Kiss-cut | Potongan yang hanya memotong lapisan stiker; alasnya tetap utuh. Garisnya magenta di PDF. |
+| Die-cut | Potongan tembus sampai alas, sehingga stiker lepas satu per satu. Garisnya cyan di PDF. |
+| Offset | Jarak garis potong dari tepi artwork. |
+| Halus | Pengaturan yang menghaluskan lekukan kecil pada garis potong. |
+| Bleed | Warna tepi artwork yang diperluas sedikit melewati garis potong, supaya tidak ada tepi putih bila pisau sedikit bergeser. |
+| Border | Area antara artwork dan garis kiss. |
+| Susun otomatis (nesting) | Menata stiker di lembar supaya bahan terpakai sehemat mungkin. |
+| Titik garis (node) | Titik pada garis potong yang bisa digeser di editor. Makin sedikit titiknya, makin mulus gerakan pisau. |
+| Tanda registrasi (reg mark) | Siku hitam di pojok lembar yang dibaca mesin Graphtec, supaya posisi potong sama dengan hasil cetak. |
+| dpi | Jumlah titik gambar per inci. Makin tinggi, makin tajam hasil cetak. |
+| CMYK | Empat warna tinta cetak: cyan, magenta, kuning (yellow), dan hitam (K). |
+| Vektor | Gambar dari garis dan bentuk; tetap tajam di ukuran berapa pun. |
+| Gambar (raster) | Gambar dari piksel, misalnya PNG dan JPG; bisa pecah bila diperbesar. |
+| Pemeriksaan otomatis (self-check) | Uji bawaan aplikasi yang memeriksa garis potong, susunan, dan export tanpa membuka jendela. |
+| Uji alur lengkap (e2e) | Uji dari file masuk sampai hasil potong. Dulu disebut "end-to-end" atau "e2e". |
+| Skrip uji (berakhiran .ps1) | File berisi perintah Windows PowerShell yang menjalankan uji secara otomatis. |
+| Branch, commit, push | Istilah git: cabang kerja, simpanan perubahan, dan pengiriman perubahan ke GitHub. |
+
+## Memasang di PC operator (nanti)
+
+Belum dipakai: untuk presentasi, prototipe dijalankan dari laptop tim (lihat [Untuk pengembang](#untuk-pengembang)). Bagian ini untuk nanti, bila Printech dipasang di PC tanpa .NET SDK, misalnya PC toko.
+
+Operator tidak perlu memasang .NET. Yang dibutuhkan:
+
+- Windows 10/11 64-bit.
+- CorelDRAW terpasang, hanya bila ingin menambahkan file CDR.
+
+Langkah:
+
+1. Minta `Printech-win-x64.zip` ke pengembang (cara membuatnya ada di [Membuat zip untuk operator](#membuat-zip-untuk-operator)).
+2. Klik kanan zip, pilih **Properties**, centang **Unblock**, lalu **OK**. Aplikasinya belum ditandatangani, jadi tanpa langkah ini Windows SmartScreen bisa memblokirnya.
+3. Ekstrak, lalu jalankan `Printech\StickerLayout.exe`. Bila SmartScreen tetap muncul, pilih **More info**, lalu **Run anyway**.
+
 ## Dokumentasi
 
-- [PRD](docs/PRD.md): tujuan, fitur, keputusan, batasan, checklist uji operator, dan cara menjalankan (§11).
-- [Riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Uji garis potong](docs/UJI-GARIS-POTONG.md): skenario uji S1–S17 dan hasilnya.
-- [Uji stabilitas](docs/UJI-STABILITAS.md): skenario uji P1–P10 (worker CDR, paralel, RAM) dan hasilnya.
-- [Validasi end-to-end](docs/testing/e2e-validation.md): semua kasus uji dari import sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [CSV](docs/testing/e2e-test-results-template.csv).
-- [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji UI.
+- [Kebutuhan aplikasi](docs/kebutuhan-aplikasi.md) (dulu bernama PRD): tujuan, fitur, keputusan, batasan, daftar uji untuk operator, dan cara menjalankan (§11).
+- [Catatan riset](docs/RESEARCH.md): riset pendukung keputusan.
+- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S17 dan hasilnya.
+- [Skenario uji stabilitas](docs/UJI-STABILITAS.md): skenario P1–P10 (proses pembantu CDR, kerja paralel, memori) dan hasilnya.
+- [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
+- [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.
 - [Simulasi produksi](docs/simulasi/index.html): tampilan 3D satu lembar hasil validasi. Buka file ini di browser.
-- [Spesifikasi](docs/superpowers/specs/) dan [rencana implementasi](docs/superpowers/plans/) fitur baru (editor garis potong, smart select, bentuk garis potong, warna border).
+- [Spesifikasi](docs/superpowers/specs/) dan [rencana pembuatan](docs/superpowers/plans/) fitur baru (editor garis potong, smart select, bentuk garis potong, warna border).
 
-## Alat pengembang
+## Untuk pengembang
+
+### Kebutuhan
+
+| Untuk | Yang dipasang |
+| --- | --- |
+| Build dan menjalankan aplikasi | Windows 10/11 64-bit, [Git](https://git-scm.com), [.NET 10 SDK](https://dotnet.microsoft.com/download) |
+| Pemeriksaan otomatis dan validasi | PowerShell 7 (`pwsh`) |
+| Uji tampilan (skrip `Printech-TestData/ui-*.ps1`) | Windows PowerShell 5.1 (bawaan Windows) |
+| Validasi, pembuat dokumen uji alur lengkap, uji negatif pemeriksaan otomatis | Python 3 dengan PyMuPDF, Pillow, NumPy, dan SciPy: `pip install pymupdf pillow numpy scipy` |
+| Pemeriksaan format dokumen Markdown | Node.js (`npx`) |
+| Menguji file CDR | CorelDRAW terpasang |
+
+Editor kode bebas; semua build lewat perintah `dotnet`. Pustaka yang dipakai (PDFium, PDFsharp, BitmapToVector/Potrace, SharpVectors) diunduh otomatis saat build pertama.
+
+### Ambil kode dan jalankan
+
+Unduh kode (clone) ke folder beralamat pendek, misalnya `C:\src`. Windows membatasi panjang alamat file 260 karakter, dan alamat file terpanjang di repo (termasuk hasil build) sekitar 120 karakter. Bila alamat foldernya terlalu panjang, Git gagal dengan pesan `Filename too long`.
+
+```powershell
+git clone https://github.com/kntg/Layout-and-Editing-Software.git
+cd Layout-and-Editing-Software
+dotnet build StickerLayout
+dotnet run --project StickerLayout
+```
+
+File bisa langsung dibuka dengan menuliskannya di akhir perintah: `dotnet run --project StickerLayout -- samples\circle.png samples\logo.pdf`. Folder `samples/` berisi file contoh kecil.
+
+### Cek sebelum push
+
+Wajib sebelum push ke repo tim atau sebelum presentasi (keputusan 2026-10-28):
+
+1. Build versi rilis: harus 0 warning dan 0 error.
+2. Pemeriksaan otomatis aplikasi: harus `RINGKAS: 4/4 hasil sesuai harapan`.
+3. Validasi otomatis: data uji di-export, lalu hasilnya dinilai; harus `RINGKAS: SEMUA LULUS` (exit code 0).
+
+```powershell
+dotnet build StickerLayout -c Release            # harus 0 warning, 0 error
+pwsh -File Printech-TestData/run-selfcheck.ps1   # harus "RINGKAS: 4/4 hasil sesuai harapan"
+pwsh Printech-TestData/validasi.ps1              # data uji diexport ke 03-exports/validasi
+python Printech-TestData/validasi.py             # harus "RINGKAS: SEMUA LULUS" (exit 0)
+```
+
+Tambahan sesuai bagian yang diubah:
+
+- **Tampilan, editor, atau alur di jendela aplikasi:** jalankan juga uji tata letak (`ui-edit-layout.ps1`, 10/10 langkah lulus), yang memakai mouse dan keyboard sungguhan, ditambah uji tampilan lain yang terkait. Jalankan dengan Windows PowerShell 5.1, dan jangan pakai PC selama uji. Daftarnya ada di [panduan data uji](Printech-TestData/README.md).
+- **Dokumen:** periksa formatnya dengan markdownlint. Bila kasus uji alur lengkap berubah, ubah `docs/pengujian/buat-uji-alur-lengkap.py` atau templatnya, lalu jalankan skrip itu.
+
+### Alat pengembang
 
 | Perintah | Fungsi |
 | --- | --- |
-| `pwsh -File Printech-TestData/run-selfcheck.ps1 [-Config Debug]` | Self-check 4 kali: folder baru, folder `samples`, dan 2 uji negatif yang harus gagal. Exit code 1 bila ada hasil yang tidak sesuai harapan. |
-| `pwsh Printech-TestData/validasi.ps1`, lalu `python Printech-TestData/validasi.py` | Validasi garis potong, nesting, dan export pada data uji. Rinciannya di [README data uji](Printech-TestData/README.md). |
-| `python -I docs/testing/gen_e2e.py` | Membuat ulang `e2e-validation.md` dan CSV-nya dari `e2e-validation.template.md` dan daftar kasus uji di `gen_e2e.py`. |
-| `npx --yes markdownlint-cli2@0.23.2 "**/*.md"` | Memeriksa semua file Markdown dengan aturan di `.markdownlint-cli2.jsonc`. |
-| `StickerLayout\bin\Debug\net10.0-windows\StickerLayout.exe --selfcheck samples` | Self-check satu kali di folder `samples`. Hasilnya di `samples/selfcheck.txt`; exit code 0 = lulus. |
+| `pwsh -File Printech-TestData/run-selfcheck.ps1 [-Config Debug]` | Pemeriksaan otomatis 4 kali: folder baru, folder `samples`, dan 2 uji negatif yang harus gagal. Exit code 1 bila ada hasil yang tidak sesuai harapan. |
+| `pwsh Printech-TestData/validasi.ps1`, lalu `python Printech-TestData/validasi.py` | Validasi garis potong, susunan, dan export pada data uji. Rinciannya di [panduan data uji](Printech-TestData/README.md). |
+| `python -X utf8 docs/pengujian/buat-uji-alur-lengkap.py` | Membuat ulang dokumen uji alur lengkap dan lembar hasilnya (CSV) dari templat `uji-alur-lengkap-templat.md` dan daftar kasus uji di skrip itu. |
+| `npx --yes markdownlint-cli2@0.23.2 "**/*.md"` | Memeriksa format semua file Markdown dengan aturan di `.markdownlint-cli2.jsonc`. |
+| `StickerLayout\bin\Debug\net10.0-windows\StickerLayout.exe --selfcheck samples` | Pemeriksaan otomatis satu kali di folder `samples`. Hasilnya di `samples/selfcheck.txt`; exit code 0 = lulus. |
+
+### Membuat zip untuk operator
+
+```powershell
+dotnet publish StickerLayout -c Release -r win-x64 --self-contained -o publish\Printech
+Compress-Archive -Path publish\Printech -DestinationPath publish\Printech-win-x64.zip -Force
+```
+
+Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publish/` tidak ikut git, jadi zip tidak ikut ter-commit. Bagikan zip hanya di dalam perusahaan. BitmapToVector (Potrace) berlisensi GPL-3.0, jadi zip tidak boleh diunggah ke GitHub Release publik atau dibagikan ke luar.
+
+### Struktur folder
+
+| Lokasi | Isi |
+| --- | --- |
+| `StickerLayout/Core.cs` | Mesin utama: memuat desain, garis potong otomatis (gambar bantu, penghalusan, Potrace), susun otomatis, dan proses pembantu CorelDRAW |
+| `StickerLayout/Curves.cs`, `Shapes.cs`, `SmartSelect.cs` | Titik garis potong (lurus/kurva), preset bentuk dan desain kotak, smart select |
+| `StickerLayout/Export.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket; membuka PDF/AI |
+| `StickerLayout/Cleanup.cs` | Rapikan gambar (hapus latar, penghapus klik, kikis tepi) |
+| `StickerLayout/MainWindow.*`, `CutEditWindow.*`, `CleanupWindow.*`, `RulerControl.cs`, `Theme.xaml` | Tampilan: jendela utama, editor garis potong, jendela Rapikan, penggaris, tema |
+| `StickerLayout/Strings.cs` | Semua teks tampilan dalam bahasa Indonesia dan English |
+| `StickerLayout/SelfCheck.cs` | Pemeriksaan otomatis bawaan (`StickerLayout.exe --selfcheck <folder>`) |
+| `samples/` | File contoh. Pemeriksaan otomatis juga menulis hasilnya di sini; hasil itu tidak ikut git |
+| `Printech-TestData/` | Data uji dengan hasil benar, skrip validasi dan uji tampilan, serta bukti uji |
+| `docs/` | Kebutuhan aplikasi, riset, skenario uji, uji alur lengkap (`docs/pengujian/`), dan spesifikasi fitur |
+
+### Alur kerja tim
+
+- **Repo tim:** [kntg/Layout-and-Editing-Software](https://github.com/kntg/Layout-and-Editing-Software). Repo ini **publik**. `main` harus selalu bisa di-build dan lulus pemeriksaan otomatis.
+- **Branch:** kerjakan di branch sendiri (`feature/<nama>`, `fix/<nama>`), lalu gabungkan ke `main` lewat pull request (permintaan penggabungan di GitHub).
+- **Sebelum push:** jalankan `git fetch`, gabungkan `main` terbaru ke branch Anda (merge), lalu jalankan [cek sebelum push](#cek-sebelum-push).
+- **Jangan `git push --force`** ke `main`, karena commit rekan lain bisa hilang.
+- **Jangan commit:** file customer, data internal toko, atau kata sandi. File customer untuk uji disimpan di `Printech-TestData/01-input/customer/`; folder itu tidak ikut git.
+- **Fitur yang mengubah perilaku:** perbarui juga [kebutuhan aplikasi](docs/kebutuhan-aplikasi.md), skenario uji, dan kasus uji alur lengkap.
+- **Pesan commit:** bahasa Indonesia, satu baris ringkas, lalu penjelasan alasannya.

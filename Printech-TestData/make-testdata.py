@@ -4,7 +4,7 @@ Jalankan ulang: python make-testdata.py  (butuh PyMuPDF dan Pillow).
 File yang sudah ada tidak ditimpa. PyMuPDF tidak menghasilkan byte yang sama setiap kali dijalankan, jadi
 menimpa file berarti mengubah file original. Hapus file dulu bila memang ingin membuatnya ulang, lalu catat
 hash barunya (cek-original.ps1 -Catat).
-Hasil benar untuk setiap file ada di 02-expected/expected-results.md.
+Hasil benar untuk setiap file ada di 02-expected/hasil-yang-diharapkan.md.
 cdr-normal.cdr tidak dibuat di sini karena butuh CorelDRAW (lihat 01-input/cdr-normal.BACA.txt).
 """
 import math

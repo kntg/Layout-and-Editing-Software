@@ -4,7 +4,7 @@ Pemakaian: python validasi.py [folder hasil validasi.ps1]   (default: 03-exports
 Geometri artwork diambil dari file asli di 01-input, bukan dari Printech: PyMuPDF untuk PDF/AI, piksel untuk PNG/JPG
 (aturan sama dengan Printech: artwork = alpha > 16, jadi gambar opak = seluruh gambar), bentuk SVG dari isi file. Garis potong dan
 posisi stiker dari validasi.json; PDF export dicek ulang supaya yang dinilai sama dengan yang dikirim ke CorelDRAW.
-Kriteria: 02-expected/validasi-garis-potong-nesting.md. Exit code 0 = semua lulus, 1 = ada yang gagal.
+Kriteria: 02-expected/validasi-garis-potong-susunan.md. Exit code 0 = semua lulus, 1 = ada yang gagal.
 Laporan dan gambar bukti ditulis ke 04-evidence.
 """
 import collections
@@ -303,7 +303,7 @@ data = json.loads((RUN / "validasi.json").read_text(encoding="utf-8-sig"))
 SC = {s["name"]: s for s in data}
 BOXES = {d["name"] for sc in data if sc["name"].startswith("A-") for d in sc.get("designs", []) if box_source(d["source"], d["page"])}
 out(f"Validasi garis potong, nesting, dan export Printech, {DAY}. Data: {RUN}")
-out("Kriteria: 02-expected/validasi-garis-potong-nesting.md. Jarak dalam mm.")
+out("Kriteria: 02-expected/validasi-garis-potong-susunan.md. Jarak dalam mm.")
 out()
 out("A. GARIS POTONG")
 M = {}  # (skenario, nama desain) -> metrik

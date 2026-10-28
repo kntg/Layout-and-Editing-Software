@@ -1,5 +1,5 @@
 ﻿param([string]$Exe, [string]$Samples, [string]$Out)
-# Uji UI alur edit layout dengan mouse, keyboard, dan kontrol asli: EDIT-01..08, EDIT-11, CUT-12 di docs/testing/e2e-validation.md.
+# Uji UI alur edit layout dengan mouse, keyboard, dan kontrol asli: EDIT-01..08, EDIT-11, CUT-12 di docs/pengujian/uji-alur-lengkap.md.
 # Memakai samples/circle.png dan samples/star.jpg. Exit code 0 meski ada GAGAL; baca baris RINGKAS. Jangan sentuh mouse selama uji.
 # Jalankan dengan Windows PowerShell 5.1 (bukan pwsh 7): powershell -ExecutionPolicy Bypass -File ui-edit-layout.ps1 -Exe <StickerLayout.exe> -Samples <folder samples> -Out <folder tangkapan layar>
 $ErrorActionPreference = 'Stop'

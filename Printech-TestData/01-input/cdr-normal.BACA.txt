@@ -7,4 +7,4 @@ Buat file ini di PC operator:
 2. File > Import > 01-input/pdf-single-page.pdf. Taruh di halaman, ukuran jangan diubah.
 3. File > Save As > simpan sebagai 01-input/cdr-normal.cdr.
 
-Hasil benar untuk cdr-normal.cdr sama dengan pdf-single-page.pdf (lihat 02-expected/expected-results.md).
+Hasil benar untuk cdr-normal.cdr sama dengan pdf-single-page.pdf (lihat 02-expected/hasil-yang-diharapkan.md).

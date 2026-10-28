@@ -1,6 +1,6 @@
 ﻿param([string]$Exe, [string]$Dir)
 # Uji UI: semua file 01-input/khusus sekaligus. Setiap dialog error ditutup dan isinya dicatat, lalu status dan peringatan dibaca.
-# Hasil benar: 02-expected/expected-results.md bagian Kasus khusus.
+# Hasil benar: 02-expected/hasil-yang-diharapkan.md bagian Kasus khusus.
 # Jalankan dengan Windows PowerShell 5.1 (bukan pwsh 7): powershell -ExecutionPolicy Bypass -File ui-file-khusus.ps1 -Exe <StickerLayout.exe> -Dir <folder 01-input\khusus>
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes

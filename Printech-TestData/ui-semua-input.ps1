@@ -1,6 +1,6 @@
 ﻿param([string]$Exe, [string]$Data, [string]$Evidence)
 # Uji UI: semua file 01-input sekaligus (urutan nama, sama dengan skenario B-ui di validasi.ps1). Mencatat dialog CDR,
-# status, peringatan, pemakaian bahan, judul per lembar, waktu muat, RAM, dan responsif. Hasil benar: 02-expected/expected-results.md.
+# status, peringatan, pemakaian bahan, judul per lembar, waktu muat, RAM, dan responsif. Hasil benar: 02-expected/hasil-yang-diharapkan.md.
 # Jalankan dengan Windows PowerShell 5.1 (bukan pwsh 7): powershell -ExecutionPolicy Bypass -File ui-semua-input.ps1 -Exe <StickerLayout.exe> -Data <folder Printech-TestData> -Evidence <folder tangkapan layar>
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
