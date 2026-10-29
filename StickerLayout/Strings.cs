@@ -13,7 +13,7 @@ public static class Lang
         ["Lang"] = ("Bahasa", "Language"),
         ["RegMarks"] = ("Tanda registrasi", "Registration marks"),
         ["RegMarksNone"] = ("Tidak ada", "None"),
-        ["RegMarks1"] = ("Regmark 1", "Regmark 1"),
+        ["RegMarks1"] = ("SA regmark type2 auto 33 0.00 2.83 28.35 283.46 283.46 0", "SA regmark type2 auto 33 0.00 2.83 28.35 283.46 283.46 0"),
         ["MFile"] = ("File", "File"),
         ["MEdit"] = ("Edit", "Edit"),
         ["MView"] = ("Tampilan", "View"),

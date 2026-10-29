@@ -460,6 +460,24 @@ public partial class MainWindow : Window
         finally { Mouse.OverrideCursor = null; }
     }
 
+        // SVG per layer (artwork / kiss-cut / die-cut / registration-marks): dibaca CorelDRAW sebagai layer.
+    void ExportSvg_Click(object s, RoutedEventArgs e)
+    {
+        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
+        if (sheets.Any(x => x.Any(p => p.Bad)) &&
+            MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var dlg = new SaveFileDialog { Filter = "SVG|*.svg", FileName = "layout.svg" };
+        if (dlg.ShowDialog() != true) return;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            var files = ExportSvg.Svg(dlg.FileName, sheets, sheetW, sheetH, MarginMm, HasRegMarks);
+            Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
+        finally { Mouse.OverrideCursor = null; }
+    }
+
     void Paper_Changed(object s, SelectionChangedEventArgs e)
     {
         if (restoring) return;
