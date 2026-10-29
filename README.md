@@ -270,7 +270,8 @@ Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publi
 ### Alur kerja tim
 
 - **Repo tim:** [kntg/Layout-and-Editing-Software](https://github.com/kntg/Layout-and-Editing-Software). Repo ini **publik**. `main` harus selalu bisa di-build dan lulus pemeriksaan otomatis.
-- **Branch:** kerjakan di branch sendiri (`feature/<nama>`, `fix/<nama>`), lalu gabungkan ke `main` lewat pull request (permintaan penggabungan di GitHub).
+- **Branch:** kerjakan di branch sendiri (`feature/<nama>`, `fix/<nama>`).
+- **Masuk ke `main`:** setelah pembuatnya mengaudit atau menguji perubahan, branch boleh langsung digabung ke `main` lalu di-push. Pakai pull request (permintaan penggabungan di GitHub) bila perubahan ingin diperiksa leader dulu.
 - **Sebelum push:** jalankan `git fetch`, gabungkan `main` terbaru ke branch Anda (merge), lalu jalankan [cek sebelum push](#cek-sebelum-push).
 - **Jangan `git push --force`** ke `main`, karena commit rekan lain bisa hilang.
 - **Jangan commit:** file customer, data internal toko, atau kata sandi. File customer untuk uji disimpan di `Printech-TestData/01-input/customer/`; folder itu tidak ikut git.
