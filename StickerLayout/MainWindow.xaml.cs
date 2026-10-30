@@ -216,14 +216,17 @@ public partial class MainWindow : Window
             if (sheets[i].Count == 0) { sheets.RemoveAt(i); sheetH.RemoveAt(i); }
     }
 
-    void Add_Click(object s, RoutedEventArgs e)
+    void Add_Click(object s, RoutedEventArgs e) => OpenFileDialog();
+
+    // Method public yang bisa dipanggil dari WelcomePanel
+    public void OpenFileDialog()
     {
         var dlg = new OpenFileDialog { Filter = "PDF, AI, CDR, PNG, JPG, SVG|*.pdf;*.ai;*.cdr;*.png;*.jpg;*.jpeg;*.svg", Multiselect = true };
         if (dlg.ShowDialog() == true) AddFiles(dlg.FileNames);
     }
 
     // File baru langsung disusun: satu klik lebih sedikit untuk operator.
-    async void AddFiles(IEnumerable<string> files)
+    public async void AddFiles(IEnumerable<string> files)
     {
         if (!CutsValid()) return;
         int before = items.Count;
@@ -248,6 +251,7 @@ public partial class MainWindow : Window
         bool first = sheets.Count == 0;
         Arrange();
         if (first) Fit();
+        ShowHome(false); 
     }
 
     void RemoveItem_Click(object s, RoutedEventArgs e)
@@ -517,6 +521,10 @@ public partial class MainWindow : Window
         Redraw();
         Fit();
         Commit(); // keadaan awal (kosong) untuk undo
+
+        // Tampilkan Home Page jika aplikasi dibuka tanpa file (startFiles kosong)
+        ShowHome(startFiles.Length == 0);
+
         if (startFiles.Length > 0) AddFiles(startFiles);
     }
 
@@ -524,21 +532,38 @@ public partial class MainWindow : Window
     static string[] Dropped(DragEventArgs e) =>
         e.Data.GetData(DataFormats.FileDrop) is string[] f ? f.Where(x => Exts.Contains(Path.GetExtension(x).ToLowerInvariant())).ToArray() : [];
 
-    void Window_DragOver(object s, DragEventArgs e)
+    public void Window_DragOver(object s, DragEventArgs e)
     {
+        // Jika WelcomePanel sedang tampil, jangan tampilkan efek drop di luar border
+        if (HomePage.Visibility == Visibility.Visible)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
         bool ok = Dropped(e).Length > 0;
         e.Effects = ok ? DragDropEffects.Copy : DragDropEffects.None;
         DropHint.Visibility = ok ? Visibility.Visible : Visibility.Collapsed;
         e.Handled = true;
     }
 
-    void Window_DragLeave(object s, DragEventArgs e) => DropHint.Visibility = Visibility.Collapsed;
+    public void Window_DragLeave(object s, DragEventArgs e) => DropHint.Visibility = Visibility.Collapsed;
 
-    void Window_Drop(object s, DragEventArgs e)
+    public void Window_Drop(object s, DragEventArgs e)
     {
         DropHint.Visibility = Visibility.Collapsed;
+        
+        // TAMBAHKAN INI: Jika WelcomePanel sedang tampil, abaikan drop di luar border
+        if (HomePage.Visibility == Visibility.Visible)
+        {
+            e.Handled = true;
+            return;
+        }
+
         var files = Dropped(e);
         if (files.Length > 0) AddFiles(files);
+        e.Handled = true;
     }
 
     // ---- Tampilan: zoom & geser ----
@@ -768,5 +793,14 @@ public partial class MainWindow : Window
         Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
         Redraw(Summary());
         Commit();
+    }
+
+    void ShowHome(bool home)
+    {
+        HomePage.Visibility = home ? Visibility.Visible : Visibility.Collapsed;
+        EditorDock.Visibility = home ? Visibility.Collapsed : Visibility.Visible;
+        
+        // Matikan AllowDrop di Window saat di Home, nyalakan saat di Editor
+        AllowDrop = !home; 
     }
 }

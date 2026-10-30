@@ -175,6 +175,14 @@ public static class Lang
         ["Saved"] = ("Tersimpan: {0}", "Saved: {0}"),
         ["ExportBad"] = ("Ada stiker tumpang tindih/keluar margin. Tetap export?", "Some stickers overlap or exceed the margin. Export anyway?"),
         ["PdfRaster"] = ("{0}: PDF ditempel sebagai gambar, bukan vektor ({1}).", "{0}: PDF placed as an image, not vector ({1})."),
+
+        ["HomeWelcome"] = ("Selamat Datang di Printech", "Welcome To Printech"),
+        ["HomeDesc"] = ("Solusi cerdas untuk layout stiker dan cetak Anda", "Smart solution for your sticker layout and print"),
+        ["MenuNew"] = ("File Baru", "New File"),
+        ["MenuRecent"] = ("File Terbaru", "Recent File"),
+        ["MenuImport"] = ("Impor File", "Import File"),
+        ["MenuSettings"] = ("Pengaturan", "Settings"),
+        ["MenuHelp"] = ("Bantuan", "Help"),
     };
 
     public static void Apply(string code)
