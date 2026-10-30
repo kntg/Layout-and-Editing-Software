@@ -70,13 +70,13 @@
                     
                     <!-- Teks Drag or Open Folder -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock Text="Drag or " FontSize="18" Foreground="{StaticResource Text}" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="BtnOpenFolder" Text="Open Folder" FontSize="18" Foreground="{StaticResource Accent}" 
+                        <TextBlock Text="{DynamicResource HomeDragOr}" FontSize="18" Foreground="{StaticResource Text}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="BtnOpenFolder" Text="{DynamicResource HomeOpenFolder}" FontSize="18" Foreground="{StaticResource Accent}" 
                                 Cursor="Hand" VerticalAlignment="Center" MouseLeftButtonDown="BtnOpenFolder_Click"/>
                     </StackPanel>
 
                     <!-- Teks Supported Files -->
-                    <TextBlock Text="Supported Files: *.pdf, *.svg, *.png, *.jpg" FontSize="12" Foreground="{StaticResource Dim}" 
+                    <TextBlock Text="{DynamicResource HomeSupported}" FontSize="12" Foreground="{StaticResource Dim}" 
                             HorizontalAlignment="Center" Margin="0,10,0,0" TextAlignment="Center"/>
                 </StackPanel>
             </Border>

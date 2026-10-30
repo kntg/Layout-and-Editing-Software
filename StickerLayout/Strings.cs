@@ -183,6 +183,9 @@ public static class Lang
         ["MenuImport"] = ("Impor File", "Import File"),
         ["MenuSettings"] = ("Pengaturan", "Settings"),
         ["MenuHelp"] = ("Bantuan", "Help"),
+        ["HomeDragOr"] = ("Seret atau ", "Drag or "),
+        ["HomeOpenFolder"] = ("Buka Folder", "Open Folder"),
+        ["HomeSupported"] = ("File yang didukung: *.pdf, *.cdr, *.ai, *.svg, *.png, *.jpg", "Supported Files: *.pdf, *.cdr, *.ai, *.svg, *.png, *.jpg"),
     };
 
     public static void Apply(string code)
