@@ -840,11 +840,11 @@ public static class SelfCheck
             log.Add($"preview: {jpgs.Count} JPG, {jf.PixelWidth}x{jf.PixelHeight} px, {new FileInfo(jpgs[0]).Length / 1024} KB");
 
             // Export SVG (fitur leader 2026-10-29): artwork setiap desain ikut tertempel di kotak yang sama dengan export PDF,
-            // JPG tetap bertanda JPEG, dan mode tautan menunjuk file asli dengan alamat file:/// yang sah.
+            // dan JPG tetap bertanda JPEG.
             var svgBad = SvgErrors(dir, sheets, rawBlue, kiss, die);
             Check(svgBad.Count == 0, "export SVG salah: " + string.Join("; ", svgBad));
             log.Add($"export SVG: artwork {sheets.Sum(x => x.Count)} stiker di kotak yang sama dengan export PDF, di-clip ke garis potong; "
-                + "warna border dan bleed ikut; JPG bertanda JPEG; tautan file asli sah");
+                + "warna border dan bleed ikut; JPG bertanda JPEG");
 
             // PDF multi-halaman: satu desain per halaman, ukuran asli per halaman, export menempel halaman yang benar.
             var multi = Loader.LoadAll(Path.Combine(dir, "multi.pdf"), 40, kiss, die);
@@ -972,8 +972,8 @@ public static class SelfCheck
         Directory.CreateDirectory(tmp);
         try
         {
-            List<XElement> Images(List<List<Placed>> sh, string name, bool embed = true) =>
-                ExportSvg.Svg(Path.Combine(tmp, name), sh, A4W, sh.Select(_ => A4H).ToList(), Margin, embedArtwork: embed)
+            List<XElement> Images(List<List<Placed>> sh, string name) =>
+                ExportSvg.Svg(Path.Combine(tmp, name), sh, A4W, sh.Select(_ => A4H).ToList(), Margin)
                     .SelectMany(f => XDocument.Load(f).Descendants(svg + "image")).ToList();
             List<List<Placed>> One(Sticker s) => [[new Placed { S = s, X = Margin, Y = Margin }]];
 
@@ -1011,16 +1011,6 @@ public static class SelfCheck
 
             var jh = Images(One(jpg), "jpg.svg")[0].Attribute(xlink + "href")!.Value;
             if (!jh.StartsWith("data:image/jpeg;base64,")) bad.Add($"JPG ditandai {jh[..Math.Min(22, jh.Length)]}");
-
-            // Nama dengan spasi dan & menguji alamat file dan penulisan XML sekaligus.
-            var amp = Path.Combine(tmp, "tautan & svg.png");
-            File.Copy(Path.Combine(dir, "circle.png"), amp);
-            var link = Loader.Load(amp, 0, 40, kiss, die);
-            var le = Images(One(link), "tautan.svg", embed: false)[0];
-            var lh = le.Attribute(xlink + "href")!.Value;
-            if (!Uri.TryCreate(lh, UriKind.Absolute, out var u) || !u.IsFile || u.LocalPath != amp
-                || Math.Abs(double.Parse(le.Attribute("width")!.Value, CultureInfo.InvariantCulture) - link.Full.Width) > 0.01)
-                bad.Add($"tautan file asli salah: {lh} lebar {le.Attribute("width")!.Value} mm, harus {link.Full.Width:F2} mm");
         }
         finally { Directory.Delete(tmp, true); }
         return bad.Distinct().ToList();

@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO;
-using System.Security;
 using System.Text;
 using System.Windows;
 using System.Windows.Media;
@@ -12,7 +11,7 @@ public static class ExportSvg
 {
     // Satu file SVG per lembar. Layer (group) dipisah agar CorelDRAW membacanya sebagai layer.
     public static List<string> Svg(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH,
-                                   double margin, bool regMarks = false, bool embedArtwork = true)
+                                   double margin, bool regMarks = false)
     {
         var files = new List<string>();
         for (int i = 0; i < sheets.Count; i++)
@@ -20,13 +19,13 @@ public static class ExportSvg
             var file = sheets.Count == 1
                 ? path
                 : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{i + 1}.svg");
-            File.WriteAllText(file, Sheet(sheets[i], cw, sheetH[i], margin, regMarks, embedArtwork), Encoding.UTF8);
+            File.WriteAllText(file, Sheet(sheets[i], cw, sheetH[i], margin, regMarks), Encoding.UTF8);
             files.Add(file);
         }
         return files;
     }
 
-    static string Sheet(List<Placed> ps, double cw, double ch, double margin, bool regMarks, bool embedArtwork)
+    static string Sheet(List<Placed> ps, double cw, double ch, double margin, bool regMarks)
     {
         var sb = new StringBuilder();
         sb.Append(CultureInfo.InvariantCulture,
@@ -40,7 +39,7 @@ public static class ExportSvg
 
         // Layer 1: Artwork
         sb.AppendLine("""  <g id="artwork" inkscape:label="Artwork" inkscape:groupmode="layer">""");
-        for (int i = 0; i < ps.Count; i++) Artwork(sb, ps[i], embedArtwork, i);
+        for (int i = 0; i < ps.Count; i++) Artwork(sb, ps[i], i);
         sb.AppendLine("  </g>");
 
         // Layer 2: Kiss Cut
@@ -69,7 +68,7 @@ public static class ExportSvg
 
     // Seperti export PDF: warna border di bawah artwork, artwork di-clip ke garis potong (ArtClip), isi even-odd seperti
     // PDFsharp. n = nomor stiker di lembar, untuk id clipPath.
-    static void Artwork(StringBuilder sb, Placed p, bool embed, int n)
+    static void Artwork(StringBuilder sb, Placed p, int n)
     {
         var s = p.S;
         var (tx, ty) = p.T;
@@ -78,26 +77,14 @@ public static class ExportSvg
         var border = s.BorderGeo is { } bg && s.Border is { } c
             ? $"""<path d="{D(bg)}" fill="#{c.Rgb.R:X2}{c.Rgb.G:X2}{c.Rgb.B:X2}" fill-rule="evenodd"/>""" : "";
 
-        string href;
-        Rect r;
-        if (!embed)
-        {
-            // Referensi eksternal (file asli). Tidak selalu bisa dibuka CorelDRAW, tapi file kecil.
-            // ponytail: tautan hanya pas untuk PNG/JPG apa adanya (tanpa Rapikan, bleed, halaman PDF/AI); sisipkan gambar bila mode ini masuk menu.
-            href = SecurityElement.Escape(new Uri(s.Source).AbsoluteUri);
-            r = s.Full;
-        }
-        else
-        {
-            // Gambar dan kotaknya sama dengan export PDF: bleed di BleedRect, gambar sumber di Full (gambar penuh, termasuk
-            // margin transparan), vektor PDF/AI (Raster kosong) lewat render layar di kotak artwork.
-            // ponytail: render layar paling besar 1600 px dan RGB; render ulang halaman PDF ±300 dpi bila SVG kurang tajam.
-            (var bytes, r) = s.BleedPng != null ? (s.BleedPng, s.BleedRect)
-                : s.Pdf == null ? (s.Raster, s.Full)
-                : (Loader.Png(s.Preview), new Rect(s.Off, s.Off, s.ArtW, s.ArtH));
-            var mime = bytes is [0xFF, 0xD8, ..] ? "image/jpeg" : "image/png"; // JPG asli ditempel apa adanya
-            href = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
-        }
+        // Gambar dan kotaknya sama dengan export PDF: bleed di BleedRect, gambar sumber di Full (gambar penuh, termasuk
+        // margin transparan), vektor PDF/AI (Raster kosong) lewat render layar di kotak artwork.
+        // ponytail: render layar paling besar 1600 px dan RGB; render ulang halaman PDF ±300 dpi bila SVG kurang tajam.
+        var (bytes, r) = s.BleedPng != null ? (s.BleedPng, s.BleedRect)
+            : s.Pdf == null ? (s.Raster, s.Full)
+            : (Loader.Png(s.Preview), new Rect(s.Off, s.Off, s.ArtW, s.ArtH));
+        var mime = bytes is [0xFF, 0xD8, ..] ? "image/jpeg" : "image/png"; // JPG asli ditempel apa adanya
+        var href = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
 
         sb.AppendLine(CultureInfo.InvariantCulture,
             $"""    <g transform="{xf}">{border}<clipPath id="art{n}"><path d="{D(s.ArtClip)}" clip-rule="evenodd"/></clipPath><g clip-path="url(#art{n})"><image xlink:href="{href}" x="{F(r.X)}" y="{F(r.Y)}" width="{F(r.Width)}" height="{F(r.Height)}"/></g></g>""");

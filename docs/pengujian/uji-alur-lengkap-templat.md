@@ -31,7 +31,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 - **BLOCKED:** tidak bisa dijalankan di lingkungan ini, karena perangkat, file uji, atau keputusan belum ada.
 - **NOT RUN:** bisa dijalankan, tetapi belum dijalankan.
 
-**Tingkat dampak (severity; usulan, perlu disetujui).** Di lembar hasil (CSV), kolom Tingkat dampak berisi usulan dampak bila uji itu gagal.
+**Tingkat dampak (severity; definisi disetujui 2026-10-31).** Di lembar hasil (CSV), kolom Tingkat dampak berisi usulan dampak bila uji itu gagal; label tiap kasus tetap usulan dan diperiksa saat kasusnya gagal.
 
 - **Blocker:** bisa membuang bahan atau mencetak/memotong hal yang salah tanpa disadari operator. Rilis ditahan.
 - **Mayor:** hasil salah tetapi terlihat atau ada peringatan, atau ada cara kerja yang aman. Rilis boleh dengan catatan.
@@ -246,7 +246,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | Butir | Kasus uji | Status |
 | --- | --- | --- |
 | 1. Build dan pengujian otomatis | Bagian 4 | Lulus 2026-10-27: build 0 warning, pemeriksaan otomatis 4/4, validasi exit code 0 setelah keputusan D3 dan D5. |
-| 2. Input dan bentuk garis | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. IMP-22 (file customer) NOT RUN. |
+| 2. Input dan bentuk garis | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27); IMP-22 PASS dengan data uji pengganti (2026-10-31). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. |
 | 3. Export dan kecocokan dengan aplikasi lain | EXP-\*, HW-01 sampai HW-04 | Belum. Semua EXP lulus; PDF terenkripsi tidak lagi menggagalkan export (D8 diperbaiki 2026-10-21). HW-01 sampai HW-04 BLOCKED. |
 | 4. Produksi fisik | HW-05 sampai HW-08 | Belum. BLOCKED. |
 | 5. Dokumentasi dan masalah | Bagian 7 dan 10 | Belum. Tidak ada masalah yang masih terbuka (D1, D2, D4, D6, D8, D9, D10 sudah diperbaiki; D3, D5, D7 sudah diputuskan). |
@@ -293,12 +293,12 @@ Semua perbaikan di atas ada di [kode mesin](../../StickerLayout/Core.cs), [kode 
 
 D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21; D6 dan D9 pada 2026-10-28. Kasus jenis Operator dan mesin di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
 
-1. **Keputusan di bagian 12:** pemeriksaan wajib untuk rilis, tingkat dampak, dan lokasi file customer. Toleransi D3 dan D5 sudah diputuskan 2026-10-27.
+1. **Keputusan di bagian 12:** lokasi file customer (pengganti sementara 2026-10-31). Toleransi D3 dan D5 diputuskan 2026-10-27; pemeriksaan wajib untuk rilis diputuskan 2026-10-28; tingkat dampak diputuskan 2026-10-31.
 
 ## 12. Keputusan yang dibutuhkan
 
 1. **A4/D3, diputuskan 2026-10-27:** toleransi 0,15 mm diterima dan ditulis di aturan.
 2. **A2b/D5, diputuskan 2026-10-27:** target pengurangan titik minimal 60% hanya untuk `rough.jpg` (S1).
 3. **Pemeriksaan otomatis yang wajib untuk rilis, diputuskan 2026-10-28:** sebelum push ke repo tim atau sebelum presentasi wajib build 0 warning, pemeriksaan otomatis 4/4, dan validasi (`validasi.py`) exit code 0. Bila tampilan, editor, atau alur di jendela aplikasi berubah, juga uji tata letak (`ui-edit-layout.ps1`) 10/10 dengan mouse dan keyboard sungguhan (PC tidak dipakai selama uji).
-4. **Tingkat dampak:** apakah usulan tingkat dampak D1–D10 dan definisinya (bagian 1) disetujui?
-5. **File customer:** di mana lokasi file customer yang sudah diizinkan untuk pengujian?
+4. **Tingkat dampak, diputuskan 2026-10-31:** definisi tingkat dampak disetujui; label tiap kasus uji tetap usulan dan diperiksa saat kasusnya gagal.
+5. **File customer, diputuskan 2026-10-31:** diganti sementara dengan data uji hasil riset di 01-input; file customer asli diuji bila sudah tersedia.

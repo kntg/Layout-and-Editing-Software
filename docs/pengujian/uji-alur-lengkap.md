@@ -31,7 +31,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 - **BLOCKED:** tidak bisa dijalankan di lingkungan ini, karena perangkat, file uji, atau keputusan belum ada.
 - **NOT RUN:** bisa dijalankan, tetapi belum dijalankan.
 
-**Tingkat dampak (severity; usulan, perlu disetujui).** Di lembar hasil (CSV), kolom Tingkat dampak berisi usulan dampak bila uji itu gagal.
+**Tingkat dampak (severity; definisi disetujui 2026-10-31).** Di lembar hasil (CSV), kolom Tingkat dampak berisi usulan dampak bila uji itu gagal; label tiap kasus tetap usulan dan diperiksa saat kasusnya gagal.
 
 - **Blocker:** bisa membuang bahan atau mencetak/memotong hal yang salah tanpa disadari operator. Rilis ditahan.
 - **Mayor:** hasil salah tetapi terlihat atau ada peringatan, atau ada cara kerja yang aman. Rilis boleh dengan catatan.
@@ -182,7 +182,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 ## 6. Kasus uji
 
-Total 100 kasus: PASS 78, FAIL 0, BLOCKED 21, NOT RUN 1. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28.
+Total 100 kasus: PASS 79, FAIL 0, BLOCKED 21, NOT RUN 0. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28.
 
 Kolom Sumber menunjukkan asal syaratnya:
 
@@ -218,7 +218,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | IMP-19 | Uji tampilan | Semua file 01-input sekaligus | Jalankan aplikasi dengan semua file sebagai argumen | 19 desain; "18 stiker di 2 lembar."; 3 peringatan; "54% · sisa 46%"; judul lembar 4 pcs 90% dan 14 pcs 17% (tanda registrasi aktif sejak 2026-10-26; sebelumnya 92% dan 16%) | ui-semua-input.txt; 04-evidence/2026-10-26-validasi-garis-potong-nesting.txt | Usul (angka dari validasi B-ui) | PASS — Diulang 2026-10-26 (uji semua file input, ui-semua-input.ps1): status, peringatan, dan 54% sama; lembar 1 4 pcs 90% dan lembar 2 14 pcs 17%, sama dengan validasi B-ui, karena area 6 mm di sekitar tanda registrasi dikosongkan; memori 81 MB |
 | IMP-20 | Validasi data uji | 01-input dan 01-input/customer | powershell -ExecutionPolicy Bypass -File cek-original.ps1 | Semua baris "sama"; exit code 0 | Hasil cek file asli | Permintaan user: file asli tidak berubah | PASS — 15/15 |
 | IMP-21 | Uji tampilan (skrip) | 01-input/khusus/invalid-file.png, .jpg, .svg | Uji file khusus (ui-file-khusus.ps1) | Dialog "Gagal memuat"; aplikasi tidak crash; file lain tetap masuk | 04-evidence/2026-10-28-ui-file-khusus.txt | Usul | PASS — Sejak 2026-10-28 (D9): "Gambar rusak atau bukan file PNG/JPG yang valid." dan "SVG rusak atau bukan file SVG yang valid." |
-| IMP-22 | Uji tampilan | File customer di 01-input/customer | Tambah file; bandingkan dengan hasil-benar.md | Sesuai hasil-benar.md | 04-evidence/customer/ | Usul | NOT RUN — Belum ada file customer |
+| IMP-22 | Validasi data uji | File pengganti: data uji hasil riset di 01-input (PDF, AI, PNG, JPG, SVG, PDF banyak halaman, PDF besar) | validasi.ps1 lalu validasi.py | SEMUA LULUS | 04-evidence/ | Usul | PASS — Pengganti sementara (keputusan user 2026-10-31). File customer asli belum diuji; ganti lagi bila tersedia. |
 | IMP-23 | Validasi data uji + uji tampilan | 01-input/latar/png-latar-abu-muda.png, png-latar-pink-pastel.png, png-latar-putih.png | Dimuat dan diexport lewat mesin Printech, warna latar diukur dari gambar render MuPDF; tampilan: aplikasi dibuka dengan ketiga file sebagai argumen | Semua latar utuh di layar dan PDF, termasuk putih (sejak 2026-10-21); garis kiss mengelilingi kotak gambar | 04-evidence/2026-10-21-png-latar.txt, -sebelum.png, -sesudah.png, -ui.png | Temuan tim 2026-10-21 (D10) | PASS — Sebelum perbaikan FAIL: latar tinggal 5 % dan logo ±4× lebih besar. Diperbaiki 2026-10-21 (fungsi Loader.WhiteBorder) |
 
 ### Garis potong
@@ -379,7 +379,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | Butir | Kasus uji | Status |
 | --- | --- | --- |
 | 1. Build dan pengujian otomatis | Bagian 4 | Lulus 2026-10-27: build 0 warning, pemeriksaan otomatis 4/4, validasi exit code 0 setelah keputusan D3 dan D5. |
-| 2. Input dan bentuk garis | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. IMP-22 (file customer) NOT RUN. |
+| 2. Input dan bentuk garis | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27); IMP-22 PASS dengan data uji pengganti (2026-10-31). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. |
 | 3. Export dan kecocokan dengan aplikasi lain | EXP-\*, HW-01 sampai HW-04 | Belum. Semua EXP lulus; PDF terenkripsi tidak lagi menggagalkan export (D8 diperbaiki 2026-10-21). HW-01 sampai HW-04 BLOCKED. |
 | 4. Produksi fisik | HW-05 sampai HW-08 | Belum. BLOCKED. |
 | 5. Dokumentasi dan masalah | Bagian 7 dan 10 | Belum. Tidak ada masalah yang masih terbuka (D1, D2, D4, D6, D8, D9, D10 sudah diperbaiki; D3, D5, D7 sudah diputuskan). |
@@ -426,12 +426,12 @@ Semua perbaikan di atas ada di [kode mesin](../../StickerLayout/Core.cs), [kode 
 
 D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21; D6 dan D9 pada 2026-10-28. Kasus jenis Operator dan mesin di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
 
-1. **Keputusan di bagian 12:** pemeriksaan wajib untuk rilis, tingkat dampak, dan lokasi file customer. Toleransi D3 dan D5 sudah diputuskan 2026-10-27.
+1. **Keputusan di bagian 12:** lokasi file customer (pengganti sementara 2026-10-31). Toleransi D3 dan D5 diputuskan 2026-10-27; pemeriksaan wajib untuk rilis diputuskan 2026-10-28; tingkat dampak diputuskan 2026-10-31.
 
 ## 12. Keputusan yang dibutuhkan
 
 1. **A4/D3, diputuskan 2026-10-27:** toleransi 0,15 mm diterima dan ditulis di aturan.
 2. **A2b/D5, diputuskan 2026-10-27:** target pengurangan titik minimal 60% hanya untuk `rough.jpg` (S1).
 3. **Pemeriksaan otomatis yang wajib untuk rilis, diputuskan 2026-10-28:** sebelum push ke repo tim atau sebelum presentasi wajib build 0 warning, pemeriksaan otomatis 4/4, dan validasi (`validasi.py`) exit code 0. Bila tampilan, editor, atau alur di jendela aplikasi berubah, juga uji tata letak (`ui-edit-layout.ps1`) 10/10 dengan mouse dan keyboard sungguhan (PC tidak dipakai selama uji).
-4. **Tingkat dampak:** apakah usulan tingkat dampak D1–D10 dan definisinya (bagian 1) disetujui?
-5. **File customer:** di mana lokasi file customer yang sudah diizinkan untuk pengujian?
+4. **Tingkat dampak, diputuskan 2026-10-31:** definisi tingkat dampak disetujui; label tiap kasus uji tetap usulan dan diperiksa saat kasusnya gagal.
+5. **File customer, diputuskan 2026-10-31:** diganti sementara dengan data uji hasil riset di 01-input; file customer asli diuji bila sudah tersedia.
