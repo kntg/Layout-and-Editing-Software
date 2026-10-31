@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -838,6 +839,13 @@ public static class SelfCheck
             Check(Math.Abs(Math.Max(jf.PixelWidth, jf.PixelHeight) - 2000) <= 2, $"ukuran preview salah: {jf.PixelWidth}x{jf.PixelHeight}");
             log.Add($"preview: {jpgs.Count} JPG, {jf.PixelWidth}x{jf.PixelHeight} px, {new FileInfo(jpgs[0]).Length / 1024} KB");
 
+            // Export SVG (fitur leader 2026-10-29): artwork setiap desain ikut tertempel di kotak yang sama dengan export PDF,
+            // JPG tetap bertanda JPEG, dan mode tautan menunjuk file asli dengan alamat file:/// yang sah.
+            var svgBad = SvgErrors(dir, sheets, rawBlue, kiss, die);
+            Check(svgBad.Count == 0, "export SVG salah: " + string.Join("; ", svgBad));
+            log.Add($"export SVG: artwork {sheets.Sum(x => x.Count)} stiker di kotak yang sama dengan export PDF, di-clip ke garis potong; "
+                + "warna border dan bleed ikut; JPG bertanda JPEG; tautan file asli sah");
+
             // PDF multi-halaman: satu desain per halaman, ukuran asli per halaman, export menempel halaman yang benar.
             var multi = Loader.LoadAll(Path.Combine(dir, "multi.pdf"), 40, kiss, die);
             var msh = Nest.Run(multi, A4W, A4H, Margin, Gap, out _);
@@ -952,6 +960,70 @@ public static class SelfCheck
             return (Regex.Matches(c, @"(?<=\s)l(?=\s)").Count, Regex.Matches(c, @"(?<=\s)c(?=\s)").Count);
         }
         finally { File.Delete(tmp); }
+    }
+
+    // Export SVG ke folder sementara. Kotak gambar mengikuti export PDF: bleed di BleedRect, gambar sumber di Full (gambar
+    // penuh, termasuk margin transparan seperti circle.png), vektor PDF/AI lewat render layar di kotak artwork.
+    static List<string> SvgErrors(string dir, List<List<Placed>> sheets, Sticker jpg, Cut kiss, Cut die)
+    {
+        XNamespace svg = "http://www.w3.org/2000/svg", xlink = "http://www.w3.org/1999/xlink";
+        var bad = new List<string>();
+        var tmp = Path.Combine(Path.GetTempPath(), $"printech-uji-svg-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmp);
+        try
+        {
+            List<XElement> Images(List<List<Placed>> sh, string name, bool embed = true) =>
+                ExportSvg.Svg(Path.Combine(tmp, name), sh, A4W, sh.Select(_ => A4H).ToList(), Margin, embedArtwork: embed)
+                    .SelectMany(f => XDocument.Load(f).Descendants(svg + "image")).ToList();
+            List<List<Placed>> One(Sticker s) => [[new Placed { S = s, X = Margin, Y = Margin }]];
+
+            // Per gambar, seperti export PDF: kotak dan isi benar, di-clip ke ArtClip, warna border (bila ada) di bawahnya.
+            void CheckImages(List<List<Placed>> sh, string name)
+            {
+                var placed = sh.SelectMany(x => x).ToList();
+                var ims = Images(sh, name);
+                if (ims.Count != placed.Count) { bad.Add($"{name}: {ims.Count} gambar untuk {placed.Count} stiker"); return; }
+                for (int i = 0; i < ims.Count; i++)
+                {
+                    var s = placed[i].S;
+                    var r = s.BleedPng != null ? s.BleedRect : s.Pdf == null ? s.Full : new Rect(s.Off, s.Off, s.ArtW, s.ArtH);
+                    var e = ims[i];
+                    double N(string a) => double.Parse(e.Attribute(a)!.Value, CultureInfo.InvariantCulture);
+                    var data = e.Attribute(xlink + "href")!.Value.Split(',', 2);
+                    if (data.Length < 2 || data[1].Length == 0 || Math.Abs(N("x") - r.X) > 0.01 || Math.Abs(N("y") - r.Y) > 0.01
+                        || Math.Abs(N("width") - r.Width) > 0.01 || Math.Abs(N("height") - r.Height) > 0.01)
+                        bad.Add($"{s.Name}: gambar {(data.Length < 2 ? 0 : data[1].Length)} karakter di {N("x"):F2};{N("y"):F2} "
+                            + $"{N("width"):F2}x{N("height"):F2} mm, harus {r.X:F2};{r.Y:F2} {r.Width:F2}x{r.Height:F2} mm");
+                    var id = Regex.Match((string?)e.Parent?.Attribute("clip-path") ?? "", @"^url\(#(.+)\)$").Groups[1].Value;
+                    var clip = e.Document!.Descendants(svg + "clipPath").FirstOrDefault(c => id != "" && (string?)c.Attribute("id") == id);
+                    if (clip?.Element(svg + "path")?.Attribute("d")?.Value is not { Length: > 0 })
+                        bad.Add($"{s.Name}: artwork tidak di-clip ke garis potong");
+                    var fill = (string?)e.Parent?.Parent?.Element(svg + "path")?.Attribute("fill");
+                    var want = s.Border is { } b ? $"#{b.Rgb.R:X2}{b.Rgb.G:X2}{b.Rgb.B:X2}" : null;
+                    if (fill != want) bad.Add($"{s.Name}: warna border {fill ?? "tidak ada"}, harus {want ?? "tidak ada"}");
+                }
+            }
+
+            CheckImages(sheets, "export.svg");
+            var bordered = Loader.Load(Path.Combine(dir, "circle.png"), 0, 40, kiss, die, border: new Cmyk(0, 1, 1, 0));
+            var bled = Loader.Load(Path.Combine(dir, "circle.png"), 0, 40, kiss, die, bleed: 2);
+            CheckImages([[new Placed { S = bordered, X = Margin, Y = Margin }, new Placed { S = bled, X = Margin + 60, Y = Margin }]], "border-bleed.svg");
+
+            var jh = Images(One(jpg), "jpg.svg")[0].Attribute(xlink + "href")!.Value;
+            if (!jh.StartsWith("data:image/jpeg;base64,")) bad.Add($"JPG ditandai {jh[..Math.Min(22, jh.Length)]}");
+
+            // Nama dengan spasi dan & menguji alamat file dan penulisan XML sekaligus.
+            var amp = Path.Combine(tmp, "tautan & svg.png");
+            File.Copy(Path.Combine(dir, "circle.png"), amp);
+            var link = Loader.Load(amp, 0, 40, kiss, die);
+            var le = Images(One(link), "tautan.svg", embed: false)[0];
+            var lh = le.Attribute(xlink + "href")!.Value;
+            if (!Uri.TryCreate(lh, UriKind.Absolute, out var u) || !u.IsFile || u.LocalPath != amp
+                || Math.Abs(double.Parse(le.Attribute("width")!.Value, CultureInfo.InvariantCulture) - link.Full.Width) > 0.01)
+                bad.Add($"tautan file asli salah: {lh} lebar {le.Attribute("width")!.Value} mm, harus {link.Full.Width:F2} mm");
+        }
+        finally { Directory.Delete(tmp, true); }
+        return bad.Distinct().ToList();
     }
 
     static string Content(PdfPage page)

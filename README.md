@@ -42,6 +42,7 @@ Isi README ini:
    - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
    - **Export preview JPG…** (Ctrl+Shift+E): untuk konfirmasi ke customer lewat WhatsApp.
    - **Export Print Ticket** (menu File): ringkasan satu halaman A4 untuk lampiran SPK.
+   - **Export SVG** (menu File): satu file SVG per lembar dengan layer Artwork, Kiss Cut, Die Cut, dan tanda registrasi. Artwork di dalamnya berupa gambar dan warnanya RGB; export PDF tetap menjaga vektor dan CMYK.
 7. **Cetak dan potong.**
    - Buka PDF di CorelDRAW, lalu pasang tanda registrasi lewat Cutting Master 5.
    - Cetak di Develop.
@@ -258,7 +259,7 @@ Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publi
 | --- | --- |
 | `StickerLayout/Core.cs` | Mesin utama: memuat desain, garis potong otomatis (gambar bantu, penghalusan, Potrace), susun otomatis, dan proses pembantu CorelDRAW |
 | `StickerLayout/Curves.cs`, `Shapes.cs`, `SmartSelect.cs` | Titik garis potong (lurus/kurva), preset bentuk dan desain kotak, smart select |
-| `StickerLayout/Export.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket; membuka PDF/AI |
+| `StickerLayout/Export.cs`, `ExportSvg.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket, export SVG; membuka PDF/AI |
 | `StickerLayout/Cleanup.cs` | Rapikan gambar (hapus latar, penghapus klik, kikis tepi) |
 | `StickerLayout/MainWindow.*`, `CutEditWindow.*`, `CleanupWindow.*`, `RulerControl.cs`, `Theme.xaml` | Tampilan: jendela utama, editor garis potong, jendela Rapikan, penggaris, tema |
 | `StickerLayout/Strings.cs` | Semua teks tampilan dalam bahasa Indonesia dan English |
