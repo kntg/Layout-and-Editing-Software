@@ -17,7 +17,7 @@ Bagian 4 berisi hasil pemeriksaan sebelum perbaikan D1/D2, hasil sesudahnya, dan
 
 | Jenis | Isi | Cara menjalankan | Sudah dijalankan |
 | --- | --- | --- | --- |
-| Pemeriksaan otomatis | Pemeriksaan bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S16, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
+| Pemeriksaan otomatis | Pemeriksaan bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S17, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
 | Validasi data uji | Mesin Printech dijalankan pada data uji (`Printech-TestData`), lalu hasilnya dinilai dengan bentuk file asli (`validasi.ps1` + `validasi.py`), ditambah pengecekan bahwa file asli tidak berubah (`cek-original.ps1`) | Lihat [panduan data uji](../../Printech-TestData/README.md) | Ya |
 | Uji tampilan | Pengujian lewat jendela aplikasi di PC pengembang. Sebagian sudah dijalankan oleh skrip yang mengoperasikan aplikasi sendiri lewat mouse, keyboard, dan kontrol jendela: uji semua file input, uji file khusus, uji tata letak, uji urungkan, dan uji editor garis potong (skrip `ui-*.ps1` di `Printech-TestData`, dijalankan dengan Windows PowerShell 5.1) | Langkah per kasus uji, atau skrip | Ya (2026-10-19) |
 | Operator dan mesin | CorelDRAW, Cutting Master 5, printer Develop, Graphtec | PC operator di AP 55 | Tidak (BLOCKED, di luar cakupan prototipe) |
@@ -31,7 +31,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 - **BLOCKED:** tidak bisa dijalankan di lingkungan ini, karena perangkat, file uji, atau keputusan belum ada.
 - **NOT RUN:** bisa dijalankan, tetapi belum dijalankan.
 
-**Tingkat dampak (severity; usulan, perlu disetujui).** Di lembar hasil (CSV), kolom Tingkat dampak berisi usulan dampak bila uji itu gagal.
+**Tingkat dampak (severity; definisi disetujui 2026-10-31).** Di lembar hasil (CSV), kolom Tingkat dampak berisi usulan dampak bila uji itu gagal; label tiap kasus tetap usulan dan diperiksa saat kasusnya gagal.
 
 - **Blocker:** bisa membuang bahan atau mencetak/memotong hal yang salah tanpa disadari operator. Rilis ditahan.
 - **Mayor:** hasil salah tetapi terlihat atau ada peringatan, atau ada cara kerja yang aman. Rilis boleh dengan catatan.
@@ -78,16 +78,16 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 | Fitur | Kode | Uji yang sudah ada | Yang belum diuji |
 | --- | --- | --- | --- |
-| Impor PDF/AI | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis (`logo.pdf`, `logo.ai`, `multi.pdf`); validasi E1, X1, X3 (termasuk PDF terenkripsi); verifikasi data uji | kotak putih (D7) |
+| Impor PDF/AI | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis (`logo.pdf`, `logo.ai`, `multi.pdf`); validasi E1, X1, X3 (termasuk PDF terenkripsi); verifikasi data uji | — |
 | Impor CDR | [kode mesin](../../StickerLayout/Core.cs), [kode aplikasi](../../StickerLayout/App.xaml.cs), [kode jendela utama](../../StickerLayout/MainWindow.xaml.cs) | pemeriksaan otomatis P1–P2 (tanpa CorelDRAW) | Konversi asli, CorelDRAW macet, dan bukti D1 dengan CorelDRAW: butuh operator |
-| Impor PNG/JPG/SVG | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis (`circle.png`, `rough.jpg`, `star.jpg`, `badge.svg`); validasi | File rusak |
-| dpi dan peringatan | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis; verifikasi data uji | Pembulatan tampilan (D6) |
-| Garis potong | [kode mesin](../../StickerLayout/Core.cs); editor: [titik kurva](../../StickerLayout/Curves.cs) dan [jendela editor](../../StickerLayout/CutEditWindow.xaml.cs); [bentuk](../../StickerLayout/Shapes.cs); [smart select](../../StickerLayout/SmartSelect.cs) | S1–S9, S11–S15; validasi A1–A7 | Potong fisik (S10) |
+| Impor PNG/JPG/SVG | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis (`circle.png`, `rough.jpg`, `star.jpg`, `badge.svg`); validasi | — |
+| dpi dan peringatan | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis; verifikasi data uji | — |
+| Garis potong | [kode mesin](../../StickerLayout/Core.cs); editor: [titik kurva](../../StickerLayout/Curves.cs) dan [jendela editor](../../StickerLayout/CutEditWindow.xaml.cs); [bentuk](../../StickerLayout/Shapes.cs); [smart select](../../StickerLayout/SmartSelect.cs) | S1–S9, S11–S16; validasi A1–A7 | Potong fisik (S10) |
 | Bleed | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis; validasi B4 | Cetak dan potong fisik |
 | Susun otomatis dan pemeriksaan bentuk | [kode mesin](../../StickerLayout/Core.cs) | pemeriksaan otomatis, P3, P5; validasi B1–B7 | — |
 | Edit tata letak (jendela aplikasi) | [kode jendela utama](../../StickerLayout/MainWindow.xaml.cs) | Fungsi tempel otomatis, pemeriksaan, dan penuhi lembar, serta logika editor garis potong lewat pemeriksaan otomatis; alur di jendela lewat uji tata letak (`ui-edit-layout.ps1`: EDIT-01..08, EDIT-11, CUT-12), uji urungkan (`ui-undo.ps1`: EDIT-12), uji editor tanpa mouse (`ui-editor-garis.ps1`: EDIT-13), dan uji editor dengan mouse (`ui-editor-mouse.ps1`: EDIT-14, EDIT-16, EDIT-18, EDIT-20) | Uji tampilan tidak termasuk pemeriksaan otomatis: dijalankan terpisah, dan butuh PC yang tidak sedang dipakai |
 | Export PDF | [kode export](../../StickerLayout/Export.cs) | pemeriksaan otomatis S8 dan salinan PDF; validasi E1, X1–X3 | CorelDRAW |
-| Preview JPG dan Print Ticket | [kode export](../../StickerLayout/Export.cs) | pemeriksaan otomatis; validasi X4–X5 | Print Ticket dengan lebih dari 10 lembar / lebih dari 20 desain |
+| Preview JPG dan Print Ticket | [kode export](../../StickerLayout/Export.cs) | pemeriksaan otomatis; validasi X4–X5 | — |
 | Rapikan gambar (dibekukan) | [kode Rapikan](../../StickerLayout/Cleanup.cs), [jendela Rapikan](../../StickerLayout/CleanupWindow.xaml.cs) | pemeriksaan otomatis, P4, P5 | Jendela Rapikan |
 | Kinerja dan memori | [kode jendela utama](../../StickerLayout/MainWindow.xaml.cs), [kode mesin](../../StickerLayout/Core.cs) | P5 otomatis; P6 manual; profil memori (`ram-profil.ps1`) | Tidak ada pemeriksaan otomatis untuk memori |
 
@@ -173,7 +173,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
 | --- | --- | --- | --- | --- | --- | --- |
 | Dimuat, ukuran benar | IMP-01, IMP-02: PASS | IMP-03: PASS | IMP-05: BLOCKED | IMP-10: PASS | IMP-11: PASS | IMP-12: PASS |
-| Banyak halaman jadi desain terpisah | IMP-02: PASS | NOT RUN | NOT RUN | — | — | — |
+| Banyak halaman jadi desain terpisah | IMP-02: PASS | Dicek sekali 2026-11-01, bukti tidak disimpan: salinan PDF 3 halaman berekstensi .ai jadi 3 desain vektor (bukan file Illustrator asli) | BLOCKED | — | — | — |
 | Di PDF export | Vektor, warna CMYK utuh (EXP-04: PASS). Halaman yang diputar (/Rotate) jadi gambar + peringatan (IMP-16: PASS) | Vektor (EXP-04: PASS) | Vektor bila konversi berhasil (BLOCKED) | Gambar | Gambar | Gambar ±300 dpi (batasan di kebutuhan aplikasi) |
 | dpi dan peringatan resolusi | Tidak tampil (vektor) | Tidak tampil | Tidak tampil | IMP-13: PASS | IMP-13: PASS | ±305 dpi |
 | File rusak atau gagal | IMP-17: PASS (PDF terenkripsi jadi gambar + peringatan, D8 diperbaiki) | IMP-04: PASS | IMP-06: PASS; IMP-08: BLOCKED | IMP-21: PASS | IMP-21: PASS | IMP-21: PASS |
@@ -182,7 +182,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 ## 6. Kasus uji
 
-Total 100 kasus: PASS 78, FAIL 0, BLOCKED 21, NOT RUN 1. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-19, NEST-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28.
+Total 100 kasus: PASS 79, FAIL 0, BLOCKED 21, NOT RUN 0. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-12, CUT-19, NEST-11, EDIT-01 sampai EDIT-08, EDIT-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28; IMP-22 per 2026-10-31.
 
 Kolom Sumber menunjukkan asal syaratnya:
 
@@ -200,34 +200,34 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | IMP-01 | Validasi data uji + pemeriksaan otomatis | pdf-single-page.pdf | Tambah file; baca panel Desain | Vektor; artwork 60,0 × 30,0 mm (±0,2); garis kiss 64 × 34 mm (±0,4) | verifikasi-loader.txt; pemeriksaan otomatis logo.pdf | Dok: kebutuhan aplikasi F1, F2. Toleransi: usul | PASS |
 | IMP-02 | Validasi data uji + pemeriksaan otomatis | pdf-multi-page.pdf, pdf-irregular-shapes.pdf | Tambah file | 3 dan 4 desain bernama "… p1" sampai "… pN"; ukuran per halaman sesuai hasil-yang-diharapkan.md | verifikasi-loader.txt; pemeriksaan otomatis multi.pdf | Dok: kebutuhan aplikasi F1 | PASS |
 | IMP-03 | Validasi data uji + pemeriksaan otomatis | ai-compatible.ai | Tambah file | Vektor 50,0 × 25,0 mm | verifikasi-loader.txt; pemeriksaan otomatis logo.ai | Dok: kebutuhan aplikasi F1 | PASS |
-| IMP-04 | Uji tampilan (skrip) | 01-input/khusus/ai-postscript.ai | Uji file khusus (ui-file-khusus.ps1) | Dialog "Gagal memuat" dengan pesan; aplikasi tidak tertutup sendiri (crash); file lain tetap masuk | 04-evidence/2026-10-28-ui-file-khusus.txt | Usul | PASS — Sejak 2026-10-28 (D9): "File AI ini tidak bisa dibaca: biasanya karena disimpan tanpa opsi PDF-compatible…" |
+| IMP-04 | Uji tampilan (skrip) | 01-input/khusus/ai-postscript.ai | Uji file khusus (ui-file-khusus.ps1) | Dialog "Gagal memuat" dengan pesan; aplikasi tidak tertutup sendiri (crash); file lain tetap masuk | 04-evidence/2026-10-28-ui-file-khusus.txt | Dok: hasil yang diharapkan, kasus khusus (D9) | PASS — Sejak 2026-10-28 (D9): "File AI ini tidak bisa dibaca: biasanya karena disimpan tanpa opsi PDF-compatible…" |
 | IMP-05 | Operator dan mesin | cdr-normal.cdr | Tambah file | Sama dengan pdf-single-page.pdf: vektor 60,0 × 30,0 mm | Tangkapan layar panel Desain; waktu konversi (detik) | Dok: kebutuhan aplikasi F1; skenario uji stabilitas P7 | BLOCKED — CorelDRAW tidak ada di PC pengembangan |
 | IMP-06 | Pemeriksaan otomatis + uji tampilan | invalid-file.cdr | Tambah bersama file lain | Dialog "Gagal memuat" berisi pesan CorelDRAW tidak terpasang; file lain tetap masuk; tidak crash | pemeriksaan otomatis P1; ui-semua-input.txt | Dok: kebutuhan aplikasi F1; skenario uji stabilitas P1 | PASS |
 | IMP-07 | Pemeriksaan otomatis | Proses pembantu CDR dengan batas waktu 1 ms | Pemeriksaan otomatis P2 | Proses pembantu dihentikan dalam waktu kurang dari 2 detik; tidak ada proses yang tersisa | selfcheck.txt P2 | Dok: kebutuhan aplikasi F1; skenario uji stabilitas P2 | PASS — Hanya jalur kode batas waktu, bukan CorelDRAW asli (lihat IMP-08) |
 | IMP-08 | Operator dan mesin | CDR apa pun | Tambah CDR (skenario uji stabilitas P9) | Printech tetap responsif; setelah 30 detik muncul pesan "tidak merespons dalam 30 detik"; setelah dialog ditutup, menambah ulang berhasil | Video atau tangkapan layar + catatan waktu | Dok: skenario uji stabilitas P9 | BLOCKED |
-| IMP-09 | Operator dan mesin | CDR yang diedit lalu ditambah ulang | Tambah CDR; ubah dan simpan CDR di CorelDRAW; tambah lagi | Desain kedua memakai isi terbaru | Tangkapan layar kedua desain | Usul | BLOCKED — Kode diperbaiki 2026-10-19 (D1): simpanan hasil konversi memakai versi file; belum diuji dengan CorelDRAW |
+| IMP-09 | Operator dan mesin | CDR yang diedit lalu ditambah ulang | Tambah CDR; ubah dan simpan CDR di CorelDRAW; tambah lagi | Desain kedua memakai isi terbaru | Tangkapan layar kedua desain | Dok: kebutuhan aplikasi §6 (D1) | BLOCKED — Kode diperbaiki 2026-10-19 (D1): simpanan hasil konversi memakai versi file; belum diuji dengan CorelDRAW |
 | IMP-10 | Validasi data uji | png-transparent.png | Tambah file | Dipangkas sampai isinya, 50,0 × 25,0 mm; 406 dpi; lubang Ø 10 mm mendapat garis kiss dalam, die menutup lubang (aturan donat 2026-10-21) | verifikasi-loader.txt; validasi A5 | Dok: kebutuhan aplikasi F2 | PASS |
 | IMP-11 | Validasi data uji | jpg-low-resolution.jpg | Tambah file | 50,0 × 50,0 mm (±0,5); seluruh gambar dipakai, latar putih tidak dibuang (masukan leader 2026-10-21) | verifikasi-loader.txt; validasi B-ui (2026-10-21) | Dok: kebutuhan aplikasi F2 | PASS — ±122 dpi sejak gambar dipakai utuh (sebelumnya ±102) |
 | IMP-12 | Validasi data uji + pemeriksaan otomatis | svg-vector.svg | Tambah file | 50,0 × 25,0 mm; ±305 dpi; ditempel sebagai gambar (batasan di kebutuhan aplikasi) | verifikasi-loader.txt; pemeriksaan otomatis badge.svg | Dok: kebutuhan aplikasi F1 + batasan SVG (kebutuhan aplikasi §8) | PASS |
-| IMP-13 | Validasi data uji + pemeriksaan otomatis + uji tampilan | jpg-low-resolution.jpg, png-147dpi.png, png-152dpi.png | Tambah file | ±102 dan 147 dpi merah, 152 dpi tidak; peringatan "2 desain resolusi rendah" | verifikasi-loader.txt; ui-semua-input.txt; pemeriksaan otomatis | Dok: kebutuhan aplikasi F12 (ambang 150 dpi masih tebakan, kebutuhan aplikasi §8) | PASS — Temuan D6: 149,5–149,99 dpi tampil "150 dpi" berwarna merah |
-| IMP-14 | Validasi data uji + pemeriksaan otomatis | pdf-large-a3.pdf, jpg-large-24mp.jpg | Tambah file | Dimuat dalam waktu kurang dari 5 detik tanpa crash; A3 280 × 420 mm (±0,3) | verifikasi-loader.txt; pemeriksaan otomatis S9 | Dok: skenario uji garis potong S9. ±0,3: usul | PASS — Halaman di atas 400 mm diubah menjadi gambar paling besar 4000 piksel, ukuran tampil +0,2 mm |
+| IMP-13 | Validasi data uji + pemeriksaan otomatis + uji tampilan | jpg-low-resolution.jpg, png-147dpi.png, png-152dpi.png | Tambah file | ±122 dan 147 dpi merah, 152 dpi tidak; peringatan "2 desain resolusi rendah" | verifikasi-loader.txt; ui-semua-input.txt; pemeriksaan otomatis | Dok: kebutuhan aplikasi F12 (ambang 150 dpi masih tebakan, kebutuhan aplikasi §6) | PASS — D6 diperbaiki 2026-10-28: 149,5–149,99 dpi tampil "150 dpi" dan tidak merah |
+| IMP-14 | Validasi data uji + pemeriksaan otomatis | pdf-large-a3.pdf, jpg-large-24mp.jpg | Tambah file | Dimuat dalam waktu kurang dari 5 detik tanpa crash; A3 280 × 420 mm (±0,3) | verifikasi-loader.txt; pemeriksaan otomatis S9 | Dok: skenario uji garis potong S9. ±0,3: usul | PASS — Halaman di atas 400 mm digambar paling besar 4000 piksel untuk layar dan garis potong (export tetap vektor), ukuran tampil +0,2 mm |
 | IMP-15 | Validasi data uji + uji tampilan | pdf-oversize.pdf | Tambah file | Tidak dipasang; peringatan "1 lebih besar dari kertas"; aplikasi tetap jalan | ui-semua-input.txt; validasi B1 | Usul (perilaku kode, belum tertulis di kebutuhan aplikasi) | PASS |
-| IMP-16 | Validasi data uji + uji tampilan | pdf-rotated.pdf | Tambah file | Ditempel sebagai gambar ±254 dpi, 30 × 60 mm; peringatan "1 PDF ditempel sebagai gambar…" | validasi X3; ui-semua-input.txt | Dok: kebutuhan aplikasi §8 (batasan + peringatan) | PASS — Peringatan ditambahkan 2026-10-18, belum di-commit |
+| IMP-16 | Validasi data uji + uji tampilan | pdf-rotated.pdf | Tambah file | Ditempel sebagai gambar ±254 dpi, 30 × 60 mm; peringatan "1 PDF ditempel sebagai gambar…" | validasi X3; ui-semua-input.txt | Dok: kebutuhan aplikasi §8 (batasan + peringatan) | PASS — Peringatan ditambahkan 2026-10-18 |
 | IMP-17 | Validasi data uji + uji tampilan | 01-input/khusus/pdf-encrypted.pdf | Dimuat lalu diexport lewat mesin Printech; tampilan: aplikasi dibuka dengan file sebagai argumen; validasi X3 | Dimuat (vektor bila pustaka PDFsharp bisa menempelnya; bila tidak, gambar + peringatan); export tetap jadi tanpa error | 04-evidence/2026-10-21-pdf-terenkripsi.txt, -ui.png | Dok: kebutuhan aplikasi §8 | PASS — D8 diperbaiki 2026-10-21: dimuat sebagai gambar 60 × 30 mm + peringatan, export jadi. Sebelumnya FAIL: dimuat sebagai vektor, lalu export berhenti dengan error |
 | IMP-18 | Uji sekali jalan | PDF berisi kotak putih + logo (kotak memenuhi halaman / tidak) | Dimuat lewat mesin pemuat Printech | Kotak putih dipertahankan, garis mengelilingi kotak (keputusan 2026-10-21: latar tidak dibuang otomatis) | 04-evidence/2026-10-21-d7-kotak-putih.txt | Masukan leader 2026-10-21; kebutuhan aplikasi §10 butir 9 | PASS — Halaman putih penuh 100 × 100 mm, kotak 84 × 84 mm: keduanya kotak. Sebelumnya halaman putih penuh mengikuti logo (D7) |
 | IMP-19 | Uji tampilan | Semua file 01-input sekaligus | Jalankan aplikasi dengan semua file sebagai argumen | 19 desain; "18 stiker di 2 lembar."; 3 peringatan; "54% · sisa 46%"; judul lembar 4 pcs 90% dan 14 pcs 17% (tanda registrasi aktif sejak 2026-10-26; sebelumnya 92% dan 16%) | ui-semua-input.txt; 04-evidence/2026-10-26-validasi-garis-potong-nesting.txt | Usul (angka dari validasi B-ui) | PASS — Diulang 2026-10-26 (uji semua file input, ui-semua-input.ps1): status, peringatan, dan 54% sama; lembar 1 4 pcs 90% dan lembar 2 14 pcs 17%, sama dengan validasi B-ui, karena area 6 mm di sekitar tanda registrasi dikosongkan; memori 81 MB |
-| IMP-20 | Validasi data uji | 01-input dan 01-input/customer | powershell -ExecutionPolicy Bypass -File cek-original.ps1 | Semua baris "sama"; exit code 0 | Hasil cek file asli | Permintaan user: file asli tidak berubah | PASS — 15/15 |
+| IMP-20 | Validasi data uji | 01-input, 01-input/khusus, 01-input/latar, dan 01-input/customer | powershell -ExecutionPolicy Bypass -File cek-original.ps1 | Semua baris "sama"; exit code 0 | Hasil cek file asli | Permintaan user: file asli tidak berubah | PASS — 23/23 sejak 2026-10-21; semula 15/15 |
 | IMP-21 | Uji tampilan (skrip) | 01-input/khusus/invalid-file.png, .jpg, .svg | Uji file khusus (ui-file-khusus.ps1) | Dialog "Gagal memuat"; aplikasi tidak crash; file lain tetap masuk | 04-evidence/2026-10-28-ui-file-khusus.txt | Usul | PASS — Sejak 2026-10-28 (D9): "Gambar rusak atau bukan file PNG/JPG yang valid." dan "SVG rusak atau bukan file SVG yang valid." |
-| IMP-22 | Uji tampilan | File customer di 01-input/customer | Tambah file; bandingkan dengan hasil-benar.md | Sesuai hasil-benar.md | 04-evidence/customer/ | Usul | NOT RUN — Belum ada file customer |
+| IMP-22 | Validasi data uji | File pengganti: data uji buatan sendiri yang sudah ada di 01-input (PDF, AI, PNG, JPG, SVG, PDF banyak halaman, PDF besar) | validasi.ps1 lalu validasi.py | SEMUA LULUS | Laporan validasi, semua bagian | Keputusan user 2026-10-31 | PASS — Pengganti sementara (keputusan user 2026-10-31). File customer asli belum diuji; ganti lagi bila tersedia. |
 | IMP-23 | Validasi data uji + uji tampilan | 01-input/latar/png-latar-abu-muda.png, png-latar-pink-pastel.png, png-latar-putih.png | Dimuat dan diexport lewat mesin Printech, warna latar diukur dari gambar render MuPDF; tampilan: aplikasi dibuka dengan ketiga file sebagai argumen | Semua latar utuh di layar dan PDF, termasuk putih (sejak 2026-10-21); garis kiss mengelilingi kotak gambar | 04-evidence/2026-10-21-png-latar.txt, -sebelum.png, -sesudah.png, -ui.png | Temuan tim 2026-10-21 (D10) | PASS — Sebelum perbaikan FAIL: latar tinggal 5 % dan logo ±4× lebih besar. Diperbaiki 2026-10-21 (fungsi Loader.WhiteBorder) |
 
 ### Garis potong
 
 | Kode | Jenis | Input | Langkah | Hasil benar | Bukti | Sumber | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CUT-01 | Validasi data uji | Lingkaran, persegi, AI, SVG, PNG, JPG | validasi A1 | Median jarak garis ke artwork = offset ±0,25 mm; jarak terjauh paling banyak offset + 0,5 mm | Laporan validasi A1 | Dok: kebutuhan aplikasi F3. Toleransi: usul | PASS — Median − offset −0,19 s.d. +0,02 |
+| CUT-01 | Validasi data uji | Lingkaran, persegi, AI, SVG, PNG, JPG | validasi A1 | Median jarak garis ke artwork = offset ±0,25 mm; jarak terjauh paling banyak offset + 0,5 mm (desain kotak: offset × √2 + 0,5) | Laporan validasi A1 | Dok: kebutuhan aplikasi F3. Toleransi: usul | PASS — Median − offset −0,19 s.d. +0,02 |
 | CUT-02 | Validasi data uji + pemeriksaan otomatis | png-rough-edge.png, bintang, rough.jpg | validasi A2a; pemeriksaan otomatis S5 | Panjang garis selalu turun seiring Halus naik; titik pada Halus 1 dan 2 lebih sedikit daripada Halus 0 | Laporan A2a; pemeriksaan otomatis S5; validasi-halus.png | Dok: kebutuhan aplikasi F16; skenario uji garis potong S5 | PASS |
-| CUT-03 | Validasi data uji + pemeriksaan otomatis | rough.jpg (S1), png-rough-edge.png (A2b, info) | pemeriksaan otomatis S1; validasi A2b | rough.jpg: titik berkurang minimal 60% dari Halus 0 ke Halus 1; png-rough-edge.png hanya dicatat | pemeriksaan otomatis S1; 04-evidence/2026-10-27-validasi-keputusan-d3-d5.txt | Dok: kebutuhan aplikasi §8 (target 60–80%); S1; keputusan D5 2026-10-27 | PASS — S1 lulus (74%). png-rough-edge.png berkurang 54%, dicatat sebagai info sesuai keputusan D5 |
+| CUT-03 | Validasi data uji + pemeriksaan otomatis | rough.jpg (S1), png-rough-edge.png (A2b, info) | pemeriksaan otomatis S1; validasi A2b | rough.jpg: titik berkurang minimal 60% dari Halus 0 ke Halus 1; png-rough-edge.png hanya dicatat | pemeriksaan otomatis S1; 04-evidence/2026-10-27-validasi-keputusan-d3-d5.txt | Dok: kebutuhan aplikasi §8 (target 60–80%); S1; keputusan D5 2026-10-27 | PASS — S1 lulus (kiss 75%, die 64%). png-rough-edge.png berkurang 54%, dicatat sebagai info sesuai keputusan D5 |
 | CUT-04 | Validasi data uji + pemeriksaan otomatis | Semua desain uji | validasi A3; pemeriksaan otomatis S6 | 0 titik garis kiss di luar garis die | Laporan A3; pemeriksaan otomatis S6 | Dok: kebutuhan aplikasi §6 (die membungkus kiss) | PASS |
 | CUT-05 | Validasi data uji | Semua desain uji | validasi A4 | Jarak terdekat garis ke artwork minimal offset − 0,3 mm, dengan toleransi galat kurva 0,15 mm | 04-evidence/2026-10-27-validasi-keputusan-d3-d5.txt | Dok: kebutuhan aplikasi §6 (penjaga jarak); keputusan D3 2026-10-27 | PASS — Validasi 2026-10-27: 158/158 garis di atas batas dengan toleransi; 43 garis di bawah offset − 0,3 mm, terdalam 0,13 mm; garis tetap di luar artwork |
 | CUT-06 | Pemeriksaan otomatis | Bintang, offset 0,5 dan 0 mm | pemeriksaan otomatis S4 | Luas artwork di luar garis kurang dari 0,5 mm² (offset 0,5) dan kurang dari 3 mm² (offset 0) | pemeriksaan otomatis S4 | Dok: skenario uji garis potong S4 | PASS |
@@ -268,14 +268,14 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | EDIT-01 | Uji tampilan (skrip) | Layout apa pun | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-01) | Pindah ke posisi kosong terdekat; tidak merah | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F7, F19 | PASS — Fungsi tempel otomatis (Nest.Snap) lulus di pemeriksaan otomatis |
 | EDIT-02 | Uji tampilan (skrip) | Layout apa pun | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-02) | Putar 90° + tempel otomatis; garis dan artwork ikut berputar | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F7, F19 | PASS — Tempel otomatis setelah putar lulus di pemeriksaan otomatis |
 | EDIT-03 | Uji tampilan (skrip) | Layout apa pun | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-03) | Bergerak tanpa tempel otomatis; menabrak atau keluar margin = merah + peringatan | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F7 | PASS |
-| EDIT-04 | Uji tampilan (skrip) | Layout apa pun | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-04) | Stiker hilang; status dan bahan diperbarui; lembar kosong dihapus | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F7 | PASS |
+| EDIT-04 | Uji tampilan (skrip) | Layout apa pun | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-04) | Stiker hilang; status dan bahan diperbarui; lembar kosong dihapus | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F7 | PASS — Uji hanya membaca status; bahan dan lembar kosong dicek dari kode (DeleteSel, DropEmpty), bukan lewat uji ini |
 | EDIT-05 | Uji tampilan (skrip) | Desain gambar | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-05) | Desain dimuat ulang dengan lebar baru; jumlah stiker = total salinan | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F2 | PASS |
-| EDIT-06 | Uji tampilan (skrip) | Layout dengan edit manual | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-06) | Layout dibuat ulang; edit manual hilang (belum ada urungkan) | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi §8 (belum ada urungkan) | PASS — Usul: konfirmasi sebelum menimpa edit manual |
+| EDIT-06 | Uji tampilan (skrip) | Layout dengan edit manual | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-06) | Layout dibuat ulang; edit manual hilang | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F22 | PASS — Urungkan mengembalikannya sejak 2026-10-21 (dicek dari kode, bukan lewat uji ini). Tanpa konfirmasi sebelum menimpa edit manual (keputusan user 2026-11-02) |
 | EDIT-07 | Uji tampilan (skrip) | Layout dengan stiker merah | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-07) | Dialog konfirmasi muncul; pilih Tidak = export batal | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Kode (jendela utama) | PASS |
 | EDIT-08 | Uji tampilan (skrip) | Layout apa pun | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-08) | Layout dikosongkan lalu langsung disusun ulang di kertas baru; judul lembar menyebut A4 | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F4 | PASS — Harapan dikoreksi sesuai kode; 3 dari 3 jalan lulus |
 | EDIT-10 | Pemeriksaan otomatis | Foto berlatar polos | Rapikan: hapus latar, penghapus klik, kikis tepi, urungkan | Latar hilang; urungkan mengembalikan; export memakai hasil Rapikan | pemeriksaan otomatis (Rapikan), P4, P5 | Dok: kebutuhan aplikasi F15 (fitur dibekukan) | PASS — Jendela Rapikan tidak diuji ulang pada pemeriksaan ini |
 | EDIT-12 | Uji tampilan (skrip) | 4 desain dari 01-input | Uji urungkan (ui-undo.ps1): Penuhi lembar, menu Urungkan, Ctrl+Y, Ctrl+Z, Ctrl+Shift+Z | Jumlah stiker kembali dan maju sesuai langkah; Ctrl+Shift+Z tidak memilih alat Zoom | 04-evidence/2026-10-21-ui-undo.txt; diulang 2026-10-26-ui-undo.txt (3/3) | Masukan leader 2026-10-21 | PASS — 4 → 58 → 4 → 58 → 4 → 58 stiker |
-| EDIT-11 | Uji tampilan (skrip) | - | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-11) | Semua teks tampilan dan Print Ticket berbahasa Inggris | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F10 | PASS |
+| EDIT-11 | Uji tampilan (skrip) | - | Uji tata letak (ui-edit-layout.ps1, langkah EDIT-11) | Semua teks tampilan dan Print Ticket berbahasa Inggris | 04-evidence/2026-10-19-ui-edit-layout.txt; diulang 2026-10-26-ui-edit-layout.txt (10/10) | Dok: kebutuhan aplikasi F10 | PASS — Uji hanya membaca status dan tombol Auto layout; Print Ticket berbahasa Inggris dicek dari kode (Export memakai Lang.T), bukan lewat uji ini |
 | EDIT-13 | Uji tampilan (skrip) | png-transparent.png | Uji editor tanpa mouse (ui-editor-garis.ps1): buka Edit garis potong, Simplify 0,5 mm, tombol Urungkan/Ulangi editor, Simpan, menu Edit > Urungkan | Editor menampilkan kiss dan die; Simplify mengurangi titik garis yang diedit saja; Simpan memberi tanda "garis manual"; Urungkan di jendela utama mengembalikan garis otomatis | 04-evidence/2026-10-23-bentuk-garis-potong.txt, 2026-10-21-editor-garis-potong.png, 2026-10-21-editor-garis-manual.png | Masukan leader 2026-10-21; kebutuhan aplikasi F23 | PASS — 2026-10-23: 8/8 langkah lulus; titik kurva: kiss 14 → 11 titik, die 10 tetap (poligon 2026-10-21: 31 → 22 titik) |
 | EDIT-14 | Uji tampilan | Desain apa pun | Seret titik, klik di garis atau kurva untuk menambah titik, Delete, Ctrl+Z/Ctrl+Y di editor, seret titik keluar kotak | Titik mengikuti mouse dan berhenti di batas kotak; titik baru di posisi klik tanpa mengubah bentuk; garis tertutup dengan 3 titik terhapus bila ada garis lain; Simpan nonaktif saat kiss keluar die | 04-evidence/2026-10-26-ui-editor-mouse.txt, 2026-10-26-editor-mouse-batas-kotak.png | Masukan leader 2026-10-21; kebutuhan aplikasi F23 | PASS — Mouse dan keyboard sungguhan (uji editor dengan mouse, ui-editor-mouse.ps1, png-transparent.png): titik bintang diseret jauh ke kanan berhenti di batas kanan kotak, dan Simpan nonaktif; Ctrl+Z dan Ctrl+Y di editor; klik di tengah sisi bintang menambah 1 titik di posisi klik tanpa mengubah garis, Delete menghapusnya; garis dalam otomatis (2 titik) hilang seluruhnya setelah 1 Delete, garis luar tetap. Logikanya juga lulus di pemeriksaan otomatis S12 (CUT-14) |
 | EDIT-15 | Uji tampilan (skrip) | png-transparent.png | Uji editor tanpa mouse (ui-editor-garis.ps1): centang Smart select, baca Toleransi awal | Kotak centang bisa dinyalakan; Toleransi awal 64 untuk PNG transparan | 04-evidence/2026-10-22-smart-select.txt | Spesifikasi smart select 2026-10-22 | PASS — Langkah EDIT-04 di skrip; 7/7 langkah lulus 2026-10-23 |
@@ -292,8 +292,8 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | EXP-01 | Validasi data uji + pemeriksaan otomatis | Semua skenario | validasi X1, E1; pemeriksaan otomatis | Halaman = lembar; ukuran halaman ±0,01 mm; posisi artwork ±0,05 mm; ukuran desain = file asli ±0,05 mm | Laporan X1/E1 | Dok: spesifikasi export. Toleransi: usul | PASS |
 | EXP-02 | Validasi data uji + pemeriksaan otomatis | Semua | validasi X2 (pemeriksaan isi PDF); pemeriksaan otomatis S8 | Garis hanya `0 1 0 0 K` (kiss) dan `1 0 0 0 K` (die); 0 warna RGB, profil warna (ICC), atau warna khusus (Separation); 0 profil output (OutputIntent) | Laporan X2; pemeriksaan otomatis S8 | Dok: kebutuhan aplikasi F9 | PASS |
 | EXP-03 | Validasi data uji | Semua | validasi X2 (pisah warna CMYK oleh MuPDF, tanpa penghalusan tepi) | Kiss tepat C0 M100 Y0 K0; die tepat C100 M0 Y0 K0 | Laporan X2; validasi-separasi-cmyk.png | Dok: spesifikasi tahap 4 | PASS — Pisah warna di CorelDRAW: HW-02 |
-| EXP-04 | Validasi data uji + pemeriksaan otomatis | PDF/AI | validasi X3; pemeriksaan otomatis | PDF/AI = objek vektor (Form XObject); warna isi CMYK sama dengan file input; gambar hanya PNG/JPG/SVG dan PDF yang diputar | Laporan X3 | Dok: kebutuhan aplikasi F9 | PASS |
-| EXP-05 | Pemeriksaan otomatis | logo.pdf, lalu isi file diganti multi.pdf dan file dihapus | pemeriksaan otomatis: muat PDF; ganti isi file; muat ulang seperti Susun; tambah ulang; hapus file; export | Muat ulang dan export memakai isi saat dimuat (49,5 mm, tanpa peringatan); menambah ulang memakai isi baru (28,3 mm) | selfcheck.txt baris "PDF diganti lalu dihapus setelah dimuat" | Usul | PASS — Diperbaiki 2026-10-19 (D2): PDF/AI disalin ke folder sementara saat dimuat |
+| EXP-04 | Validasi data uji + pemeriksaan otomatis | PDF/AI | validasi X3; pemeriksaan otomatis | PDF/AI = objek vektor (Form XObject); warna isi CMYK sama dengan file input; gambar hanya PNG/JPG/SVG, PDF yang diputar, dan PDF yang gagal ditempel (terenkripsi, D8) | Laporan X3 | Dok: kebutuhan aplikasi F9 | PASS |
+| EXP-05 | Pemeriksaan otomatis | logo.pdf, lalu isi file diganti multi.pdf dan file dihapus | pemeriksaan otomatis: muat PDF; ganti isi file; muat ulang seperti Susun; tambah ulang; hapus file; export | Muat ulang dan export memakai isi saat dimuat (49,5 mm, tanpa peringatan); menambah ulang memakai isi baru (28,3 mm) | selfcheck.txt baris "PDF diganti lalu dihapus setelah dimuat" | Dok: kebutuhan aplikasi §6 (D2) | PASS — Diperbaiki 2026-10-19 (D2): PDF/AI disalin ke folder sementara saat dimuat |
 | EXP-06 | Validasi data uji + pemeriksaan otomatis | Skenario B | validasi X4; pemeriksaan otomatis | 1 JPEG per lembar; sisi panjang 2000 piksel; isi di posisi stiker sama dengan PDF (cocok minimal 95%) | Laporan X4 | Dok: kebutuhan aplikasi F13 | PASS |
 | EXP-07 | Validasi data uji + pemeriksaan otomatis | Skenario B | validasi X5; pemeriksaan otomatis | 1 halaman A4; total lembar, total pcs, efisiensi, per lembar, per desain, dan pengaturan sesuai layout | Laporan X5 | Dok: kebutuhan aplikasi F20 | PASS |
 | EXP-08 | Uji sekali jalan | 22 desain dari 01-input, A3 × 12 (13 lembar, 21 desain terpasang) | Print Ticket dibuat lewat mesin export | Tetap 1 halaman; ada baris "… dan N lainnya" | 04-evidence/2026-10-19-print-ticket-panjang.txt; 03-exports/2026-10-19-print-ticket-13-lembar.pdf | Kode (kode export) | PASS — Baris "… dan 3 lainnya" (lembar) dan "… dan 1 lainnya" (desain); blok terbawah 270 mm |
@@ -332,7 +332,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 
 - **Pemeriksaan otomatis:** `selfcheck.txt` dan exit code. Simpan salinannya di `Printech-TestData/04-evidence/`.
 - **Validasi data uji:** laporan `04-evidence/<tanggal>-validasi-garis-potong-nesting.txt`, gambar bukti `04-evidence/<tanggal>-validasi-*.png`, dan hasil export di `03-exports/validasi/`.
-- **Uji tampilan:** tangkapan layar bernama `TANGGAL-KODE-keterangan.png` di `Printech-TestData/04-evidence/`.
+- **Uji tampilan:** tangkapan layar bernama `TANGGAL-nama-file-jenis.png` di `Printech-TestData/04-evidence/`.
 - **Operator dan mesin:** catat bahan, versi CorelDRAW dan Cutting Master 5, serta model dan firmware Graphtec.
   - Foto hasil cetak dan potong dengan penggaris atau kaca pembesar.
   - Ukuran selisih potong (mm) per desain.
@@ -342,10 +342,10 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 
 ### Sudah tertulis
 
-- [Kebutuhan aplikasi](../kebutuhan-aplikasi.md) F1–F20: format input, pemangkasan, garis kiss/die, kertas, margin, susun banyak lembar, edit, export CMYK murni, bahasa, dpi 150, preview 2000 piksel, Rapikan, garis dengan sedikit titik, bleed paling besar sama dengan jarak, indikator dan target bahan, tempel otomatis dan preset bahan, Print Ticket.
+- [Kebutuhan aplikasi](../kebutuhan-aplikasi.md) F1–F29: format input, pemangkasan, garis kiss/die, kertas, margin, susun banyak lembar, edit, export CMYK murni, bahasa, dpi 150, preview 2000 piksel, Rapikan, garis dengan sedikit titik, bleed paling besar sama dengan jarak, indikator dan target bahan, tempel otomatis, Print Ticket, penuhi lembar, urungkan, editor garis potong, smart select, desain kotak, preset bentuk, warna border, tanda registrasi, export SVG.
 - Kebutuhan aplikasi §6 (keputusan): penjaga jarak offset − 0,3 mm, die membungkus kiss, grid 1 mm, proses pembantu CDR 30 detik.
-- Kebutuhan aplikasi §8 (batasan): hanya garis luar dan lubang asli yang tetap terbuka (donat) yang dipotong; SVG dan PDF yang diputar menjadi gambar dengan peringatan.
-- [Skenario uji garis potong](../UJI-GARIS-POTONG.md) S1–S16, [skenario uji stabilitas](../UJI-STABILITAS.md) P1–P10, dan daftar uji operator di kebutuhan aplikasi §10 butir 1–18.
+- Kebutuhan aplikasi §8 (batasan): hanya garis luar dan lubang asli yang tetap terbuka (donat) yang dipotong; SVG menjadi gambar (tanpa peringatan), dan PDF yang diputar menjadi gambar dengan peringatan.
+- [Skenario uji garis potong](../UJI-GARIS-POTONG.md) S1–S17, [skenario uji stabilitas](../UJI-STABILITAS.md) P1–P10, dan daftar uji operator di kebutuhan aplikasi §10 butir 1–18.
 - Spesifikasi leader:
   - bagian 2: memori ±120 MB, tampilan tetap responsif;
   - bagian 3: CMYK murni (DeviceCMYK), bleed;
@@ -356,7 +356,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 
 1. Daftar periksa rilis 5 butir (bagian 9).
 2. Angka toleransi validasi:
-   - A1: median ±0,25 mm, jarak terjauh offset + 0,5 mm;
+   - A1: median ±0,25 mm, jarak terjauh offset + 0,5 mm (desain kotak: offset × √2 + 0,5);
    - E1/X1: 0,05 mm;
    - B7: 0,5 poin persen;
    - X4: kecocokan 95%;
@@ -365,21 +365,16 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
    - garis potong ±0,4 mm.
 3. Toleransi selisih potong fisik di Graphtec. Usulan ±0,5 mm. [Catatan riset](../RESEARCH.md) menyebut ketelitian mesin ±0,3 mm, tetapi itu belum dipastikan.
 4. Beban acuan untuk target memori ±120 MB, misalnya 20 desain termasuk satu foto 24 MP.
-5. Perilaku yang belum ditetapkan:
-   - PDF dengan kotak putih (IMP-18);
-   - CDR diedit lalu ditambah ulang (IMP-09);
-   - PDF sumber berubah sebelum export (EXP-05);
-   - AI tanpa PDF-compatible (IMP-04);
-   - konfirmasi sebelum Susun menimpa edit manual (EDIT-06).
+5. **Diputuskan:** perilaku yang dulu belum ditetapkan: PDF dengan kotak putih (IMP-18, D7), CDR diedit lalu ditambah ulang (IMP-09, D1), PDF sumber berubah sebelum export (EXP-05, D2), AI tanpa PDF-compatible (IMP-04, D9), dan Susun menimpa edit manual tanpa konfirmasi karena bisa diurungkan (EDIT-06, keputusan user 2026-11-02).
 6. **Diputuskan 2026-10-27:** target pengurangan titik 60% berlaku untuk logo kasar seperti `rough.jpg` (S1); logo bergelombang hanya dicatat (CUT-03, D5).
-7. Definisi tingkat dampak (bagian 1), dan daftar pemeriksaan otomatis yang wajib untuk rilis.
+7. **Diputuskan:** definisi tingkat dampak (bagian 1) pada 2026-10-31, dan pemeriksaan otomatis yang wajib untuk rilis pada 2026-10-28 (bagian 12).
 
-## 9. Daftar periksa rilis (usulan) dan status 2026-10-19
+## 9. Daftar periksa rilis (usulan) dan statusnya
 
 | Butir | Kasus uji | Status |
 | --- | --- | --- |
 | 1. Build dan pengujian otomatis | Bagian 4 | Lulus 2026-10-27: build 0 warning, pemeriksaan otomatis 4/4, validasi exit code 0 setelah keputusan D3 dan D5. |
-| 2. Input dan bentuk garis | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27). IMP-05, IMP-08, IMP-09, IMP-18 BLOCKED. IMP-22 (file customer) NOT RUN. |
+| 2. Input dan bentuk garis | IMP-\*, CUT-\*, NEST-\* | Belum. CUT-03, CUT-05, CUT-10 PASS sejak keputusan D3 dan D5 (2026-10-27); IMP-22 PASS dengan data uji pengganti (2026-10-31). IMP-05, IMP-08, IMP-09 BLOCKED. |
 | 3. Export dan kecocokan dengan aplikasi lain | EXP-\*, HW-01 sampai HW-04 | Belum. Semua EXP lulus; PDF terenkripsi tidak lagi menggagalkan export (D8 diperbaiki 2026-10-21). HW-01 sampai HW-04 BLOCKED. |
 | 4. Produksi fisik | HW-05 sampai HW-08 | Belum. BLOCKED. |
 | 5. Dokumentasi dan masalah | Bagian 7 dan 10 | Belum. Tidak ada masalah yang masih terbuka (D1, D2, D4, D6, D8, D9, D10 sudah diperbaiki; D3, D5, D7 sudah diputuskan). |
@@ -399,13 +394,13 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | D9 | **Diperbaiki 2026-10-28:** file rusak memberi pesan untuk operator per jenis file (AI, PDF, PNG/JPG, SVG); pesan teknisnya tetap tersimpan di dalam error (InnerException). Dicek pemeriksaan otomatis dan uji file khusus (`ui-file-khusus.ps1`). Sebelumnya: pesan error untuk file rusak masih teknis, sebagian berbahasa Inggris: "PDF tidak bisa dibuka (PDFium error 3)." untuk AI tanpa PDF-compatible; "No imaging component suitable…" untuk PNG/JPG; "Data at the root level is invalid…" untuk SVG. | Uji file khusus (`ui-file-khusus.ps1`) | [kode pembaca PDF](../../StickerLayout/Pdfium.cs), [kode jendela utama](../../StickerLayout/MainWindow.xaml.cs) | Minor |
 | D10 | **Diperbaiki 2026-10-21, lalu digantikan masukan leader hari yang sama:** latar gambar tanpa bagian transparan tidak pernah dibuang otomatis, termasuk putih; dicek pemeriksaan otomatis. Laporan tim awal: latar warna muda (abu 242, pink pastel) hilang dari layar dan PDF, tinggal cincin selebar offset kiss, dan lebar stiker dipakai untuk logo saja. | [catatan latar PNG](../../Printech-TestData/04-evidence/2026-10-21-png-latar.txt) | [kode mesin](../../StickerLayout/Core.cs) | Mayor |
 
-**Batasan yang sudah diketahui** (tercatat di kebutuhan aplikasi, bukan masalah baru):
+**Batasan yang sudah diketahui** (bukan masalah baru; sebagian tercatat di kebutuhan aplikasi §6 dan §8):
 
 - file selain CDR dimuat di jalur utama tampilan;
 - Susun otomatis menimpa edit manual; sejak 2026-10-21 bisa dibatalkan dengan urungkan (Ctrl+Z);
 - geser dengan panah tidak memakai tempel otomatis;
 - SVG selalu ditempel sebagai gambar;
-- halaman PDF di atas 400 mm diubah menjadi gambar paling besar 4000 piksel.
+- halaman PDF di atas 400 mm digambar paling besar 4000 piksel untuk layar dan garis potong; export tetap vektor.
 
 **Sudah diperbaiki (di-commit bersama dokumen ini):**
 
@@ -426,12 +421,12 @@ Semua perbaikan di atas ada di [kode mesin](../../StickerLayout/Core.cs), [kode 
 
 D1 dan D2 sudah diperbaiki 2026-10-19; D4, D8, dan D10 pada 2026-10-21; D6 dan D9 pada 2026-10-28. Kasus jenis Operator dan mesin di luar cakupan prototipe, yang dipresentasikan dulu dari laptop tim. Berikutnya:
 
-1. **Keputusan di bagian 12:** pemeriksaan wajib untuk rilis, tingkat dampak, dan lokasi file customer. Toleransi D3 dan D5 sudah diputuskan 2026-10-27.
+1. **Bagian 12 sudah diputuskan semua.** Yang tersisa: menguji file customer asli di `01-input/customer` bila sudah tersedia (sementara memakai data uji pengganti, 2026-10-31). Toleransi D3 dan D5 diputuskan 2026-10-27; pemeriksaan wajib untuk rilis diputuskan 2026-10-28; tingkat dampak diputuskan 2026-10-31.
 
 ## 12. Keputusan yang dibutuhkan
 
 1. **A4/D3, diputuskan 2026-10-27:** toleransi 0,15 mm diterima dan ditulis di aturan.
 2. **A2b/D5, diputuskan 2026-10-27:** target pengurangan titik minimal 60% hanya untuk `rough.jpg` (S1).
 3. **Pemeriksaan otomatis yang wajib untuk rilis, diputuskan 2026-10-28:** sebelum push ke repo tim atau sebelum presentasi wajib build 0 warning, pemeriksaan otomatis 4/4, dan validasi (`validasi.py`) exit code 0. Bila tampilan, editor, atau alur di jendela aplikasi berubah, juga uji tata letak (`ui-edit-layout.ps1`) 10/10 dengan mouse dan keyboard sungguhan (PC tidak dipakai selama uji).
-4. **Tingkat dampak:** apakah usulan tingkat dampak D1–D10 dan definisinya (bagian 1) disetujui?
-5. **File customer:** di mana lokasi file customer yang sudah diizinkan untuk pengujian?
+4. **Tingkat dampak, diputuskan 2026-10-31:** definisi tingkat dampak disetujui; label tiap kasus uji tetap usulan dan diperiksa saat kasusnya gagal.
+5. **File customer, diputuskan 2026-10-31:** diganti sementara dengan data uji buatan sendiri yang sudah ada di 01-input; file customer asli diuji bila sudah tersedia.
