@@ -73,6 +73,7 @@
                             <TextBlock Text="{DynamicResource Nest}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
+                    <CheckBox x:Name="RowsBox" Content="{DynamicResource Rows}" Checked="Rows_Changed" Unchecked="Rows_Changed" Margin="10,0,6,0" VerticalAlignment="Center" ToolTip="{DynamicResource RowsTip}" AutomationProperties.Name="{DynamicResource Rows}"/>
                     <Button Style="{StaticResource Ghost}" Click="Compact_Click" Margin="4,0,0,0" AutomationProperties.Name="{DynamicResource Compact}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE73F;" FontSize="12" Foreground="{StaticResource Dim}"/>

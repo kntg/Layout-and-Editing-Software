@@ -108,7 +108,7 @@ public static class SelfCheck
                 $"D6: 149,6 dpi tampil {DpiOf(1496).DpiText}, merah {DpiOf(1496).LowDpi}; 149,4 dpi tampil {DpiOf(1494).DpiText}, merah {DpiOf(1494).LowDpi}");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah); 149,6 dpi = {DpiOf(1496).DpiText} tidak merah");
 
-            // Skenario uji garis potong S1-S9 dan S11-S16 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S18 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -828,6 +828,49 @@ public static class SelfCheck
                     lines == 0 && curves > 0 && strokes.SequenceEqual(["0 1 0 0", "1 0 0 0"]) && otherColor == 0,
                     $"halaman {si + 1}: {curves} kurva, {lines} garis lurus, warna garis {string.Join(" / ", strokes)}, operator RGB/ruang warna lain {otherColor}");
             }
+
+            // S18: susun berbaris (permintaan user 2026-11-02), tanpa dan dengan tanda registrasi; lalu desain sedikit mengisi sisa baris
+            // rata tengah, desain yang cukup untuk satu baris mulai di baris baru, diputar hanya bila perlu, dan yang terlalu besar dihitung.
+            var (rowBad, rowLog) = (new List<string>(), new List<string>());
+            foreach (bool marks in new[] { false, true })
+            {
+                var job = Load();
+                int want = job.Sum(s => s.Copies);
+                var rs = Nest.Rows(job, A4W, A4H, Margin, Gap, out int rowBig, marks);
+                if (rowBig != 0 || rs.Sum(x => x.Count) != want || rs.Count < 2) rowBad.Add($"{rs.Sum(x => x.Count)} dari {want} stiker di {rs.Count} lembar, tidak muat {rowBig}");
+                rowBad.AddRange(RowsErrors(rs, marks));
+                var rsw = Stopwatch.StartNew();
+                var rf = Nest.FillRows(job, A4W, A4H, Margin, Gap, out int rowAdded, marks);
+                long fillMs = rsw.ElapsedMilliseconds;
+                Nest.FillRows(job, A4W, A4H, Margin, Gap, out int rowAgain, marks);
+                if (rowAdded <= 0 || rowAgain != 0 || rf.Count != rs.Count || rf.Sum(x => x.Count) != want + rowAdded)
+                    rowBad.Add($"Penuhi lembar: +{rowAdded}, isi ulang +{rowAgain}, lembar {rs.Count} -> {rf.Count}");
+                rowBad.AddRange(RowsErrors(rf, marks));
+                rowLog.Add($"{(marks ? "dengan" : "tanpa")} tanda registrasi: {want} stiker -> {rs.Count} lembar A4, pemakaian {Use(rs):P1} (padat {(marks ? regRun : sheets).Count} lembar, {Use(marks ? regRun : sheets):P1}), Penuhi lembar +{rowAdded} ({fillMs} ms)");
+                var rowBled = Loader.Load(Path.Combine(dir, "circle.png"), 0, 40, kiss, die, bleed: 2);
+                rowBled.Copies = 20;
+                rowBad.AddRange(RowsErrors(Nest.Rows([rowBled], A4W, A4H, Margin, Gap, out _, marks), marks));
+            }
+            Sticker Box(int w, int h, int copies = 1)
+            {
+                var b = Png(Draw(dc => dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, w * 2, h * 2)), w * 2, h * 2), w, kiss, die);
+                b.Copies = copies;
+                return b;
+            }
+            var (flat, tall) = (Box(30, 20), Box(30, 60));
+            var mix = Nest.Rows([flat, tall], A4W, A4H, Margin, Gap, out _);
+            if (mix.Count != 1 || mix[0][0].S != tall || mix[0][1].X <= mix[0][0].X || Math.Abs(mix[0][0].Y + mix[0][0].BH / 2 - mix[0][1].Y - mix[0][1].BH / 2) > 1)
+                rowBad.Add("dua desain satuan tidak sebaris, tidak rata tengah, atau desain tertinggi tidak dulu");
+            var (rowA, rowB) = (Box(30, 30, 7), Box(30, 20, 7));
+            var blocks = Nest.Rows([rowA, rowB], A4W, A4H, Margin, Gap, out _).SelectMany(x => x).ToList();
+            var (lastA, firstB) = (blocks.Where(p => p.S == rowA).Max(p => p.Y), blocks.First(p => p.S == rowB));
+            if (firstB.Y <= lastA || firstB.X != blocks[0].X) rowBad.Add("desain yang cukup untuk satu baris tidak mulai di baris baru");
+            var turned = Nest.Rows([Box(220, 60)], A4W, A4H, Margin, Gap, out int wideBig);
+            Nest.Rows([Box(400, 400)], A4W, A4H, Margin, Gap, out int hugeBig);
+            if (wideBig != 0 || turned[0][0].Rot % 180 == 0 || hugeBig != 1) rowBad.Add($"putar atau terlalu besar salah: tidak muat {wideBig}, {hugeBig}");
+            S(18, "susun berbaris: baris dan kolom lurus, salinan berkumpul, tanpa tabrakan, diputar hanya bila perlu, Penuhi lembar", rowBad.Count == 0,
+                string.Join("; ", rowBad.Distinct().Concat(rowLog)));
+
             Check(fails.Count == 0, "skenario gagal: " + string.Join(", ", fails));
 
             Save(Export.Snapshot(Nest.Sheet(sheets[0], A4W, A4H, Margin, null, 0), A4W, A4H, 4), Path.Combine(dir, "layout-1.png"));
@@ -960,6 +1003,33 @@ public static class SelfCheck
             return (Regex.Matches(c, @"(?<=\s)l(?=\s)").Count, Regex.Matches(c, @"(?<=\s)c(?=\s)").Count);
         }
         finally { File.Delete(tmp); }
+    }
+
+    // Susun berbaris per lembar: tanpa tabrakan, tidak diputar tanpa perlu, desain sama berkumpul, baris dan kolom tiap desain lurus.
+    static List<string> RowsErrors(List<List<Placed>> sheets, bool marks)
+    {
+        var bad = new List<string>();
+        static List<double> Steps(IEnumerable<double> values)
+        {
+            var v = values.Distinct().Order().ToList();
+            return v.Zip(v.Skip(1), (a, b) => b - a).ToList();
+        }
+        static bool Straight(List<double> steps) => steps.All(d => Math.Abs(Math.IEEERemainder(d, steps.Min())) < 1e-6);
+        foreach (var sh in sheets)
+        {
+            if (Nest.Check(sh, A4W, A4H, Margin, marks) != 0) bad.Add($"{sh.Count(p => p.Bad)} stiker bertabrakan, keluar margin, atau kena tanda");
+            var order = sh.OrderBy(p => p.Y).ThenBy(p => p.X).Select(p => p.S).ToList();
+            foreach (var g in sh.GroupBy(p => p.S))
+            {
+                if (g.Any(p => p.Rot != 0)) bad.Add($"{g.Key.Name}: diputar tanpa perlu");
+                if (order.LastIndexOf(g.Key) - order.IndexOf(g.Key) + 1 != g.Count()) bad.Add($"{g.Key.Name}: salinan tidak berkumpul");
+                var (dx, dy) = (Steps(g.Select(p => p.X)), Steps(g.Select(p => p.Y)));
+                if (!Straight(dx) || !Straight(dy)) bad.Add($"{g.Key.Name}: baris atau kolom tidak lurus");
+                var outer = (g.Key.DieGeo ?? g.Key.KissGeo)!.Bounds;
+                if (dx.Any(d => d < outer.Width + Gap - 1e-6) || dy.Any(d => d < outer.Height + Gap - 1e-6)) bad.Add($"{g.Key.Name}: jarak antar stiker kurang dari {Gap} mm");
+            }
+        }
+        return bad;
     }
 
     // Export SVG ke folder sementara. Kotak gambar mengikuti export PDF: bleed di BleedRect, gambar sumber di Full (gambar

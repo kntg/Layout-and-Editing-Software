@@ -36,7 +36,8 @@ Isi README ini:
 5. **Periksa layout.**
    - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain atau keluar margin.
-   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah.
+   - **Berbaris:** centang di toolbar untuk menyusun stiker per baris dan kolom, dengan desain yang sama berkumpul. Lebih rapi, tetapi bahan lebih boros pada bentuk tidak beraturan. Susun otomatis, tambah file, dan ganti kertas mengikuti centang ini.
+   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Berbaris dicentang, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
 6. **Export.**
    - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
@@ -179,7 +180,7 @@ Langkah:
 
 - [Kebutuhan aplikasi](docs/kebutuhan-aplikasi.md) (dulu bernama PRD): tujuan, fitur, keputusan, batasan, daftar uji untuk operator, dan cara menjalankan (§11).
 - [Catatan riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S17 dan hasilnya.
+- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S18 dan hasilnya.
 - [Skenario uji stabilitas](docs/UJI-STABILITAS.md): skenario P1–P10 (proses pembantu CDR, kerja paralel, memori) dan hasilnya.
 - [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.

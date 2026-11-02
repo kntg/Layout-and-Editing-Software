@@ -156,7 +156,7 @@ public partial class MainWindow : Window
     bool restoring;
 
     string[] Settings() => [PaperBox.SelectedItem as string ?? "", CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text,
-        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text];
+        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text, $"{RowsBox.IsChecked}"];
 
     Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name))],
         [.. sheets.Select(sh => sh.Select(p => (p.S, p.X, p.Y, p.Rot)).ToList())], [.. sheetH], sheetW, tooBig, Settings());
@@ -192,7 +192,7 @@ public partial class MainWindow : Window
             (CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text) = (v[1], v[2], v[3], v[4]);
             (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[5] == "True", v[6], v[7]);
             (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[8] == "True", v[9], v[10]);
-            (BleedBox.Text, WidthBox.Text) = (v[11], v[12]);
+            (BleedBox.Text, WidthBox.Text, RowsBox.IsChecked) = (v[11], v[12], v[13] == "True");
         }
         finally { restoring = false; }
         items.Clear();
@@ -331,6 +331,8 @@ public partial class MainWindow : Window
 
     void Nest_Click(object s, RoutedEventArgs e) => Arrange();
 
+    void Rows_Changed(object s, RoutedEventArgs e) { if (!restoring && items.Count > 0) Arrange(); }
+
     void Arrange()
     {
         if (items.Count == 0) { Redraw(Lang.T("NestFirst")); return; }
@@ -353,7 +355,7 @@ public partial class MainWindow : Window
                 }
             }
             sheetW = CW;
-            sheets = Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
+            sheets = RowsBox.IsChecked == true ? Nest.Rows(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks) : Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
             sheetH = sheets.Select(_ => CH).ToList();
             for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
             sel = null;
@@ -374,7 +376,14 @@ public partial class MainWindow : Window
     void Compact_Click(object s, RoutedEventArgs e)
     {
         if (sheets.Count == 0) return;
-        int added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
+        int added;
+        if (RowsBox.IsChecked == true)
+        {
+            sheets = Nest.FillRows(items, sheetW, CH, MarginMm, GapMm, out added, HasRegMarks);
+            sheetH = sheets.Select(_ => CH).ToList();
+            sel = null;
+        }
+        else added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
         foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
         List.Items.Refresh();
         for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);

@@ -70,6 +70,8 @@ public static class Lang
         ["SelRot"] = ("Rotasi", "Rotation"),
         ["SelPos"] = ("Posisi", "Position"),
         ["Nest"] = ("Susun otomatis", "Auto layout"),
+        ["Rows"] = ("Berbaris", "In rows"),
+        ["RowsTip"] = ("Susun per baris dan kolom: lebih rapi, bahan lebih boros.", "Arrange in rows and columns: neater, uses more material."),
         ["Compact"] = ("Penuhi lembar", "Fill sheets"),
         ["Redo"] = ("Ulangi", "Redo"),
         ["Filled"] = ("{0} stiker ditambahkan ke ruang kosong.", "{0} stickers added to empty space."),
