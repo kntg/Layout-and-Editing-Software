@@ -232,7 +232,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
    - garis potong ±0,4 mm.
 3. Toleransi selisih potong fisik di Graphtec. Usulan ±0,5 mm. [Catatan riset](../RESEARCH.md) menyebut ketelitian mesin ±0,3 mm, tetapi itu belum dipastikan.
 4. Beban acuan untuk target memori ±120 MB, misalnya 20 desain termasuk satu foto 24 MP.
-5. Perilaku yang belum ditetapkan: konfirmasi sebelum Susun menimpa edit manual (EDIT-06). Yang lain sudah ditetapkan: PDF dengan kotak putih (IMP-18, D7), CDR diedit lalu ditambah ulang (IMP-09, D1), PDF sumber berubah sebelum export (EXP-05, D2), dan AI tanpa PDF-compatible (IMP-04, D9).
+5. **Diputuskan:** perilaku yang dulu belum ditetapkan: PDF dengan kotak putih (IMP-18, D7), CDR diedit lalu ditambah ulang (IMP-09, D1), PDF sumber berubah sebelum export (EXP-05, D2), AI tanpa PDF-compatible (IMP-04, D9), dan Susun menimpa edit manual tanpa konfirmasi karena bisa diurungkan (EDIT-06, keputusan user 2026-11-02).
 6. **Diputuskan 2026-10-27:** target pengurangan titik 60% berlaku untuk logo kasar seperti `rough.jpg` (S1); logo bergelombang hanya dicatat (CUT-03, D5).
 7. **Diputuskan:** definisi tingkat dampak (bagian 1) pada 2026-10-31, dan pemeriksaan otomatis yang wajib untuk rilis pada 2026-10-28 (bagian 12).
 
