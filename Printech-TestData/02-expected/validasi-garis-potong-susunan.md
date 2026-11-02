@@ -105,7 +105,7 @@ Laporan lengkap: [catatan validasi keputusan D3 dan D5](../04-evidence/2026-10-2
 
 | Kode | Hasil | Angka |
 | --- | --- | --- |
-| A2b | Info | Titik kiss logo bergelombang berkurang 54%. `rough.jpg` di pemeriksaan otomatis S1 berkurang 74% (target minimal 60%) |
+| A2b | Info | Titik kiss logo bergelombang berkurang 54%. `rough.jpg` di pemeriksaan otomatis S1 berkurang 75% untuk kiss dan 64% untuk die (target minimal 60%) |
 | A4 | Lulus | 158 dari 158 garis di atas batas dengan toleransi. 43 garis di bawah offset − 0,3 mm, terdalam 0,13 mm. Terdekat: die `pdf-multi-page.pdf p3` 3,57 mm (batas 3,70, dengan toleransi 3,55) |
 | A5 | Lulus | 0 garis keluar rentang (sebelumnya 5, semuanya di batas bawah = A4) |
 | Lainnya | Lulus | Sama dengan sebelumnya |

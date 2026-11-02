@@ -114,7 +114,7 @@ draw.rounded_rectangle((100, 100, 899, 499), radius=60, fill=(40, 160, 90, 255))
 draw.ellipse((420, 220, 579, 379), fill=(0, 0, 0, 0))
 save("png-transparent.png", img.save)
 
-# JPG resolusi rendah 240 x 240 px: latar putih, lingkaran merah diameter 200 px. Pada lebar 50 mm = ±102 dpi.
+# JPG resolusi rendah 240 x 240 px: latar putih, lingkaran merah diameter 200 px. Seluruh gambar dipakai, jadi pada lebar 50 mm = ±122 dpi.
 img = Image.new("RGB", (240, 240), (255, 255, 255))
 ImageDraw.Draw(img).ellipse((20, 20, 219, 219), fill=(210, 30, 50))
 save("jpg-low-resolution.jpg", lambda p: img.save(p, quality=95))

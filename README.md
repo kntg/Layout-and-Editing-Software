@@ -97,8 +97,8 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 - **Alat Zoom (Z):** klik untuk memperbesar, Alt+klik untuk memperkecil.
 - **Penggaris (mm):** tampil di atas dan kiri lembar. Bisa disembunyikan lewat tombol penggaris di batang alat kiri.
 - **Bahasa:** menu **Bahasa**, pilih Indonesia atau English.
-- **Tanda registrasi:** menu **Tanda registrasi**, pilih Regmark 1 (bawaan) atau Tidak ada.
-  - Regmark 1 menggambar siku L hitam di 4 pojok lembar, ikut di layar, preview JPG, dan PDF.
+- **Tanda registrasi:** menu **Tanda registrasi**, pilih `SA regmark type2 auto 33 0.00 2.83 28.35 283.46 283.46 0` (bawaan) atau Tidak ada.
+  - Pilihan bawaan itu menggambar siku L hitam di 4 pojok lembar, ikut di layar, preview JPG, dan PDF.
   - Stiker tidak ditaruh dalam 6 mm dari tanda (area pindai menurut manual Graphtec). Stiker yang masuk area itu ditandai merah; klik Susun otomatis untuk memindahkannya.
 
 ## Shortcut
@@ -184,7 +184,7 @@ Langkah:
 - [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.
 - [Simulasi produksi](docs/simulasi/index.html): tampilan 3D satu lembar hasil validasi. Buka file ini di browser.
-- [Spesifikasi](docs/superpowers/specs/) dan [rencana pembuatan](docs/superpowers/plans/) fitur baru (editor garis potong, smart select, bentuk garis potong, warna border).
+- [Spesifikasi](docs/superpowers/specs/) fitur baru (editor garis potong, smart select, bentuk garis potong) dan [rencana pembuatan](docs/superpowers/plans/) smart select.
 
 ## Untuk pengembang
 
@@ -262,7 +262,7 @@ Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publi
 | `StickerLayout/Export.cs`, `ExportSvg.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket, export SVG; membuka PDF/AI |
 | `StickerLayout/Cleanup.cs` | Rapikan gambar (hapus latar, penghapus klik, kikis tepi) |
 | `StickerLayout/MainWindow.*`, `CutEditWindow.*`, `CleanupWindow.*`, `RulerControl.cs`, `Theme.xaml` | Tampilan: jendela utama, editor garis potong, jendela Rapikan, penggaris, tema |
-| `StickerLayout/Strings.cs` | Semua teks tampilan dalam bahasa Indonesia dan English |
+| `StickerLayout/Strings.cs` | Teks tampilan dalam bahasa Indonesia dan English |
 | `StickerLayout/SelfCheck.cs` | Pemeriksaan otomatis bawaan (`StickerLayout.exe --selfcheck <folder>`) |
 | `samples/` | File contoh. Pemeriksaan otomatis juga menulis hasilnya di sini; hasil itu tidak ikut git |
 | `Printech-TestData/` | Data uji dengan hasil benar, skrip validasi dan uji tampilan, serta bukti uji |
