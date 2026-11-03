@@ -65,49 +65,6 @@
             </DockPanel>
         </Border>
 
-        <!-- ================= BARIS 1: KONTEN (BERUBAH) ================= -->
-        <Grid Grid.Row="1">
-            
-            <!-- A. WELCOME PAGE (Tampil jika belum ada file) -->
-            <local:WelcomePanel x:Name="HomePage" Visibility="Visible"/>
-
-            <!-- B. EDITOR (Tampil jika sedang mengedit) -->
-            <DockPanel x:Name="EditorDock" Visibility="Collapsed">
-                
-                <!-- Options Bar (Hanya muncul di Editor) -->
-                <Border DockPanel.Dock="Top" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,6">
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Outline}" Click="Export_Click" ToolTip="Ctrl+E"
-                                AutomationProperties.Name="{DynamicResource Export}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource Icon}" Text="&#xE72D;" FontSize="13"/>
-                                <TextBlock Text="{DynamicResource Export}" Margin="7,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Click="Add_Click" ToolTip="Ctrl+O" AutomationProperties.Name="{DynamicResource Add}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="12"/>
-                                    <TextBlock Text="{DynamicResource Add}" Margin="7,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource Primary}" Click="Nest_Click" Margin="8,0,0,0" ToolTip="Ctrl+L" AutomationProperties.Name="{DynamicResource Nest}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Icon}" Text="&#xECA5;" FontSize="13"/>
-                                    <TextBlock Text="{DynamicResource Nest}" Margin="7,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource Ghost}" Click="Compact_Click" Margin="4,0,0,0" AutomationProperties.Name="{DynamicResource Compact}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE73F;" FontSize="12" Foreground="{StaticResource Dim}"/>
-                                    <TextBlock Text="{DynamicResource Compact}" Margin="7,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <CheckBox x:Name="RowsBox" Content="Rows" Margin="16,0,0,0" VerticalAlignment="Center" 
-                                      Checked="Rows_Changed" Unchecked="Rows_Changed" ToolTip="Susun dalam baris" />
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
         <!-- Options bar: aksi utama job -->
         <Border DockPanel.Dock="Top" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,6">
             <DockPanel>
