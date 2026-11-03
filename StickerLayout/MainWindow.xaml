@@ -108,6 +108,44 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
+        <!-- Options bar: aksi utama job -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,6">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Outline}" Click="Export_Click" ToolTip="Ctrl+E"
+                        AutomationProperties.Name="{DynamicResource Export}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE72D;" FontSize="13"/>
+                        <TextBlock Text="{DynamicResource Export}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <StackPanel Orientation="Horizontal">
+                    <Button Click="Add_Click" ToolTip="Ctrl+O" AutomationProperties.Name="{DynamicResource Add}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="12"/>
+                            <TextBlock Text="{DynamicResource Add}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Primary}" Click="Nest_Click" Margin="8,0,0,0" ToolTip="Ctrl+L" AutomationProperties.Name="{DynamicResource Nest}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xECA5;" FontSize="13"/>
+                            <TextBlock Text="{DynamicResource Nest}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4" Padding="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="DenseBox" GroupName="Susun" IsChecked="True" Style="{StaticResource Choice}" Content="{DynamicResource Dense}" ToolTip="{DynamicResource DenseTip}" AutomationProperties.Name="{DynamicResource Dense}"/>
+                            <RadioButton x:Name="RowsBox" GroupName="Susun" Style="{StaticResource Choice}" Content="{DynamicResource Rows}" Checked="Rows_Changed" Unchecked="Rows_Changed" ToolTip="{DynamicResource RowsTip}" AutomationProperties.Name="{DynamicResource Rows}"/>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource Ghost}" Click="Compact_Click" Margin="4,0,0,0" AutomationProperties.Name="{DynamicResource Compact}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE73F;" FontSize="12" Foreground="{StaticResource Dim}"/>
+                            <TextBlock Text="{DynamicResource Compact}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
                 <!-- Status bar -->
                 <Border DockPanel.Dock="Bottom" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Height="32" Padding="12,0,8,0">

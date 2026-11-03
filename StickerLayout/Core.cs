@@ -149,6 +149,14 @@ public static partial class Loader
     // loadedPdf: PDF yang dipakai saat desain pertama dimuat (muat ulang saat Susun): isi desain tidak berubah diam-diam
     // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: garis dari editor garis potong, dipakai apa adanya
     // (offset dan Halus tidak mengubahnya).
+    // Muat ulang desain pada lebar it.WidthMm. Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
+    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed)
+    {
+        double k = it.WidthMm / it.LoadedW;
+        return Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
+            manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape);
+    }
+
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
         string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null,
         CutShape dieShape = CutShape.Auto)
@@ -872,13 +880,20 @@ public static class Nest
         var keep = KeepOut(cw, ch, margin, marks, items.Select(Printed).DefaultIfEmpty(0).Max());
         Parallel.For(0, keys.Length, i => trials[i] = (Once(items.OrderByDescending(keys[i]).ToList(), cw, ch, margin, gap, keep, out int big), big));
         // Dipilih menurut urutan percobaan, bukan urutan selesai: hasil sama setiap kali.
+        static double Score(List<List<Placed>> r) => r.Count * 1e6 + (r.Count == 0 ? 0 : r[^1].Max(p => p.Y + p.BH));
         List<List<Placed>> best = [];
         double bestScore = double.MaxValue;
+        int bestKey = 0;
         tooBig = 0;
-        foreach (var (r, big) in trials)
+        for (int i = 0; i < trials.Length; i++)
+            if (Score(trials[i].r) < bestScore) (best, bestScore, bestKey, tooBig) = (trials[i].r, Score(trials[i].r), i, trials[i].big);
+        // Baris pertama terpaksa mulai setelah area tanda di pojok, jadi tepi kirinya menjorok dan kolom sebelahnya bisa kurang muat (masukan user
+        // 2026-11-03). Coba sekali lagi dengan pita atas setinggi area tanda dikosongkan; dipakai hanya bila lebih hemat, karena Hemat mengutamakan bahan.
+        if (keep.Count > 0)
         {
-            double score = r.Count * 1e6 + (r.Count == 0 ? 0 : r[^1].Max(p => p.Y + p.BH));
-            if (score < bestScore) { best = r; bestScore = score; tooBig = big; }
+            List<Rect> band = [.. keep, new Rect(margin, margin, Math.Max(0, cw - 2 * margin), keep.Where(z => z.Top < ch / 2).Max(z => z.Bottom) - margin)];
+            var flush = Once(items.OrderByDescending(keys[bestKey]).ToList(), cw, ch, margin, gap, band, out int flushBig);
+            if (flushBig <= tooBig && Score(flush) < bestScore) (best, tooBig) = (flush, flushBig);
         }
         return best;
     }
@@ -974,6 +989,18 @@ public static class Nest
     // pada bentuk tidak beraturan. Coba beberapa urutan seperti Run bila lembar sering bertambah.
     public static List<List<Placed>> Rows(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig, bool marks = false)
     {
+        // Tepi kiri rata: baris selalu mulai dari tepi kiri, dan turun bila pojoknya kena area tanda registrasi. Bila cara ini menambah
+        // lembar, baris boleh mulai setelah area tanda, supaya bahan tidak bertambah.
+        var even = RowsOnce(stickers, cw, ch, margin, gap, out tooBig, marks, true);
+        if (!marks) return even;
+        var loose = RowsOnce(stickers, cw, ch, margin, gap, out int big, marks, false);
+        if (even.Count <= loose.Count && tooBig <= big) return even;
+        tooBig = big;
+        return loose;
+    }
+
+    static List<List<Placed>> RowsOnce(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig, bool marks, bool flush)
+    {
         var designs = stickers.Where(s => s.Copies > 0).ToList();
         // Tanpa stiker: occ hanya berisi area tanda registrasi, jadi sama untuk semua lembar. Baris tidak bisa saling menabrak.
         var occ = Occupancy([], cw, ch, margin, 0, KeepOut(cw, ch, margin, marks, designs.Select(Printed).DefaultIfEmpty(0).Max()));
@@ -989,12 +1016,15 @@ public static class Nest
                 if (y + fh > rows - f.Bleed) return false;
                 // Lompat satu kotak penuh, supaya kolom tetap lurus saat melewati area tanda registrasi.
                 for (int x = Math.Max(cx, f.Bleed); x + fw <= cols - f.Bleed; x += fw + gc)
+                {
                     if (Fits(occ, f.Cells, x - f.MinX, y - f.MinY))
                     {
                         sheets[^1].Add(new Placed { S = s, Rot = rot, X = margin + (x - f.MinX) * Cell, Y = margin + (y - f.MinY) * Cell });
                         (cx, cy, rowH) = (x + fw + gc, top, h);
                         return true;
                     }
+                    if (flush && cx == 0) break;
+                }
                 (cy, cx, rowH) = (rowH > 0 ? cy + rowH + gc : cy + 1, 0, 0); // baris kosong berarti terhalang area tanda: turun satu sel
             }
         }
@@ -1046,6 +1076,29 @@ public static class Nest
             else { turn[i].Copies--; turn.RemoveAt(i); }
         }
         return best;
+    }
+
+    const double MinSide = 5; // sisi artwork terkecil saat ukuran diatur di kanvas (mm)
+
+    // Atur ukuran di kanvas: titik pojok (0 kiri atas, 1 kanan atas, 2 kanan bawah, 3 kiri bawah) ditarik ke (mx, my). Pojok seberangnya diam
+    // dan proporsi artwork tetap; jarak garis potong ke artwork tidak ikut berskala. Sisi terkecil MinSide, kecuali memang sudah lebih kecil;
+    // kotak paling besar area cetak. Mengembalikan lebar artwork baru (0,1 mm) dan kotak stiker di lembar.
+    public static (double Width, Rect Box) ResizeTo(Placed p, int corner, double mx, double my, double cw, double ch, double margin)
+    {
+        var (aw, ah) = p.Rot % 180 == 0 ? (p.S.ArtW, p.S.ArtH) : (p.S.ArtH, p.S.ArtW);
+        double padX = p.BW - aw, padY = p.BH - ah, room = 2 * (margin + Printed(p.S));
+        bool right = corner is 1 or 2, down = corner is 2 or 3;
+        double ax = right ? p.X : p.X + p.BW, ay = down ? p.Y : p.Y + p.BH;
+        double k = Math.Max(((right ? mx - ax : ax - mx) - padX) / aw, ((down ? my - ay : ay - my) - padY) / ah);
+        k = Math.Max(Math.Min(1, MinSide / Math.Min(aw, ah)), Math.Min(Math.Min((cw - room - padX) / aw, (ch - room - padY) / ah), k));
+        double width = Math.Round(p.S.ArtW * k, 1), bw = aw * width / p.S.ArtW + padX, bh = ah * width / p.S.ArtW + padY;
+        return (width, new Rect(right ? ax : ax - bw, down ? ay : ay - bh, bw, bh));
+    }
+
+    // Ukuran disimpan per desain, jadi semua salinan ikut berganti. Posisinya tetap; yang jadi bertabrakan ditandai Check.
+    public static void SwapDesign(IEnumerable<List<Placed>> sheets, Sticker old, Sticker n)
+    {
+        foreach (var p in sheets.SelectMany(x => x)) if (p.S == old) p.S = n;
     }
 
     // Duplikat kanvas: isi, posisi, dan rotasi sama persis, termasuk hasil edit. Tepat setelah lembar asal, jadi tampil di sampingnya.
@@ -1114,6 +1167,13 @@ public static class Nest
     {
         var (tx, ty) = p.T;
         return new TransformGroup { Children = { new RotateTransform(p.Rot), new TranslateTransform(p.X + tx, p.Y + ty) } };
+    }
+
+    // Pratinjau saat ukuran diatur: stiker diskala k dengan pojok kiri atas kotaknya di (x, y).
+    public static Transform Xf(Placed p, double k, double x, double y)
+    {
+        var (tx, ty) = p.T;
+        return new TransformGroup { Children = { new ScaleTransform(k, k), new RotateTransform(p.Rot), new TranslateTransform(x + tx * k, y + ty * k) } };
     }
 
     static readonly Brush KissBrush = Frozen("#EC008C"), DieBrush = Frozen("#00AEEF"), SelBrush = Frozen("#4A90FF");
