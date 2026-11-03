@@ -1010,12 +1010,13 @@ public static class Nest
         return new TransformGroup { Children = { new RotateTransform(p.Rot), new TranslateTransform(p.X + tx, p.Y + ty) } };
     }
 
-    static readonly Brush KissBrush = Frozen("#EC008C"), DieBrush = Frozen("#00AEEF"), SelBrush = Frozen("#4A90FF");
+    static readonly Brush KissBrush = Frozen("#EC008C"), DieBrush = Frozen("#00AEEF");
+    internal static readonly Brush SelBrush = Frozen("#4A90FF");
     static Brush Frozen(string c) { var b = (Brush)new BrushConverter().ConvertFromString(c)!; b.Freeze(); return b; }
     static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
-    // Satuan kanvas = mm. Tag kanvas = indeks lembar, Tag stiker = Placed.
-    public static Canvas Sheet(IEnumerable<Placed> ps, double cw, double ch, double margin, Placed? sel, int index, bool regMarks = false)
+    // Satuan kanvas = mm. Tag kanvas = indeks lembar, Tag stiker = Placed. sels null = tanpa pilihan (mis. preview/export).
+    public static Canvas Sheet(IEnumerable<Placed> ps, double cw, double ch, double margin, IReadOnlyCollection<Placed>? sels, int index, bool regMarks = false)
     {
         var root = new Canvas { Width = cw, Height = ch, Background = Brushes.White, ClipToBounds = true, Tag = index };
         root.Children.Add(new System.Windows.Shapes.Rectangle
@@ -1038,7 +1039,7 @@ public static class Nest
             c.Children.Add(art);
             if (s.KissGeo is { } k) c.Children.Add(new System.Windows.Shapes.Path { Data = k, Stroke = KissBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
             if (s.DieGeo is { } d) c.Children.Add(new System.Windows.Shapes.Path { Data = d, Stroke = DieBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
-            if (p.Bad || p == sel)
+            if (p.Bad || sels != null && sels.Contains(p))
                 c.Children.Add(new System.Windows.Shapes.Rectangle
                 {
                     Width = s.W, Height = s.H, Stroke = p.Bad ? Brushes.Red : SelBrush, StrokeThickness = p.Bad ? 0.8 : 0.6,
