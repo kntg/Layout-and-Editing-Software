@@ -108,7 +108,7 @@ public static class SelfCheck
                 $"D6: 149,6 dpi tampil {DpiOf(1496).DpiText}, merah {DpiOf(1496).LowDpi}; 149,4 dpi tampil {DpiOf(1494).DpiText}, merah {DpiOf(1494).LowDpi}");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah); 149,6 dpi = {DpiOf(1496).DpiText} tidak merah");
 
-            // Skenario uji garis potong S1-S9 dan S11-S18 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S19 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -870,6 +870,85 @@ public static class SelfCheck
             if (wideBig != 0 || turned[0][0].Rot % 180 == 0 || hugeBig != 1) rowBad.Add($"putar atau terlalu besar salah: tidak muat {wideBig}, {hugeBig}");
             S(18, "susun berbaris: baris dan kolom lurus, salinan berkumpul, tanpa tabrakan, diputar hanya bila perlu, Penuhi lembar", rowBad.Count == 0,
                 string.Join("; ", rowBad.Distinct().Concat(rowLog)));
+
+            // S19: duplikat kanvas dan tempel stiker (permintaan user 2026-11-02). Salinan kanvas sama persis dan terpisah dari aslinya;
+            // tempel berjalan ke kanan lalu ke bawah, segaris dengan stiker asli, tanpa tabrakan, sampai tidak ada tempat.
+            var (copyBad, copyLog) = (new List<string>(), new List<string>());
+            static List<(Sticker, double, double, int)> Spots(List<Placed> ps) => [.. ps.Select(p => (p.S, p.X, p.Y, p.Rot))];
+            var dup = sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList()).ToList();
+            List<double> dupH = [A4H, .. sheets.Skip(1).Select(_ => 200.0)];
+            Nest.CopySheet(dup, dupH, 0);
+            bool dupOk = dup.Count == sheets.Count + 1 && Spots(dup[0]).SequenceEqual(Spots(sheets[0])) && Spots(dup[1]).SequenceEqual(Spots(sheets[0]))
+                && dup.Skip(2).Zip(sheets.Skip(1)).All(x => Spots(x.First).SequenceEqual(Spots(x.Second)))
+                && dupH.SequenceEqual([A4H, A4H, .. sheets.Skip(1).Select(_ => 200.0)]);
+            if (dupOk)
+            {
+                dup[1][0].X += 5;
+                dupOk = dup[0][0].X == sheets[0][0].X;
+                dup[1][0].X -= 5;
+            }
+            if (!dupOk) copyBad.Add($"salinan kanvas salah: {sheets.Count} -> {dup.Count} lembar");
+            if (dup.Any(sh => Nest.Check(sh, A4W, A4H, Margin) != 0)) copyBad.Add("salinan kanvas bertabrakan atau keluar margin");
+            var dupPdf = Path.Combine(Path.GetTempPath(), $"printech-duplikat-{Guid.NewGuid():N}.pdf");
+            try
+            {
+                Export.Pdf(dupPdf, dup, A4W, [.. dup.Select(_ => A4H)]);
+                using var dupRead = new Pdfium(dupPdf);
+                if (dupRead.Pages != dup.Count) copyBad.Add($"PDF {dupRead.Pages} halaman, kanvas {dup.Count}");
+            }
+            finally { File.Delete(dupPdf); }
+            foreach (bool marks in new[] { false, true })
+            {
+                Placed? Next(List<Placed> ps, Placed from) => Nest.PasteNext(ps, from.S, from.Rot, from.X, from.Y, A4W, A4H, Margin, Gap, marks);
+                var unit = Box(40, 30);
+                var page = Nest.Rows([unit], A4W, A4H, Margin, Gap, out _, marks)[0];
+                double step = 0;
+                if (Next(page, page[0]) is { } right)
+                {
+                    step = right.X - page[0].X;
+                    if (right.Y != page[0].Y || step < 0 || step >= (unit.DieGeo ?? unit.KissGeo)!.Bounds.Width + Gap + 2) copyBad.Add($"salinan pertama tidak tepat di kanan: geser {step:F1} mm");
+                }
+                else copyBad.Add("tempel pertama tidak menemukan tempat");
+                var last = page[0];
+                while (page.Count < 200 && Next(page, last) is { } next)
+                {
+                    page.Add(next);
+                    last = next;
+                }
+                copyBad.AddRange(RowsErrors([page], marks));
+                if (!page.SequenceEqual(page.OrderBy(p => p.Y).ThenBy(p => p.X))) copyBad.Add("urutan tempel bukan ke kanan lalu ke bawah");
+                unit.Copies = 100;
+                int rowsFull = Nest.Rows([unit], A4W, A4H, Margin, Gap, out _, marks)[0].Count;
+                if (page.Count != rowsFull) copyBad.Add($"tempel sampai penuh {page.Count} stiker, susun berbaris {rowsFull}");
+                copyLog.Add($"{(marks ? "dengan" : "tanpa")} tanda registrasi: kotak 40 x 30 mm ditempel sampai penuh {page.Count} stiker, langkah {step:F0} mm");
+
+                // Mulai dari tengah: baris penuh turun ke kolom paling kiri yang segaris, dan baris di atas stiker asli tidak dipakai.
+                var center = new Placed { S = unit, X = Margin + 60, Y = Margin + 40 };
+                var midPage = new List<Placed> { center };
+                last = center;
+                while (midPage.Count < 200 && Next(midPage, last) is { } more && more.Y == center.Y)
+                {
+                    midPage.Add(more);
+                    last = more;
+                }
+                if (Next(midPage, last) is not { } down || down.Y <= center.Y || down.X >= center.X || Math.Abs(Math.IEEERemainder(center.X - down.X, step)) > 1e-6)
+                    copyBad.Add("baris penuh tidak turun ke kolom kiri yang segaris");
+
+                var near = new List<Placed> { new() { S = unit, X = Margin + 10, Y = Margin + 40 }, new() { S = unit, X = Margin + 10 + step, Y = Margin + 40 } };
+                if (Next(near, near[0]) is not { } skip || skip.Y != near[0].Y || Math.Abs(skip.X - (near[0].X + 2 * step)) > 1e-6)
+                    copyBad.Add("posisi yang terisi tidak dilewati satu kotak penuh");
+
+                var side = new Placed { S = Box(60, 30), Rot = 90, X = Margin + 10, Y = Margin + 40 };
+                if (Next([side], side) is not { } sideCopy || sideCopy.Rot != 90 || sideCopy.Y != side.Y || sideCopy.X <= side.X || Nest.Check([side, sideCopy], A4W, A4H, Margin, marks) != 0)
+                    copyBad.Add("rotasi tidak ikut, atau salinan yang diputar bertabrakan");
+
+                var outside = new Placed { S = unit, X = Margin - 5, Y = Margin - 5 };
+                if (Next([outside], outside) is not { } inside || Nest.Check([inside], A4W, A4H, Margin, marks) != 0)
+                    copyBad.Add("stiker asli keluar margin: tempel gagal");
+            }
+            if (Nest.PasteNext([], Box(400, 400), 0, Margin, Margin, A4W, A4H, Margin, Gap) != null) copyBad.Add("desain lebih besar dari kertas tetap ditempel");
+            S(19, "duplikat kanvas dan tempel stiker: salinan kanvas sama persis, tempel ke kanan lalu ke bawah, segaris, tanpa tabrakan", copyBad.Count == 0,
+                string.Join("; ", copyBad.Distinct().Concat(copyLog)));
 
             Check(fails.Count == 0, "skenario gagal: " + string.Join(", ", fails));
 

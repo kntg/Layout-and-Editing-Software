@@ -30,6 +30,8 @@
                         <MenuItem Header="{DynamicResource Nest}" InputGestureText="Ctrl+L" Click="Nest_Click"/>
                         <MenuItem Header="{DynamicResource Compact}" Click="Compact_Click"/>
                         <Separator/>
+                        <MenuItem Header="{DynamicResource CopySel}" InputGestureText="Ctrl+C" Click="Copy_Click"/>
+                        <MenuItem Header="{DynamicResource PasteSel}" InputGestureText="Ctrl+V" Click="Paste_Click"/>
                         <MenuItem Header="{DynamicResource RotSel}" InputGestureText="R" Click="Rotate_Click"/>
                         <MenuItem Header="{DynamicResource DelSel}" InputGestureText="Del" Click="DeletePlaced_Click"/>
                     </MenuItem>

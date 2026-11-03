@@ -1048,6 +1048,33 @@ public static class Nest
         return best;
     }
 
+    // Duplikat kanvas: isi, posisi, dan rotasi sama persis, termasuk hasil edit. Tepat setelah lembar asal, jadi tampil di sampingnya.
+    public static void CopySheet(List<List<Placed>> sheets, List<double> heights, int i)
+    {
+        sheets.Insert(i + 1, [.. sheets[i].Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot })]);
+        heights.Insert(i + 1, heights[i]);
+    }
+
+    // Tempel stiker: posisi kosong pertama di kanan (fromX, fromY), lalu di baris-baris bawahnya dari kolom paling kiri. Langkahnya sebesar
+    // jejak + jarak seperti Rows, jadi salinan rata dengan stiker asli. null = tidak ada tempat; lembar baru tidak dibuat, supaya bahan tidak
+    // bertambah tanpa disadari.
+    // ponytail: hanya posisi segaris yang dicoba, jadi ruang kosong di atas stiker asli atau di antara kolom dilewati. Tambah pencarian bebas
+    // seperti Snap bila operator sering kehabisan tempat.
+    public static Placed? PasteNext(List<Placed> ps, Sticker s, int rot, double fromX, double fromY, double cw, double ch, double margin, double gap, bool marks = false)
+    {
+        int gc = CellsOf(gap);
+        var occ = Occupancy(ps, cw, ch, margin, gc, KeepOut(cw, ch, margin, marks, Printed(s)));
+        var f = FootOf(s, rot);
+        int cols = occ.GetLength(0), rows = occ.GetLength(1), ax = (int)Math.Round((fromX - margin) / Cell), ay = (int)Math.Round((fromY - margin) / Cell);
+        int sx = f.MaxX - f.MinX + 1 + gc, sy = f.MaxY - f.MinY + 1 + gc;
+        static int First(int a, int low, int step) => low + ((a - low) % step + step) % step; // posisi terkecil >= low yang segaris dengan a
+        for (int y = First(ay, f.Bleed - f.MinY, sy); y + f.MaxY < rows - f.Bleed; y += sy)
+            for (int x = First(ax, f.Bleed - f.MinX, sx); x + f.MaxX < cols - f.Bleed; x += sx)
+                if ((y > ay || (y == ay && x > ax)) && Fits(occ, f.Cells, x, y))
+                    return new Placed { S = s, Rot = rot, X = margin + x * Cell, Y = margin + y * Cell };
+        return null;
+    }
+
     static bool Fits(bool[,] occ, List<(int X, int Y)> cells, int x, int y)
     {
         foreach (var (cx, cy) in cells) if (occ[x + cx, y + cy]) return false;

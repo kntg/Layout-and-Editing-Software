@@ -24,7 +24,8 @@ public partial class MainWindow : Window
     List<Canvas> canvases = [];
     double sheetW, panH, panV;
     Placed? sel, drag;
-    int selSheet, tooBig;
+    (Sticker S, int Rot, double X, double Y)? clip; // stiker yang disalin; null dengan clipSheet terisi = kanvas
+    int selSheet, tooBig, clipSheet = -1;
     Point last, panFrom;
     bool panning, space, moved;
     Tool tool = Tool.Move;
@@ -77,15 +78,25 @@ public partial class MainWindow : Window
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
             double su = Yield.Use(ps, w, h, MarginMm);
-            var pct = new TextBlock { Text = ps.Count == 0 ? "" : $"{Lang.T("SheetYield", ps.Count, paper)} · {su:P0}", Foreground = UseBrush(su, Yield.Regular(ps)) };
+            var pct = new TextBlock { Text = ps.Count == 0 ? "" : $"{Lang.T("SheetYield", ps.Count, paper)} · {su:P0}", Foreground = UseBrush(su, Yield.Regular(ps)), VerticalAlignment = VerticalAlignment.Center };
             DockPanel.SetDock(pct, Dock.Right);
             head.Children.Add(pct);
-            head.Children.Add(new TextBlock { Text = Lang.T("SheetN", i + 1), Foreground = Dim });
-            var panel = new StackPanel { Margin = new Thickness(18), HorizontalAlignment = HorizontalAlignment.Left };
+            var title = new TextBlock { Text = Lang.T("SheetN", i + 1), Foreground = Dim, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(title, Dock.Left);
+            head.Children.Add(title);
+            if (ps.Count > 0)
+            {
+                int at = i;
+                var dup = new Button { Content = Lang.T("DupSheet"), ToolTip = Lang.T("DupSheetTip"), Style = (Style)FindResource("Ghost"), Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 12, 0), HorizontalAlignment = HorizontalAlignment.Left };
+                dup.Click += (_, _) => DuplicateSheet(at);
+                head.Children.Add(dup);
+            }
+            var panel = new StackPanel { Margin = new Thickness(SheetPad), HorizontalAlignment = HorizontalAlignment.Left };
             panel.Children.Add(head);
             panel.Children.Add(c);
             views.Add(panel);
         }
+        LimitWrap();
         Sheets.ItemsSource = views;
         Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
         Empty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -359,6 +370,7 @@ public partial class MainWindow : Window
             sheetH = sheets.Select(_ => CH).ToList();
             for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
             sel = null;
+            (clip, clipSheet) = (null, -1); // posisi yang disalin tidak berlaku lagi
             Redraw(Summary());
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
@@ -384,12 +396,54 @@ public partial class MainWindow : Window
             sel = null;
         }
         else added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
+        AfterAdd(Lang.T("Filled", added));
+    }
+
+    // Akhir aksi yang menambah stiker: jumlah per desain ikut hasil, lalu periksa, gambar ulang, dan simpan langkah urungkan.
+    void AfterAdd(string msg)
+    {
         foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
         List.Items.Refresh();
         for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
-        Redraw(Lang.T("Filled", added) + "  " + Summary());
+        Redraw(msg + "  " + Summary());
         Commit();
     }
+
+    // Duplikat kanvas: hasil edit ikut tersalin, beda dengan menaikkan jumlah lalu Susun. WrapPanel menaruh lembar baru di kanan lembar asal,
+    // atau di bawah bila baris penuh.
+    void DuplicateSheet(int i)
+    {
+        if (i < 0 || i >= sheets.Count || sheets[i].Count == 0) return;
+        Nest.CopySheet(sheets, sheetH, i);
+        sel = null;
+        AfterAdd(Lang.T("SheetDuped", i + 1, i + 2));
+        var added = canvases[i + 1];
+        Dispatcher.BeginInvoke(new Action(added.BringIntoView), DispatcherPriority.Loaded);
+    }
+
+    // Ctrl+C: stiker yang dipilih; bila tidak ada yang dipilih, kanvas yang terakhir diklik.
+    void CopySel()
+    {
+        if (sheets.Count == 0) return;
+        clipSheet = Math.Clamp(selSheet, 0, sheets.Count - 1);
+        clip = sel == null ? null : (sel.S, sel.Rot, sel.X, sel.Y);
+        Redraw(sel == null ? Lang.T("SheetCopied", clipSheet + 1) : Lang.T("StickerCopied", sel.S.Name));
+    }
+
+    // Ctrl+V: kanvas yang disalin diduplikat; stiker ditempel di kanan aslinya. Salinan itu terpilih, jadi Ctrl+V berikutnya berlanjut dari sana.
+    void Paste()
+    {
+        if (clipSheet < 0 || clipSheet >= sheets.Count || (clip is { } gone && !items.Contains(gone.S))) { Redraw(Lang.T("PasteEmpty")); return; }
+        if (clip is not { } c) { DuplicateSheet(clipSheet); return; }
+        var (i, x, y) = sel?.S == c.S ? (selSheet, sel.X, sel.Y) : (clipSheet, c.X, c.Y);
+        if (Nest.PasteNext(sheets[i], c.S, c.Rot, x, y, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks) is not { } n) { Redraw(Lang.T("PasteFull")); return; }
+        sheets[i].Add(n);
+        (sel, selSheet) = (n, i);
+        AfterAdd(Lang.T("Pasted", c.S.Name));
+    }
+
+    void Copy_Click(object s, RoutedEventArgs e) => CopySel();
+    void Paste_Click(object s, RoutedEventArgs e) => Paste();
 
     void EditSel(Action<Placed> act)
     {
@@ -577,6 +631,7 @@ public partial class MainWindow : Window
     void Zoom_Changed(object s, RoutedPropertyChangedEventArgs<double> e)
     {
         zoom.ScaleX = zoom.ScaleY = e.NewValue / 100 * 96 / 25.4; // 100% = ukuran asli
+        LimitWrap();
         if (ZoomText != null) ZoomText.Text = $"{e.NewValue:0}%";
         if (HorizontalRuler != null) Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
     }
@@ -590,7 +645,20 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
     }
 
-    void View_ScrollChanged(object s, ScrollChangedEventArgs e) => UpdateRulers();
+    void View_ScrollChanged(object s, ScrollChangedEventArgs e)
+    {
+        LimitWrap();
+        UpdateRulers();
+    }
+
+    // WrapPanel di dalam ScrollViewer mendapat lebar tak terbatas, jadi lembar tidak pernah turun ke bawah. Batasi selebar tampilan,
+    // tetapi minimal selebar satu lembar, supaya saat zoom besar lembar tetap bisa digeser.
+    const double SheetPad = 18;
+    void LimitWrap()
+    {
+        if (Sheets == null || canvases.Count == 0) return;
+        Sheets.MaxWidth = Math.Max(View.ViewportWidth - Sheets.Margin.Left - Sheets.Margin.Right, canvases[0].Width * zoom.ScaleX + 2 * SheetPad);
+    }
 
     void UpdateRulers()
     {
@@ -693,6 +761,8 @@ public partial class MainWindow : Window
             {
                 case Key.Z when !typing: Undo(); break;
                 case Key.Y when !typing: Redo(); break;
+                case Key.C when !typing: CopySel(); break;
+                case Key.V when !typing: Paste(); break;
                 case Key.O: case Key.I: Add_Click(s, e); break; // Ctrl+I = Import di CorelDRAW
                 case Key.E: Export_Click(s, e); break;
                 case Key.L: Arrange(); break;
@@ -744,9 +814,9 @@ public partial class MainWindow : Window
         }
         View.Focus();
         sel = sheet == null ? null : hit;
+        if (sheet != null) selSheet = (int)sheet.Tag; // klik area kosong: kanvas ini yang disalin Ctrl+C
         if (sel != null)
         {
-            selSheet = (int)sheet!.Tag;
             last = e.GetPosition(sheet);
             drag = sel;
             Sheets.CaptureMouse();
