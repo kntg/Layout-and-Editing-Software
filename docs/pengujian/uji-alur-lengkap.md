@@ -17,7 +17,7 @@ Bagian 4 berisi hasil pemeriksaan sebelum perbaikan D1/D2, hasil sesudahnya, dan
 
 | Jenis | Isi | Cara menjalankan | Sudah dijalankan |
 | --- | --- | --- | --- |
-| Pemeriksaan otomatis | Pemeriksaan bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S17, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
+| Pemeriksaan otomatis | Pemeriksaan bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S19, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
 | Validasi data uji | Mesin Printech dijalankan pada data uji (`Printech-TestData`), lalu hasilnya dinilai dengan bentuk file asli (`validasi.ps1` + `validasi.py`), ditambah pengecekan bahwa file asli tidak berubah (`cek-original.ps1`) | Lihat [panduan data uji](../../Printech-TestData/README.md) | Ya |
 | Uji tampilan | Pengujian lewat jendela aplikasi di PC pengembang. Sebagian sudah dijalankan oleh skrip yang mengoperasikan aplikasi sendiri lewat mouse, keyboard, dan kontrol jendela: uji semua file input, uji file khusus, uji tata letak, uji urungkan, dan uji editor garis potong (skrip `ui-*.ps1` di `Printech-TestData`, dijalankan dengan Windows PowerShell 5.1) | Langkah per kasus uji, atau skrip | Ya (2026-10-19) |
 | Operator dan mesin | CorelDRAW, Cutting Master 5, printer Develop, Graphtec | PC operator di AP 55 | Tidak (BLOCKED, di luar cakupan prototipe) |
@@ -58,8 +58,9 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 5. **Bleed** (pilihan, hanya untuk gambar).
 6. **Susun otomatis:**
    - stiker ditaruh di tempat kosong pertama (greedy) pada grid 1 mm, dengan 4 rotasi dan 3 urutan percobaan yang dihitung bersamaan;
+   - bila kotak centang Berbaris dicentang (sejak 2026-11-02), stiker disusun per baris dan kolom, tanpa diputar kecuali hanya muat bila diputar;
    - margin dan tumpang tindih diperiksa.
-7. **Edit tata letak:** seret + tempel otomatis, putar, panah, hapus, dan penuhi lembar.
+7. **Edit tata letak:** seret + tempel otomatis, putar, panah, hapus, penuhi lembar, duplikat kanvas, dan salin-tempel stiker.
    - Urungkan/ulangi untuk seluruh aplikasi: keadaan dokumen disimpan setelah setiap aksi.
    - Editor garis potong per desain ([kode editor](../../StickerLayout/CutEditWindow.xaml.cs)).
 8. **Indikator bahan dan peringatan** ([kode jendela utama](../../StickerLayout/MainWindow.xaml.cs)).
@@ -168,6 +169,10 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 **Tanda registrasi 1 mm (2026-10-28):** perubahan dari leader: tebal tanda registrasi 1 mm (sebelumnya 0,5 mm), dan kedua garis siku tersambung di sudutnya. Pemeriksaan otomatis 4/4; S17 lulus dengan batas jarak 6,50 mm, dan jaraknya sama seperti sebelumnya (susun 9,78 mm, tempel otomatis 7,50 mm) (NEST-11). Laporan validasi sama persis dengan sebelum perubahan.
 
+**Susun berbaris (2026-11-02):** fitur baru atas permintaan user: kotak centang Berbaris menyusun stiker per baris dan kolom (kebutuhan aplikasi F30). Pemeriksaan otomatis S18 lulus (NEST-12). Bahannya bisa lebih boros: dengan tanda registrasi, 26 stiker di A4 menjadi 3 lembar, sedangkan susun padat 2 lembar. Centang, Penuhi lembar, dan urungkan di jendela aplikasi dicek sekali lewat kontrol jendela, buktinya tidak disimpan.
+
+**Duplikat kanvas dan salin-tempel stiker (2026-11-02):** fitur baru atas permintaan user (kebutuhan aplikasi F31, F32). Tombol Duplikat di judul lembar menyalin lembar utuh, termasuk hasil edit. Ctrl+C lalu Ctrl+V menempel stiker tepat di kanan aslinya, atau turun ke baris berikutnya bila baris penuh. Pemeriksaan otomatis S19 lulus (NEST-13). Jajaran lembar di layar kini dibatasi selebar tampilan, jadi lembar turun ke bawah bila baris penuh; sebelumnya semua lembar memanjang ke kanan. Tombol Duplikat, Ctrl+C dan Ctrl+V, dan urungkan di jendela aplikasi dicek sekali 2026-11-03 dengan mouse dan keyboard sungguhan (11 dari 11 langkah skrip sekali pakai), buktinya tidak disimpan. Uji tata letak dengan mouse (`ui-edit-layout.ps1`) pada versi ini 10/10, buktinya juga tidak disimpan.
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -182,7 +187,7 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 ## 6. Kasus uji
 
-Total 100 kasus: PASS 79, FAIL 0, BLOCKED 21, NOT RUN 0. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-12, CUT-19, NEST-11, EDIT-01 sampai EDIT-08, EDIT-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28; IMP-22 per 2026-10-31.
+Total 102 kasus: PASS 81, FAIL 0, BLOCKED 21, NOT RUN 0. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-12, CUT-19, NEST-11, EDIT-01 sampai EDIT-08, EDIT-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28; IMP-22 per 2026-10-31; NEST-12 dan NEST-13 per 2026-11-02.
 
 Kolom Sumber menunjukkan asal syaratnya:
 
@@ -260,6 +265,8 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 | NEST-09 | Pemeriksaan otomatis | 130 stiker | pemeriksaan otomatis P5 | Susun kurang dari 1000 ms | pemeriksaan otomatis P5 | Dok: skenario uji stabilitas P5 | PASS |
 | NEST-10 | Pemeriksaan otomatis + validasi data uji | Semua lembar setelah susun | Penuhi lembar (dulu Compact); pemeriksaan otomatis; validasi B-campuran | Ruang kosong diisi salinan desain bergiliran; jumlah lembar tetap; 0 tabrakan; jarak dan margin tetap; mengisi ulang menambah 0 | pemeriksaan otomatis (penuhi lembar); laporan B1–B4 2026-10-21 | Masukan leader 2026-10-21 (customer bayar per lembar) | PASS — Pemeriksaan otomatis (kertas A4): 26 → 36 stiker, 5 desain bertambah. B-campuran: 160 → 198 stiker di 4 lembar. Pangkas tinggi lembar terakhir (untuk bahan gulungan) dihapus |
 | NEST-11 | Pemeriksaan otomatis + validasi data uji | Semua desain uji (A4) dan B-ui (A3+) | pemeriksaan otomatis S17: susun, Penuhi lembar, tempel otomatis, cek pojok; validasi B-ui dengan tanda aktif | Garis terluar stiker minimal 6 mm + setengah tebal tanda dari garis tanda (area pindai Graphtec a = 6 mm): 6,25 mm saat tebal 0,5 mm, 6,50 mm sejak tebal 1 mm; stiker di pojok ditandai merah hanya saat tanda aktif; tebal tanda 0,3–1,0 mm, panjang 5–20 mm | pemeriksaan otomatis S17; 04-evidence/2026-10-26-validasi-garis-potong-nesting.txt | Temuan leader 2026-10-26 (stiker kena tanda registrasi); Graphtec CE7000 User's Manual bab 5; kebutuhan aplikasi F28 | PASS — Susun/Penuhi lembar 9,78 mm, tempel otomatis 7,50 mm; sebelum perbaikan 2,16 mm dan tebal 0,25 mm. Sejak perubahan dari leader 2026-10-28 (tebal 1 mm): lulus 2026-10-28 dengan jarak yang sama (batas 6,50 mm) |
+| NEST-12 | Pemeriksaan otomatis | Semua desain uji (A4); circle.png bleed 2 mm; kotak uji 30 × 20, 30 × 30, 30 × 60, 220 × 60, dan 400 × 400 mm | pemeriksaan otomatis S18: susun berbaris, Penuhi lembar, isi ulang | Semua stiker terpasang; 0 tabrakan; jarak antar stiker minimal 2 mm; baris dan kolom tiap desain lurus; salinan satu desain berkumpul; desain tertinggi dulu; diputar hanya bila tidak muat tegak; yang lebih besar dari kertas dihitung tidak muat; Penuhi lembar menambah stiker tanpa menambah lembar, dan mengisi ulang menambah 0 | selfcheck.txt baris S18 | Permintaan user 2026-11-02; kebutuhan aplikasi F30 | PASS — Tanpa tanda: 26 stiker di 2 lembar A4, Penuhi lembar +7. Dengan tanda: 3 lembar (padat 2 lembar), Penuhi lembar +19. Centang, Penuhi lembar, dan urungkan di jendela aplikasi dicek sekali 2026-11-02, bukti tidak disimpan |
+| NEST-13 | Pemeriksaan otomatis | Semua desain uji (A4); kotak uji 40 × 30, 60 × 30, dan 400 × 400 mm | pemeriksaan otomatis S19: duplikat kanvas, export, tempel stiker sampai penuh, mulai dari tengah lembar, posisi sebelah terisi, stiker diputar, stiker asli keluar margin | Salinan kanvas tepat setelah lembar asal, dengan isi, posisi, rotasi, dan tinggi lembar yang sama, terpisah dari aslinya, dan PDF punya halaman sebanyak lembar; salinan stiker pertama sebaris di kanan asli; baris dan kolom lurus; baris penuh turun ke kolom paling kiri yang segaris; posisi terisi dilewati satu kotak penuh; rotasi ikut; jumlah sampai penuh sama dengan susun berbaris; desain lebih besar dari kertas tidak ditempel | selfcheck.txt baris S19 | Permintaan user 2026-11-02; kebutuhan aplikasi F31, F32 | PASS — Tanpa tanda 18 stiker, dengan tanda 17 stiker, langkah 51 mm. Tombol Duplikat, Ctrl+C dan Ctrl+V, lembar yang turun ke bawah, dan urungkan di jendela aplikasi dicek sekali 2026-11-03 dengan mouse dan keyboard sungguhan (11 dari 11 langkah skrip sekali pakai), bukti tidak disimpan |
 
 ### Edit tata letak
 
@@ -342,10 +349,10 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 
 ### Sudah tertulis
 
-- [Kebutuhan aplikasi](../kebutuhan-aplikasi.md) F1–F29: format input, pemangkasan, garis kiss/die, kertas, margin, susun banyak lembar, edit, export CMYK murni, bahasa, dpi 150, preview 2000 piksel, Rapikan, garis dengan sedikit titik, bleed paling besar sama dengan jarak, indikator dan target bahan, tempel otomatis, Print Ticket, penuhi lembar, urungkan, editor garis potong, smart select, desain kotak, preset bentuk, warna border, tanda registrasi, export SVG.
+- [Kebutuhan aplikasi](../kebutuhan-aplikasi.md) F1–F32: format input, pemangkasan, garis kiss/die, kertas, margin, susun banyak lembar, edit, export CMYK murni, bahasa, dpi 150, preview 2000 piksel, Rapikan, garis dengan sedikit titik, bleed paling besar sama dengan jarak, indikator dan target bahan, tempel otomatis, Print Ticket, penuhi lembar, urungkan, editor garis potong, smart select, desain kotak, preset bentuk, warna border, tanda registrasi, export SVG, susun berbaris, duplikat kanvas, salin-tempel stiker.
 - Kebutuhan aplikasi §6 (keputusan): penjaga jarak offset − 0,3 mm, die membungkus kiss, grid 1 mm, proses pembantu CDR 30 detik.
 - Kebutuhan aplikasi §8 (batasan): hanya garis luar dan lubang asli yang tetap terbuka (donat) yang dipotong; SVG menjadi gambar (tanpa peringatan), dan PDF yang diputar menjadi gambar dengan peringatan.
-- [Skenario uji garis potong](../UJI-GARIS-POTONG.md) S1–S17, [skenario uji stabilitas](../UJI-STABILITAS.md) P1–P10, dan daftar uji operator di kebutuhan aplikasi §10 butir 1–18.
+- [Skenario uji garis potong](../UJI-GARIS-POTONG.md) S1–S19, [skenario uji stabilitas](../UJI-STABILITAS.md) P1–P10, dan daftar uji operator di kebutuhan aplikasi §10 butir 1–18.
 - Spesifikasi leader:
   - bagian 2: memori ±120 MB, tampilan tetap responsif;
   - bagian 3: CMYK murni (DeviceCMYK), bleed;

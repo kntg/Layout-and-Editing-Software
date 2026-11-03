@@ -36,7 +36,10 @@ Isi README ini:
 5. **Periksa layout.**
    - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain atau keluar margin.
-   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah.
+   - **Berbaris:** centang di toolbar untuk menyusun stiker per baris dan kolom, dengan desain yang sama berkumpul. Lebih rapi, tetapi bahan lebih boros pada bentuk tidak beraturan. Susun otomatis, tambah file, dan ganti kertas mengikuti centang ini.
+   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Berbaris dicentang, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
+   - **Duplikat kanvas:** tombol **Duplikat** di judul lembar menyalin lembar itu utuh, termasuk hasil edit, ke lembar baru di sampingnya. Lembar berjajar ke kanan dan turun ke bawah bila baris di layar penuh. Bahan bertambah 1 lembar, dan jumlah (pcs) tiap desain ikut bertambah. Cara keyboard: klik area kosong di kanvas, Ctrl+C, lalu Ctrl+V.
+   - **Salin-tempel stiker:** klik stiker, Ctrl+C, lalu Ctrl+V. Salinan berada tepat di kanan stiker asli; bila baris penuh, turun ke baris berikutnya. Susun otomatis tetap menyusun ulang semua stiker dari jumlah pcs, jadi hasil duplikat dan tempel hilang (bisa diurungkan).
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
 6. **Export.**
    - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
@@ -118,12 +121,14 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | R | Putar stiker yang dipilih 90° |
 | Delete | Hapus stiker yang dipilih (di editor: hapus titik yang dipilih) |
 | Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
+| Ctrl+C, lalu Ctrl+V | Salin dan tempel stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
 
 ## Arti pesan dan peringatan
 
 | Pesan | Arti dan yang perlu dilakukan |
 | --- | --- |
 | "… lebih besar dari kertas" | Desain tidak muat di area cetak. Perkecil lebarnya, atau pilih kertas yang lebih besar. |
+| "Tidak ada tempat di kanan atau bawah stiker ini…" | Salinan stiker tidak muat di lembar ini. Hapus stiker lain, atau pakai Duplikat di judul lembar untuk lembar baru. |
 | "… desain resolusi rendah" | Di bawah 150 dpi pada lebar itu. Minta file asli ke customer, atau perkecil desainnya. |
 | "… PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" | PDF dicetak sebagai gambar, bukan vektor. Periksa ketajaman dan warnanya sebelum cetak. |
 | "… tumpang tindih/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
@@ -179,7 +184,7 @@ Langkah:
 
 - [Kebutuhan aplikasi](docs/kebutuhan-aplikasi.md) (dulu bernama PRD): tujuan, fitur, keputusan, batasan, daftar uji untuk operator, dan cara menjalankan (§11).
 - [Catatan riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S17 dan hasilnya.
+- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S19 dan hasilnya.
 - [Skenario uji stabilitas](docs/UJI-STABILITAS.md): skenario P1–P10 (proses pembantu CDR, kerja paralel, memori) dan hasilnya.
 - [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.

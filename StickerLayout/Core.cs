@@ -969,6 +969,112 @@ public static class Nest
         return added;
     }
 
+    // Susun berbaris (permintaan user 2026-11-02): desain sama berkumpul, desain tertinggi dulu, baris demi baris dari kiri atas.
+    // ponytail: tiap stiker memakai kotak penuh jejaknya dan hanya satu urutan dicoba, jadi lebih rapi tetapi lebih boros dari Run
+    // pada bentuk tidak beraturan. Coba beberapa urutan seperti Run bila lembar sering bertambah.
+    public static List<List<Placed>> Rows(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig, bool marks = false)
+    {
+        var designs = stickers.Where(s => s.Copies > 0).ToList();
+        // Tanpa stiker: occ hanya berisi area tanda registrasi, jadi sama untuk semua lembar. Baris tidak bisa saling menabrak.
+        var occ = Occupancy([], cw, ch, margin, 0, KeepOut(cw, ch, margin, marks, designs.Select(Printed).DefaultIfEmpty(0).Max()));
+        int cols = occ.GetLength(0), rows = occ.GetLength(1), gc = CellsOf(gap), cx = 0, cy = 0, rowH = 0;
+        var sheets = new List<List<Placed>> { new() };
+
+        bool Put(Sticker s, int rot, Foot f)
+        {
+            int fw = f.MaxX - f.MinX + 1, fh = f.MaxY - f.MinY + 1;
+            while (true)
+            {
+                int top = Math.Max(cy, f.Bleed), h = Math.Max(rowH, fh), y = top + (h - fh) / 2;
+                if (y + fh > rows - f.Bleed) return false;
+                // Lompat satu kotak penuh, supaya kolom tetap lurus saat melewati area tanda registrasi.
+                for (int x = Math.Max(cx, f.Bleed); x + fw <= cols - f.Bleed; x += fw + gc)
+                    if (Fits(occ, f.Cells, x - f.MinX, y - f.MinY))
+                    {
+                        sheets[^1].Add(new Placed { S = s, Rot = rot, X = margin + (x - f.MinX) * Cell, Y = margin + (y - f.MinY) * Cell });
+                        (cx, cy, rowH) = (x + fw + gc, top, h);
+                        return true;
+                    }
+                (cy, cx, rowH) = (rowH > 0 ? cy + rowH + gc : cy + 1, 0, 0); // baris kosong berarti terhalang area tanda: turun satu sel
+            }
+        }
+
+        tooBig = 0;
+        var jobs = new List<(Sticker S, int Rot, Foot F)>();
+        foreach (var s in designs)
+        {
+            // Diputar hanya bila tidak muat tegak.
+            var (up, side) = (FootOf(s, 0), FootOf(s, 90));
+            bool In(Foot f) => f.MaxX - f.MinX + 1 + 2 * f.Bleed <= cols && f.MaxY - f.MinY + 1 + 2 * f.Bleed <= rows;
+            if (In(up)) jobs.Add((s, 0, up));
+            else if (In(side)) jobs.Add((s, 90, side));
+            else tooBig += s.Copies;
+        }
+        foreach (var (s, rot, f) in jobs.OrderByDescending(j => j.F.MaxY - j.F.MinY))
+        {
+            // Desain yang cukup untuk satu baris penuh mulai di baris baru; yang sedikit mengisi sisa baris.
+            if (cx > 0 && s.Copies >= (cols - 2 * f.Bleed + gc) / (f.MaxX - f.MinX + 1 + gc)) (cy, cx, rowH) = (cy + rowH + gc, 0, 0);
+            for (int i = 0; i < s.Copies; i++)
+            {
+                if (Put(s, rot, f)) continue;
+                if (sheets[^1].Count > 0)
+                {
+                    sheets.Add([]);
+                    (cx, cy, rowH) = (0, 0, 0);
+                    if (Put(s, rot, f)) continue;
+                }
+                tooBig += s.Copies - i;
+                break;
+            }
+        }
+        sheets.RemoveAll(x => x.Count == 0);
+        return sheets;
+    }
+
+    // Penuhi lembar saat berbaris: salinan ditambah bergiliran lalu disusun ulang, selama jumlah lembar dan yang tidak muat tidak
+    // bertambah. Copies diubah sesuai hasil. Mengembalikan susunan baru; geseran manual hilang (bisa diurungkan).
+    public static List<List<Placed>> FillRows(IReadOnlyList<Sticker> designs, double cw, double ch, double margin, double gap, out int added, bool marks = false)
+    {
+        var best = Rows(designs, cw, ch, margin, gap, out int big, marks);
+        added = 0;
+        var turn = designs.Where(s => s.Copies > 0).ToList();
+        for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
+        {
+            turn[i].Copies++;
+            var r = Rows(designs, cw, ch, margin, gap, out int b, marks);
+            if (r.Count <= best.Count && b <= big) { best = r; added++; i++; }
+            else { turn[i].Copies--; turn.RemoveAt(i); }
+        }
+        return best;
+    }
+
+    // Duplikat kanvas: isi, posisi, dan rotasi sama persis, termasuk hasil edit. Tepat setelah lembar asal, jadi tampil di sampingnya.
+    public static void CopySheet(List<List<Placed>> sheets, List<double> heights, int i)
+    {
+        sheets.Insert(i + 1, [.. sheets[i].Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot })]);
+        heights.Insert(i + 1, heights[i]);
+    }
+
+    // Tempel stiker: posisi kosong pertama di kanan (fromX, fromY), lalu di baris-baris bawahnya dari kolom paling kiri. Langkahnya sebesar
+    // jejak + jarak seperti Rows, jadi salinan rata dengan stiker asli. null = tidak ada tempat; lembar baru tidak dibuat, supaya bahan tidak
+    // bertambah tanpa disadari.
+    // ponytail: hanya posisi segaris yang dicoba, jadi ruang kosong di atas stiker asli atau di antara kolom dilewati. Tambah pencarian bebas
+    // seperti Snap bila operator sering kehabisan tempat.
+    public static Placed? PasteNext(List<Placed> ps, Sticker s, int rot, double fromX, double fromY, double cw, double ch, double margin, double gap, bool marks = false)
+    {
+        int gc = CellsOf(gap);
+        var occ = Occupancy(ps, cw, ch, margin, gc, KeepOut(cw, ch, margin, marks, Printed(s)));
+        var f = FootOf(s, rot);
+        int cols = occ.GetLength(0), rows = occ.GetLength(1), ax = (int)Math.Round((fromX - margin) / Cell), ay = (int)Math.Round((fromY - margin) / Cell);
+        int sx = f.MaxX - f.MinX + 1 + gc, sy = f.MaxY - f.MinY + 1 + gc;
+        static int First(int a, int low, int step) => low + ((a - low) % step + step) % step; // posisi terkecil >= low yang segaris dengan a
+        for (int y = First(ay, f.Bleed - f.MinY, sy); y + f.MaxY < rows - f.Bleed; y += sy)
+            for (int x = First(ax, f.Bleed - f.MinX, sx); x + f.MaxX < cols - f.Bleed; x += sx)
+                if ((y > ay || (y == ay && x > ax)) && Fits(occ, f.Cells, x, y))
+                    return new Placed { S = s, Rot = rot, X = margin + x * Cell, Y = margin + y * Cell };
+        return null;
+    }
+
     static bool Fits(bool[,] occ, List<(int X, int Y)> cells, int x, int y)
     {
         foreach (var (cx, cy) in cells) if (occ[x + cx, y + cy]) return false;
