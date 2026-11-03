@@ -13,7 +13,7 @@ public static class Lang
         ["Lang"] = ("Bahasa", "Language"),
         ["RegMarks"] = ("Tanda registrasi", "Registration marks"),
         ["RegMarksNone"] = ("Tidak ada", "None"),
-        ["RegMarks1"] = ("SA regmark type2 auto 33 0.00 2.83 28.35 283.46 283.46 0", "SA regmark type2 auto 33 0.00 2.83 28.35 283.46 283.46 0"),
+        ["RegMarks1"] = ("Regmark", "Regmark"),
         ["MFile"] = ("File", "File"),
         ["MEdit"] = ("Edit", "Edit"),
         ["MView"] = ("Tampilan", "View"),
@@ -76,6 +76,7 @@ public static class Lang
         ["RowsTip"] = ("Susun per baris dan kolom, desain sama berkumpul: lebih rapi, bahan lebih boros.", "Arrange in rows and columns, same designs together: neater, uses more material."),
         ["Resized"] = ("{0} diubah menjadi {1} × {2} mm.", "{0} resized to {1} × {2} mm."),
         ["ResizedNoRoom"] = ("{0} diubah menjadi {1} × {2} mm, tetapi tidak ada posisi kosong. Pakai Susun otomatis.", "{0} resized to {1} × {2} mm, but there is no free spot. Use Auto layout."),
+        ["NStickers"] = ("{0} stiker", "{0} stickers"),
         ["MovedTo"] = ("{0} dipindah ke lembar {1}.", "{0} moved to sheet {1}."),
         ["SheetFull"] = ("Tidak ada tempat di lembar {0}. {1} kembali ke posisi awal.", "No room on sheet {0}. {1} went back to where it was."),
         ["NoRoom"] = ("Tidak ada tempat. {0} kembali ke posisi awal.", "No room. {0} went back to where it was."),
@@ -195,6 +196,17 @@ public static class Lang
         ["Saved"] = ("Tersimpan: {0}", "Saved: {0}"),
         ["ExportBad"] = ("Ada stiker tumpang tindih/terlalu dekat/keluar margin. Tetap export?", "Some stickers overlap, are too close, or exceed the margin. Export anyway?"),
         ["PdfRaster"] = ("{0}: PDF ditempel sebagai gambar, bukan vektor ({1}).", "{0}: PDF placed as an image, not vector ({1})."),
+
+        ["HomeWelcome"] = ("Selamat Datang di Printech", "Welcome To Printech"),
+        ["HomeDesc"] = ("Solusi cerdas untuk layout stiker dan cetak Anda", "Smart solution for your sticker layout and print"),
+        ["MenuNew"] = ("File Baru", "New File"),
+        ["MenuRecent"] = ("File Terbaru", "Recent File"),
+        ["MenuImport"] = ("Impor File", "Import File"),
+        ["MenuSettings"] = ("Pengaturan", "Settings"),
+        ["MenuHelp"] = ("Bantuan", "Help"),
+        ["HomeDragOr"] = ("Seret atau ", "Drag or "),
+        ["HomeOpenFolder"] = ("Buka Folder", "Open Folder"),
+        ["HomeSupported"] = ("File yang didukung: *.pdf, *.cdr, *.ai, *.svg, *.png, *.jpg", "Supported Files: *.pdf, *.cdr, *.ai, *.svg, *.png, *.jpg"),
     };
 
     public static void Apply(string code)

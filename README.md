@@ -34,7 +34,7 @@ Isi README ini:
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang.
 5. **Periksa layout.**
-   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Proporsi tetap, dan lebar × tinggi artwork tampil di dekat kursor. Saat mouse dilepas, ukuran baru berlaku untuk semua salinan desain itu dan garis potong dihitung ulang. Salinan lain yang jadi bertabrakan ditandai merah; klik Susun otomatis untuk menyusunnya ulang.
    - **Hemat atau Rapi:** pilihan di toolbar. Hemat (bawaan) memadatkan stiker dan boleh memutarnya, jadi bahannya paling hemat. Rapi menyusun stiker per baris dan kolom dengan tepi kiri rata dan desain yang sama berkumpul, tetapi bahan bisa lebih boros. Susun otomatis, tambah file, dan ganti kertas mengikuti pilihan ini.

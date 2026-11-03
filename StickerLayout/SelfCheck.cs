@@ -1072,15 +1072,29 @@ public static class SelfCheck
             var fromSheet = new List<Placed> { Lay(30, 30, 90) };
             var mover = fromSheet[0];
             var toSheet = new List<Placed> { Lay(30, 30) };
-            if (!Nest.MoveTo(fromSheet, toSheet, mover, 35, 35, A4W, A4H, Margin, Gap) || fromSheet.Count != 0 || toSheet.Count != 2 || !toSheet.Contains(mover)
+            (mover.X, mover.Y) = (35, 35);
+            if (!Nest.MoveTo([fromSheet, toSheet], [mover], 1, A4W, A4H, Margin, Gap) || fromSheet.Count != 0 || toSheet.Count != 2 || !toSheet.Contains(mover)
                 || mover.Rot != 90 || Nest.Check(toSheet, A4W, A4H, Margin, false, Gap) != 0)
                 dropBad.Add("pindah ke lembar yang ada tempat gagal");
             var crowd = Nest.Run([Box(40, 30, 40)], A4W, A4H, Margin, Gap, out _)[0];
             var stay = Lay(30, 30);
             var home = new List<Placed> { stay };
             int crowdCount = crowd.Count;
-            if (Nest.MoveTo(home, crowd, stay, 100, 100, A4W, A4H, Margin, Gap) || home.Count != 1 || crowd.Count != crowdCount || stay.X != 30 || stay.Y != 30)
+            if (Nest.MoveTo([home, crowd], [stay], 1, A4W, A4H, Margin, Gap) || home.Count != 1 || crowd.Count != crowdCount || stay.X != 30 || stay.Y != 30)
                 dropBad.Add("lembar tujuan penuh: stiker atau lembar ikut berubah");
+
+            // Beberapa stiker terpilih pindah bersama: semua muat, atau tidak ada yang berubah. Anggota yang sudah di lembar tujuan tidak berlipat.
+            var (duoA, duoB, there) = (Lay(30, 30), Lay(100, 30), Lay(30, 100));
+            var (pageA, pageB) = (new List<Placed> { duoA, duoB, Lay(30, 200) }, new List<Placed> { there });
+            if (!Nest.MoveTo([pageA, pageB], [duoA, duoB, there], 1, A4W, A4H, Margin, Gap) || pageA.Count != 1 || pageB.Count != 3 || Nest.Check(pageB, A4W, A4H, Margin, false, Gap) != 0)
+                dropBad.Add($"pindah berkelompok: isi lembar {pageA.Count} dan {pageB.Count}");
+            var nearlyFull = Nest.Run([Box(40, 30, 40)], A4W, A4H, Margin, Gap, out _)[0];
+            nearlyFull.RemoveAt(nearlyFull.Count - 1); // tepat satu tempat kosong
+            var (fits, stuck) = (Lay(30, 30), Lay(100, 30));
+            var (origin, roomFor) = (new List<Placed> { fits, stuck }, nearlyFull.Count);
+            if (Nest.MoveTo([origin, nearlyFull], [fits, stuck], 1, A4W, A4H, Margin, Gap) || origin.Count != 2 || nearlyFull.Count != roomFor
+                || (fits.X, fits.Y) != (30, 30) || (stuck.X, stuck.Y) != (100, 30))
+                dropBad.Add("pindah berkelompok tanpa tempat: sebagian stiker ikut berubah");
 
             var bar = new Placed { S = Box(250, 20), Rot = 90, X = 30, Y = 15 };
             if (Nest.Turn([bar], bar, A4W, A4H, Margin, Gap) || bar.Rot != 90 || bar.X != 30 || bar.Y != 15)
