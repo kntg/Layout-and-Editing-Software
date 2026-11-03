@@ -103,6 +103,8 @@
                                     <TextBlock Text="{DynamicResource Compact}" Margin="7,0,0,0"/>
                                 </StackPanel>
                             </Button>
+                            <CheckBox x:Name="RowsBox" Content="Rows" Margin="16,0,0,0" VerticalAlignment="Center" 
+                                      Checked="Rows_Changed" Unchecked="Rows_Changed" ToolTip="Susun dalam baris" />
                         </StackPanel>
                     </DockPanel>
                 </Border>
