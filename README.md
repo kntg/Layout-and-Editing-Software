@@ -36,8 +36,9 @@ Isi README ini:
 5. **Periksa layout.**
    - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain atau keluar margin.
-   - **Berbaris:** centang di toolbar untuk menyusun stiker per baris dan kolom, dengan desain yang sama berkumpul. Lebih rapi, tetapi bahan lebih boros pada bentuk tidak beraturan. Susun otomatis, tambah file, dan ganti kertas mengikuti centang ini.
-   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Berbaris dicentang, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
+   - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Proporsi tetap, dan lebar × tinggi artwork tampil di dekat kursor. Saat mouse dilepas, ukuran baru berlaku untuk semua salinan desain itu dan garis potong dihitung ulang. Salinan lain yang jadi bertabrakan ditandai merah; klik Susun otomatis untuk menyusunnya ulang.
+   - **Hemat atau Rapi:** pilihan di toolbar. Hemat (bawaan) memadatkan stiker dan boleh memutarnya, jadi bahannya paling hemat. Rapi menyusun stiker per baris dan kolom dengan tepi kiri rata dan desain yang sama berkumpul, tetapi bahan bisa lebih boros. Susun otomatis, tambah file, dan ganti kertas mengikuti pilihan ini.
+   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Rapi dipilih, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
    - **Duplikat kanvas:** tombol **Duplikat** di judul lembar menyalin lembar itu utuh, termasuk hasil edit, ke lembar baru di sampingnya. Lembar berjajar ke kanan dan turun ke bawah bila baris di layar penuh. Bahan bertambah 1 lembar, dan jumlah (pcs) tiap desain ikut bertambah. Cara keyboard: klik area kosong di kanvas, Ctrl+C, lalu Ctrl+V.
    - **Salin-tempel stiker:** klik stiker, Ctrl+C, lalu Ctrl+V. Salinan berada tepat di kanan stiker asli; bila baris penuh, turun ke baris berikutnya. Susun otomatis tetap menyusun ulang semua stiker dari jumlah pcs, jadi hasil duplikat dan tempel hilang (bisa diurungkan).
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
@@ -184,7 +185,7 @@ Langkah:
 
 - [Kebutuhan aplikasi](docs/kebutuhan-aplikasi.md) (dulu bernama PRD): tujuan, fitur, keputusan, batasan, daftar uji untuk operator, dan cara menjalankan (§11).
 - [Catatan riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S19 dan hasilnya.
+- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S20 dan hasilnya.
 - [Skenario uji stabilitas](docs/UJI-STABILITAS.md): skenario P1–P10 (proses pembantu CDR, kerja paralel, memori) dan hasilnya.
 - [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.

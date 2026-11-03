@@ -108,7 +108,7 @@ public static class SelfCheck
                 $"D6: 149,6 dpi tampil {DpiOf(1496).DpiText}, merah {DpiOf(1496).LowDpi}; 149,4 dpi tampil {DpiOf(1494).DpiText}, merah {DpiOf(1494).LowDpi}");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah); 149,6 dpi = {DpiOf(1496).DpiText} tidak merah");
 
-            // Skenario uji garis potong S1-S9 dan S11-S19 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S20 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -949,6 +949,81 @@ public static class SelfCheck
             if (Nest.PasteNext([], Box(400, 400), 0, Margin, Margin, A4W, A4H, Margin, Gap) != null) copyBad.Add("desain lebih besar dari kertas tetap ditempel");
             S(19, "duplikat kanvas dan tempel stiker: salinan kanvas sama persis, tempel ke kanan lalu ke bawah, segaris, tanpa tabrakan", copyBad.Count == 0,
                 string.Join("; ", copyBad.Distinct().Concat(copyLog)));
+
+            // S20: atur ukuran di kanvas dan tepi kiri susun Rapi (permintaan user 2026-11-03). Pojok seberang diam, proporsi dan jarak garis
+            // potong tetap, batas 5 mm dan area cetak, semua salinan ikut; baris Rapi mulai dari tepi kiri tanpa menambah lembar.
+            var (sizeBad, sizeLog) = (new List<string>(), new List<string>());
+            static bool About(double a, double b, double tol = 0.11) => Math.Abs(a - b) <= tol;
+            var grip = new Placed { S = Box(40, 30), X = 50, Y = 60 };
+            double gripX = grip.BW - grip.S.ArtW, gripY = grip.BH - grip.S.ArtH;
+            var (rbW, rb) = Nest.ResizeTo(grip, 2, grip.X + 80 + gripX, grip.Y, A4W, A4H, Margin);
+            if (!About(rbW, 80) || rb.X != grip.X || rb.Y != grip.Y || !About(rb.Width, 80 + gripX) || !About(rb.Height, 60 + gripY)) sizeBad.Add($"tarik kanan bawah: lebar {rbW:F1}, kotak {rb.Width:F1} x {rb.Height:F1}");
+            var (ltW, ltBox) = Nest.ResizeTo(grip, 0, grip.X + grip.BW - 20 - gripX, grip.Y + grip.BH - 15 - gripY, A4W, A4H, Margin);
+            if (!About(ltW, 20) || !About(ltBox.Right, grip.X + grip.BW) || !About(ltBox.Bottom, grip.Y + grip.BH)) sizeBad.Add($"tarik kiri atas: lebar {ltW:F1}, kanan bawah tidak diam");
+            var (rtW, rt) = Nest.ResizeTo(grip, 1, grip.X + 60 + gripX, grip.Y + grip.BH - 10, A4W, A4H, Margin);
+            if (!About(rtW, 60) || rt.X != grip.X || !About(rt.Bottom, grip.Y + grip.BH)) sizeBad.Add($"tarik kanan atas: lebar {rtW:F1}, kiri bawah tidak diam");
+            var (lbW, lb) = Nest.ResizeTo(grip, 3, grip.X + grip.BW - 60 - gripX, grip.Y + 10, A4W, A4H, Margin);
+            if (!About(lbW, 60) || !About(lb.Right, grip.X + grip.BW) || lb.Y != grip.Y) sizeBad.Add($"tarik kiri bawah: lebar {lbW:F1}, kanan atas tidak diam");
+
+            var quarter = new Placed { S = Box(60, 30), Rot = 90, X = 50, Y = 60 };
+            double quarterX = quarter.BW - quarter.S.ArtH, quarterY = quarter.BH - quarter.S.ArtW;
+            var (qW, qBox) = Nest.ResizeTo(quarter, 2, quarter.X, quarter.Y + 120 + quarterY, A4W, A4H, Margin);
+            if (!About(qW, 120) || !About(qBox.Width, 60 + quarterX) || !About(qBox.Height, 120 + quarterY)) sizeBad.Add($"stiker diputar: lebar {qW:F1}, kotak {qBox.Width:F1} x {qBox.Height:F1}");
+
+            var (minW, _) = Nest.ResizeTo(grip, 2, 0, 0, A4W, A4H, Margin);
+            if (!About(minW, 6.7)) sizeBad.Add($"batas kecil: lebar {minW:F1} mm, harapan 6,7 (sisi pendek 5 mm)");
+            var tiny = new Placed { S = Box(4, 3), X = 50, Y = 60 };
+            var (tinyW, _) = Nest.ResizeTo(tiny, 2, 0, 0, A4W, A4H, Margin);
+            if (!About(tinyW, tiny.S.ArtW)) sizeBad.Add($"desain yang sudah kecil ikut membesar: {tinyW:F1} mm");
+            var (maxW, maxBox) = Nest.ResizeTo(grip, 2, 5000, 5000, A4W, A4H, Margin);
+            if (maxBox.Width > A4W - 2 * Margin + 0.11 || maxBox.Height > A4H - 2 * Margin + 0.11 || maxW <= 40) sizeBad.Add($"batas area cetak: kotak {maxBox.Width:F1} x {maxBox.Height:F1}");
+            var (oddW, _) = Nest.ResizeTo(grip, 2, grip.X + 33.33 + gripX, grip.Y, A4W, A4H, Margin);
+            if (!About(oddW, 33.3, 1e-9)) sizeBad.Add($"lebar tidak dibulatkan ke 0,1 mm: {oddW}");
+
+            var sizeCircle = Loader.Load(cPath, 0, 40, kiss, die);
+            double sizeGap = sizeCircle.Outer.Bounds.Width - sizeCircle.ArtW;
+            sizeCircle.WidthMm = 80;
+            var sizeBig = Loader.Reload(sizeCircle, sizeCircle.LoadedKiss, sizeCircle.LoadedDie, sizeCircle.LoadedBleed);
+            double sizeGap2 = sizeBig.Outer.Bounds.Width - sizeBig.ArtW;
+            if (!About(sizeBig.ArtW, 80) || !About(sizeBig.ArtH, 2 * sizeCircle.ArtH, 0.2) || !About(sizeGap2, sizeGap, 0.5)) sizeBad.Add($"muat ulang: lebar {sizeBig.ArtW:F1}, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm");
+            var sizeStar = Loader.Load(cPath, 0, 40, kiss, die, shape: CutShape.Star, border: new Cmyk(0, 1, 1, 0), dieShape: CutShape.Rect);
+            sizeStar.WidthMm = 60;
+            var sizeStar2 = Loader.Reload(sizeStar, sizeStar.LoadedKiss, sizeStar.LoadedDie, sizeStar.LoadedBleed);
+            if (!About(sizeStar2.ArtW, 60) || sizeStar2.Shape != CutShape.Star || sizeStar2.DieShape != CutShape.Rect || sizeStar2.Border != sizeStar.Border) sizeBad.Add("muat ulang: bentuk atau warna border hilang");
+            var sizePdf = Loader.Load(Path.Combine(dir, "logo.pdf"), 0, 40, kiss, die);
+            sizePdf.WidthMm = 60;
+            var sizePdf2 = Loader.Reload(sizePdf, sizePdf.LoadedKiss, sizePdf.LoadedDie, sizePdf.LoadedBleed);
+            if (!About(sizePdf2.ArtW, 60) || sizePdf2.Pdf == null) sizeBad.Add("muat ulang: PDF tidak lagi vektor");
+            var sizeHand = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: pk, manualDie: pd);
+            sizeHand.WidthMm = 80;
+            var sizeHand2 = Loader.Reload(sizeHand, sizeHand.LoadedKiss, sizeHand.LoadedDie, sizeHand.LoadedBleed);
+            if (!About(sizeHand2.Outer.Bounds.Width, man80.Outer.Bounds.Width, 0.01)) sizeBad.Add($"muat ulang: garis manual {sizeHand2.Outer.Bounds.Width:F2} mm, harapan {man80.Outer.Bounds.Width:F2}");
+
+            var (swapOld, swapNew) = (Box(40, 30), Box(60, 45));
+            var swap = new List<List<Placed>> { new() { new() { S = swapOld, X = 20, Y = 20 }, new() { S = grip.S, X = 120, Y = 20 } }, new() { new() { S = swapOld, X = 30, Y = 30 } } };
+            Nest.SwapDesign(swap, swapOld, swapNew);
+            if (swap.SelectMany(x => x).Count(p => p.S == swapNew) != 2 || swap[0][1].S != grip.S || swap[1][0].X != 30) sizeBad.Add("salinan lain tidak ikut berganti ukuran");
+
+            var evenPage = Nest.Rows([Box(40, 30, 5)], A4W, A4H, Margin, Gap, out _, true)[0];
+            var evenRows = evenPage.GroupBy(p => p.Y).OrderBy(g => g.Key).ToList();
+            if (evenRows.Count < 2 || evenRows[0].Min(p => p.X) != evenRows[1].Min(p => p.X) || Nest.Check(evenPage, A4W, A4H, Margin, true) != 0)
+                sizeBad.Add($"tepi kiri baris Rapi tidak rata: {string.Join(" / ", evenRows.Select(g => g.Min(p => p.X)))}");
+            // 17 stiker: isi lembar A4 sebelum aturan tepi kiri (S19). Tepi rata tidak boleh menambah lembar.
+            if (Nest.Rows([Box(40, 30, 17)], A4W, A4H, Margin, Gap, out _, true).Count != 1) sizeBad.Add("tepi rata menambah lembar");
+
+            // Hemat (masukan user 2026-11-03, foto 178,5 x 100 mm, 20 salinan, A3+): baris pertama turun melewati area tanda bila itu lebih hemat.
+            var photo = Png(Draw(dc => dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 356, 200)), 356, 200), 178, kiss, new Cut(false, 4, 2));
+            photo.Copies = 20;
+            var packed = Nest.Run([photo], 320, 480, Margin, Gap, out _, true);
+            var upright = packed[0].Where(p => p.Rot % 180 == 0).Select(p => p.X).Distinct().ToList();
+            if (packed[0].Count < 6 || packed.Count > 4 || upright.Count != 1 || packed.Any(sh => Nest.Check(sh, 320, 480, Margin, true) != 0))
+                sizeBad.Add($"Hemat: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar, tepi kiri {string.Join(" / ", upright)}");
+            // 2 lembar: pekerjaan S17 dengan tanda registrasi sebelum percobaan ini. Hemat tidak boleh menambah lembar.
+            if (regRun.Count != 2) sizeBad.Add($"Hemat dengan tanda registrasi: {regRun.Count} lembar, harapan 2");
+            sizeLog.Add($"kotak 40 x 30 mm: paling kecil {minW:F1} mm, paling besar {maxW:F1} mm; lingkaran 40 -> 80 mm, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm; tepi kiri baris Rapi {evenRows[0].Min(p => p.X):F0} mm; "
+                + $"Hemat foto 178 x 100 mm: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar");
+            S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, proporsi dan jarak garis tetap, batas ukuran, semua salinan ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,
+                string.Join("; ", sizeBad.Distinct().Concat(sizeLog)));
 
             Check(fails.Count == 0, "skenario gagal: " + string.Join(", ", fails));
 

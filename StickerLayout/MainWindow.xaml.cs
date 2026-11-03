@@ -25,7 +25,12 @@ public partial class MainWindow : Window
     double sheetW, panH, panV;
     Placed? sel, drag;
     (Sticker S, int Rot, double X, double Y)? clip; // stiker yang disalin; null dengan clipSheet terisi = kanvas
-    int selSheet, tooBig, clipSheet = -1;
+    int selSheet, tooBig, clipSheet = -1, sizing = -1; // sizing: titik pojok yang sedang ditarik
+    double sizeW;
+    Rect sizeBox;
+    Vector sizeGrab;
+    Border? sizeTip;
+    readonly ScaleTransform unzoom = new(); // membatalkan zoom, supaya titik pojok dan angka ukuran tetap sama besar di layar
     Point last, panFrom;
     bool panning, space, moved;
     Tool tool = Tool.Move;
@@ -75,6 +80,7 @@ public partial class MainWindow : Window
             var ps = i < sheets.Count ? sheets[i] : [];
             var c = Nest.Sheet(ps, w, h, MarginMm, sel, i, HasRegMarks);
             c.LayoutTransform = zoom;
+            if (sel != null && i == selSheet) AddHandles(c, sel);
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
             double su = Yield.Use(ps, w, h, MarginMm);
@@ -203,7 +209,7 @@ public partial class MainWindow : Window
             (CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text) = (v[1], v[2], v[3], v[4]);
             (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[5] == "True", v[6], v[7]);
             (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[8] == "True", v[9], v[10]);
-            (BleedBox.Text, WidthBox.Text, RowsBox.IsChecked) = (v[11], v[12], v[13] == "True");
+            (BleedBox.Text, WidthBox.Text, RowsBox.IsChecked, DenseBox.IsChecked) = (v[11], v[12], v[13] == "True", v[13] != "True");
         }
         finally { restoring = false; }
         items.Clear();
@@ -338,6 +344,7 @@ public partial class MainWindow : Window
         n.Copies = old.Copies;
         n.Name = old.Name;
         items[items.IndexOf(old)] = n;
+        if (clip is { } c && c.S == old) clip = (n, c.Rot, c.X, c.Y);
     }
 
     void Nest_Click(object s, RoutedEventArgs e) => Arrange();
@@ -358,12 +365,7 @@ public partial class MainWindow : Window
                 var it = items[i];
                 if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != kiss || it.LoadedDie != die
                     || (it.Pdf == null && it.LoadedBleed != bleed)))
-                {
-                    // Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
-                    double k = it.WidthMm / it.LoadedW;
-                    Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
-                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape));
-                }
+                    Replace(it, Loader.Reload(it, kiss, die, bleed));
             }
             sheetW = CW;
             sheets = RowsBox.IsChecked == true ? Nest.Rows(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks) : Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
@@ -631,6 +633,7 @@ public partial class MainWindow : Window
     void Zoom_Changed(object s, RoutedPropertyChangedEventArgs<double> e)
     {
         zoom.ScaleX = zoom.ScaleY = e.NewValue / 100 * 96 / 25.4; // 100% = ukuran asli
+        unzoom.ScaleX = unzoom.ScaleY = 1 / zoom.ScaleX;
         LimitWrap();
         if (ZoomText != null) ZoomText.Text = $"{e.NewValue:0}%";
         if (HorizontalRuler != null) Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
@@ -802,17 +805,111 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // ---- Pilih & seret stiker (alat Move) ----
+    // ---- Pilih, seret, dan atur ukuran stiker (alat Move) ----
+    const double HandlePx = 9;
+
+    static Point Corner(Placed p, int corner) => new(corner is 1 or 2 ? p.X + p.BW : p.X, corner is 2 or 3 ? p.Y + p.BH : p.Y);
+
+    void AddHandles(Canvas c, Placed p)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            var at = Corner(p, i);
+            var h = new System.Windows.Shapes.Rectangle
+            {
+                Width = HandlePx, Height = HandlePx, Fill = Brushes.White, Stroke = (Brush)FindResource("Accent"), StrokeThickness = 1.5, Tag = i,
+                Cursor = i % 2 == 0 ? Cursors.SizeNWSE : Cursors.SizeNESW, RenderTransform = unzoom, RenderTransformOrigin = new Point(0.5, 0.5)
+            };
+            Canvas.SetLeft(h, at.X - HandlePx / 2);
+            Canvas.SetTop(h, at.Y - HandlePx / 2);
+            c.Children.Add(h);
+        }
+    }
+
+    void HideHandles()
+    {
+        foreach (var h in canvases[selSheet].Children.OfType<System.Windows.Shapes.Rectangle>()) if (h.Tag is int) h.Visibility = Visibility.Collapsed;
+    }
+
+    // Pratinjau selagi titik pojok ditarik: hanya stiker ini yang diskala. Garis potong dihitung ulang saat mouse dilepas (EndResize).
+    void SizeTo(Point pt)
+    {
+        var (c, p) = (canvases[selSheet], sel!);
+        if (sizeTip == null)
+        {
+            if ((pt - Corner(p, sizing)).Length * zoom.ScaleX < 2) return; // klik tanpa menarik tidak mengubah ukuran
+            HideHandles();
+            sizeTip = new Border
+            {
+                Background = (Brush)FindResource("Ink0"), CornerRadius = new CornerRadius(3), Padding = new Thickness(6, 2, 6, 2), IsHitTestVisible = false,
+                RenderTransform = unzoom, Child = new TextBlock { Foreground = (Brush)FindResource("Text") }
+            };
+            c.Children.Add(sizeTip);
+        }
+        (sizeW, sizeBox) = Nest.ResizeTo(p, sizing, pt.X, pt.Y, sheetW, sheetH[selSheet], MarginMm);
+        foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == p) el.RenderTransform = Nest.Xf(p, sizeBox.Width / p.BW, sizeBox.X, sizeBox.Y);
+        double h = p.S.ArtH * sizeW / p.S.ArtW;
+        var (aw, ah) = p.Rot % 180 == 0 ? (sizeW, h) : (h, sizeW);
+        ((TextBlock)sizeTip.Child).Text = $"{F(aw)} × {F(ah)} mm";
+        sizeTip.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(sizeTip, Math.Clamp(pt.X + 12 * unzoom.ScaleX, 0, Math.Max(0, c.Width - sizeTip.DesiredSize.Width * unzoom.ScaleX)));
+        Canvas.SetTop(sizeTip, Math.Clamp(pt.Y + 12 * unzoom.ScaleX, 0, Math.Max(0, c.Height - sizeTip.DesiredSize.Height * unzoom.ScaleX)));
+    }
+
+    // Mouse dilepas: ukuran berlaku untuk semua salinan desain. Offset, Halus, dan bleed tetap yang dimuat, walau panel sudah diubah. Stiker yang ditarik
+    // pindah ke posisi kosong terdekat seperti saat digeser; salinan lain yang jadi bertabrakan ditandai merah.
+    void EndResize()
+    {
+        bool changed = sizeTip != null && Math.Abs(sizeW - sel!.S.ArtW) >= 0.05;
+        (sizing, sizeTip) = (-1, null);
+        Sheets.ReleaseMouseCapture();
+        if (!changed) { Redraw(); return; }
+        var old = sel!.S;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            old.WidthMm = sizeW;
+            var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed);
+            Replace(old, n);
+            Nest.SwapDesign(sheets, old, n);
+            (sel.X, sel.Y) = (sizeBox.X, sizeBox.Y);
+            Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
+        }
+        catch (Exception ex)
+        {
+            old.WidthMm = old.LoadedW;
+            MessageBox.Show(ex.Message, App.Brand);
+            Redraw();
+            return;
+        }
+        finally { Mouse.OverrideCursor = null; }
+        List.Items.Refresh();
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
+        Redraw(Lang.T("Resized", sel.S.Name, F(aw), F(ah)) + "  " + Summary());
+        Commit();
+        FreeMemory();
+    }
+
     void Sheets_Down(object s, MouseButtonEventArgs e)
     {
         Placed? hit = null;
         Canvas? sheet = null;
+        int corner = -1;
         for (var d = e.OriginalSource as DependencyObject; d is Visual; d = VisualTreeHelper.GetParent(d))
         {
+            if (d is System.Windows.Shapes.Rectangle { Tag: int k }) corner = k;
             if (hit == null && d is FrameworkElement { Tag: Placed p }) hit = p;
             if (d is Canvas { Tag: int }) { sheet = (Canvas)d; break; }
         }
         View.Focus();
+        if (corner >= 0 && sel != null && sheet != null)
+        {
+            sizing = corner;
+            sizeGrab = e.GetPosition(sheet) - Corner(sel, corner); // relatif terhadap pojok: stiker tidak melompat saat titiknya baru diklik
+            Sheets.CaptureMouse();
+            return;
+        }
         sel = sheet == null ? null : hit;
         if (sheet != null) selSheet = (int)sheet.Tag; // klik area kosong: kanvas ini yang disalin Ctrl+C
         if (sel != null)
@@ -826,11 +923,13 @@ public partial class MainWindow : Window
 
     void Sheets_Move(object s, MouseEventArgs e)
     {
+        if (sizing >= 0) { SizeTo(e.GetPosition(canvases[selSheet]) - sizeGrab); return; }
         if (drag == null) return;
         var c = canvases[selSheet];
         var pt = e.GetPosition(c);
         drag.X += pt.X - last.X;
         drag.Y += pt.Y - last.Y;
+        if (!moved && pt != last) HideHandles();
         moved |= pt != last;
         last = pt;
         foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == drag) el.RenderTransform = Nest.Xf(drag);
@@ -838,6 +937,7 @@ public partial class MainWindow : Window
 
     void Sheets_Up(object s, MouseButtonEventArgs e)
     {
+        if (sizing >= 0) { EndResize(); return; }
         if (drag == null) return;
         // Snap magnet: stiker yang digeser pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap).
         if (moved) Nest.Snap(sheets[selSheet], drag, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);

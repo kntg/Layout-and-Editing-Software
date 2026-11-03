@@ -163,6 +163,28 @@
         </Setter>
     </Style>
 
+    <!-- Pilihan teks di toolbar (pilih salah satu) -->
+    <Style x:Key="Choice" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Padding="10,3">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource Text}"/></Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SelBg}"/>
+                            <Setter Property="Foreground" Value="{StaticResource AccentText}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Alat di batang kiri (pilih salah satu, seperti Photoshop) -->
     <Style x:Key="Tool" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{StaticResource Dim}"/>

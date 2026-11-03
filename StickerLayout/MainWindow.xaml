@@ -75,7 +75,12 @@
                             <TextBlock Text="{DynamicResource Nest}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
-                    <CheckBox x:Name="RowsBox" Content="{DynamicResource Rows}" Checked="Rows_Changed" Unchecked="Rows_Changed" Margin="10,0,6,0" VerticalAlignment="Center" ToolTip="{DynamicResource RowsTip}" AutomationProperties.Name="{DynamicResource Rows}"/>
+                    <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4" Padding="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="DenseBox" GroupName="Susun" IsChecked="True" Style="{StaticResource Choice}" Content="{DynamicResource Dense}" ToolTip="{DynamicResource DenseTip}" AutomationProperties.Name="{DynamicResource Dense}"/>
+                            <RadioButton x:Name="RowsBox" GroupName="Susun" Style="{StaticResource Choice}" Content="{DynamicResource Rows}" Checked="Rows_Changed" Unchecked="Rows_Changed" ToolTip="{DynamicResource RowsTip}" AutomationProperties.Name="{DynamicResource Rows}"/>
+                        </StackPanel>
+                    </Border>
                     <Button Style="{StaticResource Ghost}" Click="Compact_Click" Margin="4,0,0,0" AutomationProperties.Name="{DynamicResource Compact}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE73F;" FontSize="12" Foreground="{StaticResource Dim}"/>
