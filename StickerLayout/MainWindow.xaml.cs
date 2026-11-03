@@ -293,8 +293,10 @@ public partial class MainWindow : Window
     {
         if ((s as FrameworkElement)?.DataContext is Sticker st)
         {
+            if (st.Copies == 1) return;   // tidak ada yang berubah
             st.Copies = 1;
-            List.Items.Refresh(); 
+            List.Items.Refresh();
+            Arrange();    
         }
     }
 
