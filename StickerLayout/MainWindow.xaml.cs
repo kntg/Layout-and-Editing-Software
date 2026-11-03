@@ -51,7 +51,7 @@ public partial class MainWindow : Window
     Cut Die => new(DieOn.IsChecked == true, D(DieOff, 4, 0), D(DieSm, 0, 0));
     double BleedMm => D(BleedBox, 0, 0);
     double GapMm => D(GapBox, 2, 0);
-    bool HasRegMarks => RegMarks1.IsChecked == true;
+    bool HasRegMarks => RegMarksToggleMenu.IsChecked;
 
     // Hijau = target bahan tercapai, kuning = dalam rentang target, merah = di bawah target.
     Brush UseBrush(double use, bool regular) => (Brush)FindResource(Yield.Level(use, regular) switch { 2 => "Good", 1 => "Mid", _ => "Warn" });
@@ -506,13 +506,15 @@ public partial class MainWindow : Window
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
-    void RegMarks_Click(object s, RoutedEventArgs e)
+    void RegMarksMenu_Click(object s, RoutedEventArgs e)
     {
-        bool enabled = ((MenuItem)s).Tag as string == "1";
-        RegMarksNone.IsChecked = !enabled;
-        RegMarks1.IsChecked = enabled;
-        // Stiker di area pindai tanda jadi merah; Susun otomatis memindahkannya.
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        // Karena IsCheckable=True, WPF otomatis mengubah status IsChecked saat diklik
+        bool enabled = RegMarksToggleMenu.IsChecked;
+        
+        // Cek apakah stiker masuk ke area regmark
+        for (int i = 0; i < sheets.Count; i++) 
+            Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, enabled);
+            
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 

@@ -43,15 +43,22 @@
                         <MenuItem Header="{DynamicResource ZoomIn}" InputGestureText="Ctrl++" Click="ZoomIn_Click"/>
                         <MenuItem Header="{DynamicResource ZoomOut}" InputGestureText="Ctrl+-" Click="ZoomOut_Click"/>
                         <MenuItem Header="{DynamicResource Fit}" InputGestureText="Ctrl+0, F4" Click="Fit_Click"/>
+                        <Separator/>
+                        <!-- Menu RegMarks -->
+                        <MenuItem x:Name="RegMarksToggleMenu" 
+                                  Header="{DynamicResource RegMarks}" 
+                                  IsCheckable="True" 
+                                  IsChecked="True" 
+                                  Click="RegMarksMenu_Click" />
                     </MenuItem>
                     <MenuItem Header="{DynamicResource Lang}">
                         <MenuItem x:Name="LangId" Header="Indonesia" Tag="id" IsChecked="True" Click="Lang_Click"/>
                         <MenuItem x:Name="LangEn" Header="English" Tag="en" Click="Lang_Click"/>
                     </MenuItem>
-                    <MenuItem Header="{DynamicResource RegMarks}">
+                    <!-- <MenuItem Header="{DynamicResource RegMarks}">
                         <MenuItem x:Name="RegMarksNone" Header="{DynamicResource RegMarksNone}" Tag="none" IsCheckable="True" Click="RegMarks_Click"/>
                         <MenuItem x:Name="RegMarks1" Header="{DynamicResource RegMarks1}" Tag="1" IsCheckable="True" IsChecked="True" Click="RegMarks_Click"/>
-                    </MenuItem>
+                    </MenuItem> -->
                 </Menu>
             </DockPanel>
         </Border>
@@ -382,16 +389,22 @@
                         <Border x:Name="RulerCorner" Background="{StaticResource Ink2}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,1"/>
                         <local:RulerControl x:Name="HorizontalRuler" Grid.Column="1" IsHorizontal="True" BackgroundBrush="{StaticResource Ink2}" TickBrush="{StaticResource Dim}" LabelBrush="{StaticResource Text}"/>
                         <local:RulerControl x:Name="VerticalRuler" Grid.Row="1" IsHorizontal="False" BackgroundBrush="{StaticResource Ink2}" TickBrush="{StaticResource Dim}" LabelBrush="{StaticResource Text}"/>
+                        
                         <Grid Grid.Row="1" Grid.Column="1">
+                            <!-- Perubahan: Membungkus ScrollViewer dengan Grid agar konten selalu di tengah -->
                             <ScrollViewer x:Name="View" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
                                         Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel" ScrollChanged="View_ScrollChanged"
                                         PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
-                                <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
-                                            MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
+                                
+                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
+                                                MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+                                </Grid>
+                                
                             </ScrollViewer>
                             <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
                                 <ContentControl Template="{StaticResource LogoMark}" Width="76" Height="76" Focusable="False"/>
