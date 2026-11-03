@@ -289,6 +289,15 @@ public partial class MainWindow : Window
         if ((s as FrameworkElement)?.DataContext is Sticker st) Clean(st);
     }
 
+    void ResetItem_Click(object s, RoutedEventArgs e)
+    {
+        if ((s as FrameworkElement)?.DataContext is Sticker st)
+        {
+            st.Copies = 1;
+            List.Items.Refresh(); 
+        }
+    }
+
     void Thumb_Down(object s, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2 && (s as FrameworkElement)?.DataContext is Sticker st) Clean(st);
