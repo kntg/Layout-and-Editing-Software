@@ -27,7 +27,13 @@ public partial class MainWindow : Window
     readonly HashSet<Placed> sels = [];   // semua stiker terpilih; sel = yang utama (panel info)
     System.Windows.Shapes.Rectangle? band; // kotak seret pilih (rubber-band)
     Point bandFrom;                        // titik awal rubber-band (koordinat kanvas lembar)
-    int selSheet, tooBig;
+    (Sticker S, int Rot, double X, double Y)? clip; // stiker yang disalin; null dengan clipSheet terisi = kanvas
+    int selSheet, tooBig, clipSheet = -1, sizing = -1; // sizing: titik pojok yang sedang ditarik
+    double sizeW;
+    Rect sizeBox;
+    Vector sizeGrab;
+    Border? sizeTip;
+    readonly ScaleTransform unzoom = new(); // membatalkan zoom, supaya titik pojok dan angka ukuran tetap sama besar di layar
     Point last, panFrom;
     bool panning, space, moved;
     Tool tool = Tool.Move;
@@ -54,7 +60,7 @@ public partial class MainWindow : Window
     Cut Die => new(DieOn.IsChecked == true, D(DieOff, 4, 0), D(DieSm, 0, 0));
     double BleedMm => D(BleedBox, 0, 0);
     double GapMm => D(GapBox, 2, 0);
-    bool HasRegMarks => RegMarks1.IsChecked == true;
+    bool HasRegMarks => RegMarksToggleMenu.IsChecked;
 
     // Hijau = target bahan tercapai, kuning = dalam rentang target, merah = di bawah target.
     Brush UseBrush(double use, bool regular) => (Brush)FindResource(Yield.Level(use, regular) switch { 2 => "Good", 1 => "Mid", _ => "Warn" });
@@ -77,18 +83,29 @@ public partial class MainWindow : Window
             var ps = i < sheets.Count ? sheets[i] : [];
             var c = Nest.Sheet(ps, w, h, MarginMm, sels, i, HasRegMarks);
             c.LayoutTransform = zoom;
+            if (sel != null && i == selSheet) AddHandles(c, sel);
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
             double su = Yield.Use(ps, w, h, MarginMm);
-            var pct = new TextBlock { Text = ps.Count == 0 ? "" : $"{Lang.T("SheetYield", ps.Count, paper)} · {su:P0}", Foreground = UseBrush(su, Yield.Regular(ps)) };
+            var pct = new TextBlock { Text = ps.Count == 0 ? "" : $"{Lang.T("SheetYield", ps.Count, paper)} · {su:P0}", Foreground = UseBrush(su, Yield.Regular(ps)), VerticalAlignment = VerticalAlignment.Center };
             DockPanel.SetDock(pct, Dock.Right);
             head.Children.Add(pct);
-            head.Children.Add(new TextBlock { Text = Lang.T("SheetN", i + 1), Foreground = Dim });
-            var panel = new StackPanel { Margin = new Thickness(18), HorizontalAlignment = HorizontalAlignment.Left };
+            var title = new TextBlock { Text = Lang.T("SheetN", i + 1), Foreground = Dim, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(title, Dock.Left);
+            head.Children.Add(title);
+            if (ps.Count > 0)
+            {
+                int at = i;
+                var dup = new Button { Content = Lang.T("DupSheet"), ToolTip = Lang.T("DupSheetTip"), Style = (Style)FindResource("Ghost"), Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(6, 0, 12, 0), HorizontalAlignment = HorizontalAlignment.Left };
+                dup.Click += (_, _) => DuplicateSheet(at);
+                head.Children.Add(dup);
+            }
+            var panel = new StackPanel { Margin = new Thickness(SheetPad), HorizontalAlignment = HorizontalAlignment.Left };
             panel.Children.Add(head);
             panel.Children.Add(c);
             views.Add(panel);
         }
+        LimitWrap();
         Sheets.ItemsSource = views;
         Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
         Empty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -160,7 +177,7 @@ public partial class MainWindow : Window
     bool restoring;
 
     string[] Settings() => [PaperBox.SelectedItem as string ?? "", CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text,
-        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text];
+        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text, $"{RowsBox.IsChecked}"];
 
     Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name))],
         [.. sheets.Select(sh => sh.Select(p => (p.S, p.X, p.Y, p.Rot)).ToList())], [.. sheetH], sheetW, tooBig, Settings());
@@ -196,7 +213,7 @@ public partial class MainWindow : Window
             (CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text) = (v[1], v[2], v[3], v[4]);
             (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[5] == "True", v[6], v[7]);
             (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[8] == "True", v[9], v[10]);
-            (BleedBox.Text, WidthBox.Text) = (v[11], v[12]);
+            (BleedBox.Text, WidthBox.Text, RowsBox.IsChecked, DenseBox.IsChecked) = (v[11], v[12], v[13] == "True", v[13] != "True");
         }
         finally { restoring = false; }
         items.Clear();
@@ -221,7 +238,10 @@ public partial class MainWindow : Window
             if (sheets[i].Count == 0) { sheets.RemoveAt(i); sheetH.RemoveAt(i); }
     }
 
-    void Add_Click(object s, RoutedEventArgs e)
+    void Add_Click(object s, RoutedEventArgs e) => OpenFileDialog();
+
+    // Method public yang bisa dipanggil dari WelcomePanel
+    public void OpenFileDialog()
     {
         var dlg = new OpenFileDialog { Filter = "PDF, AI, CDR, PNG, JPG, SVG|*.pdf;*.ai;*.cdr;*.png;*.jpg;*.jpeg;*.svg", Multiselect = true };
         if (dlg.ShowDialog() == true) AddFiles(dlg.FileNames);
@@ -230,7 +250,7 @@ public partial class MainWindow : Window
     // File baru langsung disusun: satu klik lebih sedikit untuk operator.
     bool loading; // AddFiles bisa menunggu CorelDRAW (await); cegah muat kedua berjalan bersamaan
 
-    async void AddFiles(IEnumerable<string> files)
+    public async void AddFiles(IEnumerable<string> files)
     {
         if (loading || !CutsValid()) return;
         loading = true;
@@ -256,6 +276,7 @@ public partial class MainWindow : Window
         bool first = sheets.Count == 0;
         Arrange();
         if (first) Fit();
+        ShowHome(false); 
     }
 
     void RemoveItem_Click(object s, RoutedEventArgs e)
@@ -274,6 +295,15 @@ public partial class MainWindow : Window
     void CleanItem_Click(object s, RoutedEventArgs e)
     {
         if ((s as FrameworkElement)?.DataContext is Sticker st) Clean(st);
+    }
+
+    void ResetItem_Click(object s, RoutedEventArgs e)
+    {
+        if ((s as FrameworkElement)?.DataContext is Sticker st)
+        {
+            st.Copies = 1;
+            List.Items.Refresh(); 
+        }
     }
 
     void Thumb_Down(object s, MouseButtonEventArgs e)
@@ -335,9 +365,12 @@ public partial class MainWindow : Window
         n.Copies = old.Copies;
         n.Name = old.Name;
         items[items.IndexOf(old)] = n;
+        if (clip is { } c && c.S == old) clip = (n, c.Rot, c.X, c.Y);
     }
 
     void Nest_Click(object s, RoutedEventArgs e) => Arrange();
+
+    void Rows_Changed(object s, RoutedEventArgs e) { if (!restoring && items.Count > 0) Arrange(); }
 
     void Arrange()
     {
@@ -353,18 +386,14 @@ public partial class MainWindow : Window
                 var it = items[i];
                 if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != kiss || it.LoadedDie != die
                     || (it.Pdf == null && it.LoadedBleed != bleed)))
-                {
-                    // Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
-                    double k = it.WidthMm / it.LoadedW;
-                    Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
-                        manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape));
-                }
+                    Replace(it, Loader.Reload(it, kiss, die, bleed));
             }
             sheetW = CW;
-            sheets = Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
+            sheets = RowsBox.IsChecked == true ? Nest.Rows(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks) : Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
             sheetH = sheets.Select(_ => CH).ToList();
             for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
             ClearSel();
+            (clip, clipSheet) = (null, -1); // posisi yang disalin tidak berlaku lagi
             Redraw(Summary());
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
@@ -382,11 +411,24 @@ public partial class MainWindow : Window
     void Compact_Click(object s, RoutedEventArgs e)
     {
         if (sheets.Count == 0) return;
-        int added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
+        int added;
+        if (RowsBox.IsChecked == true)
+        {
+            sheets = Nest.FillRows(items, sheetW, CH, MarginMm, GapMm, out added, HasRegMarks);
+            sheetH = sheets.Select(_ => CH).ToList();
+            sel = null;
+        }
+        else added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
+        AfterAdd(Lang.T("Filled", added));
+    }
+
+    // Akhir aksi yang menambah stiker: jumlah per desain ikut hasil, lalu periksa, gambar ulang, dan simpan langkah urungkan.
+    void AfterAdd(string msg)
+    {
         foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
         List.Items.Refresh();
         for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
-        Redraw(Lang.T("Filled", added) + "  " + Summary());
+        Redraw(msg + "  " + Summary());
         Commit();
     }
 
@@ -406,6 +448,42 @@ public partial class MainWindow : Window
     }
 
     void ClearSel() { sels.Clear(); sel = null; }
+
+    // Duplikat kanvas: hasil edit ikut tersalin, beda dengan menaikkan jumlah lalu Susun. WrapPanel menaruh lembar baru di kanan lembar asal,
+    // atau di bawah bila baris penuh.
+    void DuplicateSheet(int i)
+    {
+        if (i < 0 || i >= sheets.Count || sheets[i].Count == 0) return;
+        Nest.CopySheet(sheets, sheetH, i);
+        sel = null;
+        AfterAdd(Lang.T("SheetDuped", i + 1, i + 2));
+        var added = canvases[i + 1];
+        Dispatcher.BeginInvoke(new Action(added.BringIntoView), DispatcherPriority.Loaded);
+    }
+
+    // Ctrl+C: stiker yang dipilih; bila tidak ada yang dipilih, kanvas yang terakhir diklik.
+    void CopySel()
+    {
+        if (sheets.Count == 0) return;
+        clipSheet = Math.Clamp(selSheet, 0, sheets.Count - 1);
+        clip = sel == null ? null : (sel.S, sel.Rot, sel.X, sel.Y);
+        Redraw(sel == null ? Lang.T("SheetCopied", clipSheet + 1) : Lang.T("StickerCopied", sel.S.Name));
+    }
+
+    // Ctrl+V: kanvas yang disalin diduplikat; stiker ditempel di kanan aslinya. Salinan itu terpilih, jadi Ctrl+V berikutnya berlanjut dari sana.
+    void Paste()
+    {
+        if (clipSheet < 0 || clipSheet >= sheets.Count || (clip is { } gone && !items.Contains(gone.S))) { Redraw(Lang.T("PasteEmpty")); return; }
+        if (clip is not { } c) { DuplicateSheet(clipSheet); return; }
+        var (i, x, y) = sel?.S == c.S ? (selSheet, sel.X, sel.Y) : (clipSheet, c.X, c.Y);
+        if (Nest.PasteNext(sheets[i], c.S, c.Rot, x, y, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks) is not { } n) { Redraw(Lang.T("PasteFull")); return; }
+        sheets[i].Add(n);
+        (sel, selSheet) = (n, i);
+        AfterAdd(Lang.T("Pasted", c.S.Name));
+    }
+
+    void Copy_Click(object s, RoutedEventArgs e) => CopySel();
+    void Paste_Click(object s, RoutedEventArgs e) => Paste();
 
     void EditSel(Action<Placed> act)
     {
@@ -535,13 +613,15 @@ public partial class MainWindow : Window
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
-    void RegMarks_Click(object s, RoutedEventArgs e)
+    void RegMarksMenu_Click(object s, RoutedEventArgs e)
     {
-        bool enabled = ((MenuItem)s).Tag as string == "1";
-        RegMarksNone.IsChecked = !enabled;
-        RegMarks1.IsChecked = enabled;
-        // Stiker di area pindai tanda jadi merah; Susun otomatis memindahkannya.
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        // Karena IsCheckable=True, WPF otomatis mengubah status IsChecked saat diklik
+        bool enabled = RegMarksToggleMenu.IsChecked;
+        
+        // Cek apakah stiker masuk ke area regmark
+        for (int i = 0; i < sheets.Count; i++) 
+            Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, enabled);
+            
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
@@ -550,6 +630,10 @@ public partial class MainWindow : Window
         Redraw();
         Fit();
         Commit(); // keadaan awal (kosong) untuk undo
+
+        // Tampilkan Home Page jika aplikasi dibuka tanpa file (startFiles kosong)
+        ShowHome(startFiles.Length == 0);
+
         if (startFiles.Length > 0) AddFiles(startFiles);
     }
 
@@ -557,21 +641,38 @@ public partial class MainWindow : Window
     static string[] Dropped(DragEventArgs e) =>
         e.Data.GetData(DataFormats.FileDrop) is string[] f ? f.Where(x => Exts.Contains(Path.GetExtension(x).ToLowerInvariant())).ToArray() : [];
 
-    void Window_DragOver(object s, DragEventArgs e)
+    public void Window_DragOver(object s, DragEventArgs e)
     {
+        // Jika WelcomePanel sedang tampil, jangan tampilkan efek drop di luar border
+        if (HomePage.Visibility == Visibility.Visible)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
         bool ok = Dropped(e).Length > 0;
         e.Effects = ok ? DragDropEffects.Copy : DragDropEffects.None;
         DropHint.Visibility = ok ? Visibility.Visible : Visibility.Collapsed;
         e.Handled = true;
     }
 
-    void Window_DragLeave(object s, DragEventArgs e) => DropHint.Visibility = Visibility.Collapsed;
+    public void Window_DragLeave(object s, DragEventArgs e) => DropHint.Visibility = Visibility.Collapsed;
 
-    void Window_Drop(object s, DragEventArgs e)
+    public void Window_Drop(object s, DragEventArgs e)
     {
         DropHint.Visibility = Visibility.Collapsed;
+        
+        // TAMBAHKAN INI: Jika WelcomePanel sedang tampil, abaikan drop di luar border
+        if (HomePage.Visibility == Visibility.Visible)
+        {
+            e.Handled = true;
+            return;
+        }
+
         var files = Dropped(e);
         if (files.Length > 0) AddFiles(files);
+        e.Handled = true;
     }
 
     // ---- Tampilan: zoom & geser ----
@@ -601,6 +702,8 @@ public partial class MainWindow : Window
     void Zoom_Changed(object s, RoutedPropertyChangedEventArgs<double> e)
     {
         zoom.ScaleX = zoom.ScaleY = e.NewValue / 100 * 96 / 25.4; // 100% = ukuran asli
+        unzoom.ScaleX = unzoom.ScaleY = 1 / zoom.ScaleX;
+        LimitWrap();
         if (ZoomText != null) ZoomText.Text = $"{e.NewValue:0}%";
         if (HorizontalRuler != null) Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
     }
@@ -614,7 +717,20 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(new Action(UpdateRulers), DispatcherPriority.Loaded);
     }
 
-    void View_ScrollChanged(object s, ScrollChangedEventArgs e) => UpdateRulers();
+    void View_ScrollChanged(object s, ScrollChangedEventArgs e)
+    {
+        LimitWrap();
+        UpdateRulers();
+    }
+
+    // WrapPanel di dalam ScrollViewer mendapat lebar tak terbatas, jadi lembar tidak pernah turun ke bawah. Batasi selebar tampilan,
+    // tetapi minimal selebar satu lembar, supaya saat zoom besar lembar tetap bisa digeser.
+    const double SheetPad = 18;
+    void LimitWrap()
+    {
+        if (Sheets == null || canvases.Count == 0) return;
+        Sheets.MaxWidth = Math.Max(View.ViewportWidth - Sheets.Margin.Left - Sheets.Margin.Right, canvases[0].Width * zoom.ScaleX + 2 * SheetPad);
+    }
 
     void UpdateRulers()
     {
@@ -717,6 +833,8 @@ public partial class MainWindow : Window
             {
                 case Key.Z when !typing: Undo(); break;
                 case Key.Y when !typing: Redo(); break;
+                case Key.C when !typing: CopySel(); break;
+                case Key.V when !typing: Paste(); break;
                 case Key.O: case Key.I: Add_Click(s, e); break; // Ctrl+I = Import di CorelDRAW
                 case Key.E: Export_Click(s, e); break;
                 case Key.L: Arrange(); break;
@@ -756,13 +874,100 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // ---- Pilih & seret stiker (alat Move) ----
+    // ---- Pilih, seret, dan atur ukuran stiker (alat Move) ----
+    const double HandlePx = 9;
+
+    static Point Corner(Placed p, int corner) => new(corner is 1 or 2 ? p.X + p.BW : p.X, corner is 2 or 3 ? p.Y + p.BH : p.Y);
+
+    void AddHandles(Canvas c, Placed p)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            var at = Corner(p, i);
+            var h = new System.Windows.Shapes.Rectangle
+            {
+                Width = HandlePx, Height = HandlePx, Fill = Brushes.White, Stroke = (Brush)FindResource("Accent"), StrokeThickness = 1.5, Tag = i,
+                Cursor = i % 2 == 0 ? Cursors.SizeNWSE : Cursors.SizeNESW, RenderTransform = unzoom, RenderTransformOrigin = new Point(0.5, 0.5)
+            };
+            Canvas.SetLeft(h, at.X - HandlePx / 2);
+            Canvas.SetTop(h, at.Y - HandlePx / 2);
+            c.Children.Add(h);
+        }
+    }
+
+    void HideHandles()
+    {
+        foreach (var h in canvases[selSheet].Children.OfType<System.Windows.Shapes.Rectangle>()) if (h.Tag is int) h.Visibility = Visibility.Collapsed;
+    }
+
+    // Pratinjau selagi titik pojok ditarik: hanya stiker ini yang diskala. Garis potong dihitung ulang saat mouse dilepas (EndResize).
+    void SizeTo(Point pt)
+    {
+        var (c, p) = (canvases[selSheet], sel!);
+        if (sizeTip == null)
+        {
+            if ((pt - Corner(p, sizing)).Length * zoom.ScaleX < 2) return; // klik tanpa menarik tidak mengubah ukuran
+            HideHandles();
+            sizeTip = new Border
+            {
+                Background = (Brush)FindResource("Ink0"), CornerRadius = new CornerRadius(3), Padding = new Thickness(6, 2, 6, 2), IsHitTestVisible = false,
+                RenderTransform = unzoom, Child = new TextBlock { Foreground = (Brush)FindResource("Text") }
+            };
+            c.Children.Add(sizeTip);
+        }
+        (sizeW, sizeBox) = Nest.ResizeTo(p, sizing, pt.X, pt.Y, sheetW, sheetH[selSheet], MarginMm);
+        foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == p) el.RenderTransform = Nest.Xf(p, sizeBox.Width / p.BW, sizeBox.X, sizeBox.Y);
+        double h = p.S.ArtH * sizeW / p.S.ArtW;
+        var (aw, ah) = p.Rot % 180 == 0 ? (sizeW, h) : (h, sizeW);
+        ((TextBlock)sizeTip.Child).Text = $"{F(aw)} × {F(ah)} mm";
+        sizeTip.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(sizeTip, Math.Clamp(pt.X + 12 * unzoom.ScaleX, 0, Math.Max(0, c.Width - sizeTip.DesiredSize.Width * unzoom.ScaleX)));
+        Canvas.SetTop(sizeTip, Math.Clamp(pt.Y + 12 * unzoom.ScaleX, 0, Math.Max(0, c.Height - sizeTip.DesiredSize.Height * unzoom.ScaleX)));
+    }
+
+    // Mouse dilepas: ukuran berlaku untuk semua salinan desain. Offset, Halus, dan bleed tetap yang dimuat, walau panel sudah diubah. Stiker yang ditarik
+    // pindah ke posisi kosong terdekat seperti saat digeser; salinan lain yang jadi bertabrakan ditandai merah.
+    void EndResize()
+    {
+        bool changed = sizeTip != null && Math.Abs(sizeW - sel!.S.ArtW) >= 0.05;
+        (sizing, sizeTip) = (-1, null);
+        Sheets.ReleaseMouseCapture();
+        if (!changed) { Redraw(); return; }
+        var old = sel!.S;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            old.WidthMm = sizeW;
+            var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed);
+            Replace(old, n);
+            Nest.SwapDesign(sheets, old, n);
+            (sel.X, sel.Y) = (sizeBox.X, sizeBox.Y);
+            Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
+        }
+        catch (Exception ex)
+        {
+            old.WidthMm = old.LoadedW;
+            MessageBox.Show(ex.Message, App.Brand);
+            Redraw();
+            return;
+        }
+        finally { Mouse.OverrideCursor = null; }
+        List.Items.Refresh();
+        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
+        Redraw(Lang.T("Resized", sel.S.Name, F(aw), F(ah)) + "  " + Summary());
+        Commit();
+        FreeMemory();
+    }
+
     void Sheets_Down(object s, MouseButtonEventArgs e)
     {
         Placed? hit = null;
         Canvas? sheet = null;
+        int corner = -1;
         for (var d = e.OriginalSource as DependencyObject; d is Visual; d = VisualTreeHelper.GetParent(d))
         {
+            if (d is System.Windows.Shapes.Rectangle { Tag: int k }) corner = k;
             if (hit == null && d is FrameworkElement { Tag: Placed p }) hit = p;
             if (d is Canvas { Tag: int }) { sheet = (Canvas)d; break; }
         }
@@ -771,6 +976,15 @@ public partial class MainWindow : Window
 
         if (sheet == null) { ClearSel(); Redraw(); return; }
         selSheet = (int)sheet.Tag;
+
+        // Klik titik pojok stiker terpilih: mulai ubah ukuran (fitur Welcome-UI).
+        if (corner >= 0 && sel != null)
+        {
+            sizing = corner;
+            sizeGrab = e.GetPosition(sheet) - Corner(sel, corner); // relatif terhadap pojok: stiker tidak melompat saat titiknya baru diklik
+            Sheets.CaptureMouse();
+            return;
+        }
 
         if (hit != null)
         {
@@ -815,6 +1029,7 @@ public partial class MainWindow : Window
 
     void Sheets_Move(object s, MouseEventArgs e)
     {
+        if (sizing >= 0) { SizeTo(e.GetPosition(canvases[selSheet]) - sizeGrab); return; }
         if (band == null && drag == null) return;
         if (selSheet < 0 || selSheet >= canvases.Count) return;
         var c = canvases[selSheet];
@@ -834,6 +1049,7 @@ public partial class MainWindow : Window
         }
 
         if (drag == null) return;
+        if (!moved && pt != last) HideHandles(); // sembunyikan titik pojok saat mulai seret (fitur Welcome-UI)
         double dx = pt.X - last.X, dy = pt.Y - last.Y;
         foreach (var p in sels) { p.X += dx; p.Y += dy; }
         moved |= pt != last;
@@ -844,6 +1060,7 @@ public partial class MainWindow : Window
 
     void Sheets_Up(object s, MouseButtonEventArgs e)
     {
+        if (sizing >= 0) { EndResize(); return; }
         if (band != null)
         {
             var box = new Rect(Canvas.GetLeft(band), Canvas.GetTop(band), band.Width, band.Height);
@@ -868,5 +1085,14 @@ public partial class MainWindow : Window
         Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
         Redraw(Summary());
         Commit();
+    }
+
+    void ShowHome(bool home)
+    {
+        HomePage.Visibility = home ? Visibility.Visible : Visibility.Collapsed;
+        EditorDock.Visibility = home ? Visibility.Collapsed : Visibility.Visible;
+        
+        // Matikan AllowDrop di Window saat di Home, nyalakan saat di Editor
+        AllowDrop = !home; 
     }
 }
