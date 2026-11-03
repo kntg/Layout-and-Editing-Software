@@ -83,7 +83,7 @@ public partial class MainWindow : Window
             var ps = i < sheets.Count ? sheets[i] : [];
             var c = Nest.Sheet(ps, w, h, MarginMm, sels, i, HasRegMarks);
             c.LayoutTransform = zoom;
-            if (sel != null && i == selSheet) AddHandles(c, sel);
+            if (sel != null && i == selSheet && sels.Count <= 1) AddHandles(c, sel);
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
             double su = Yield.Use(ps, w, h, MarginMm);
@@ -978,7 +978,7 @@ public partial class MainWindow : Window
         selSheet = (int)sheet.Tag;
 
         // Klik titik pojok stiker terpilih: mulai ubah ukuran (fitur Welcome-UI).
-        if (corner >= 0 && sel != null)
+        if (corner >= 0 && sel != null && sels.Count <= 1)
         {
             sizing = corner;
             sizeGrab = e.GetPosition(sheet) - Corner(sel, corner); // relatif terhadap pojok: stiker tidak melompat saat titiknya baru diklik
