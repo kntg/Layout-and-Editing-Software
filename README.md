@@ -34,8 +34,8 @@ Isi README ini:
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang.
 5. **Periksa layout.**
-   - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
-   - **Stiker bertanda merah:** tumpang tindih dengan stiker lain atau keluar margin.
+   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Proporsi tetap, dan lebar × tinggi artwork tampil di dekat kursor. Saat mouse dilepas, ukuran baru berlaku untuk semua salinan desain itu dan garis potong dihitung ulang. Salinan lain yang jadi bertabrakan ditandai merah; klik Susun otomatis untuk menyusunnya ulang.
    - **Hemat atau Rapi:** pilihan di toolbar. Hemat (bawaan) memadatkan stiker dan boleh memutarnya, jadi bahannya paling hemat. Rapi menyusun stiker per baris dan kolom dengan tepi kiri rata dan desain yang sama berkumpul, tetapi bahan bisa lebih boros. Susun otomatis, tambah file, dan ganti kertas mengikuti pilihan ini.
    - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Rapi dipilih, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
@@ -132,7 +132,9 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | "Tidak ada tempat di kanan atau bawah stiker ini…" | Salinan stiker tidak muat di lembar ini. Hapus stiker lain, atau pakai Duplikat di judul lembar untuk lembar baru. |
 | "… desain resolusi rendah" | Di bawah 150 dpi pada lebar itu. Minta file asli ke customer, atau perkecil desainnya. |
 | "… PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" | PDF dicetak sebagai gambar, bukan vektor. Periksa ketajaman dan warnanya sebelum cetak. |
-| "… tumpang tindih/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
+| "… tumpang tindih/terlalu dekat/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
+| "Tidak ada tempat…" | Stiker tidak muat di tujuan, jadi kembali ke posisi awal, atau putarannya dibatalkan. Hapus stiker lain, atau klik Susun otomatis. |
+| "… diubah menjadi …, tetapi tidak ada posisi kosong" | Ukuran baru berlaku, tetapi stiker bertabrakan dan ditandai merah. Klik Susun otomatis. |
 | "CorelDRAW tidak terpasang…" | Export CDR ke PDF dulu di PC yang ada CorelDRAW-nya, lalu tambahkan PDF-nya. |
 | "CorelDRAW tidak merespons dalam 30 detik…" | Cek jendela CorelDRAW, mungkin ada dialog yang terbuka. Atau export CDR ke PDF secara manual. |
 | "File AI ini tidak bisa dibaca…" | AI disimpan tanpa opsi PDF-compatible. Simpan ulang dari Illustrator dengan "Create PDF Compatible File", atau export ke PDF. |

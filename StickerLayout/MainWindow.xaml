@@ -338,7 +338,7 @@
                                 <TextBox x:Name="DieSm" Grid.Row="2" Grid.Column="3" Style="{StaticResource Num}" Text="2" Margin="0,6,0,0"/>
                             </Grid>
                             <DockPanel Margin="0,10,0,0">
-                                <TextBox x:Name="GapBox" Style="{StaticResource Num}" Text="2" Width="58" DockPanel.Dock="Right"/>
+                                <TextBox x:Name="GapBox" Style="{StaticResource Num}" Text="2" Width="58" DockPanel.Dock="Right" TextChanged="Gap_Changed"/>
                                 <TextBlock Text="{DynamicResource Gap}" Style="{StaticResource Label}"/>
                             </DockPanel>
                             <DockPanel Margin="0,6,0,0" ToolTip="{DynamicResource BleedTip}">
@@ -380,7 +380,7 @@
                                   Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel" ScrollChanged="View_ScrollChanged"
                                   PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
                         <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
-                                      MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up">
+                                      MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up" LostMouseCapture="Sheets_Lost">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>

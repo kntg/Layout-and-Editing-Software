@@ -31,7 +31,7 @@ public partial class MainWindow : Window
     Vector sizeGrab;
     Border? sizeTip;
     readonly ScaleTransform unzoom = new(); // membatalkan zoom, supaya titik pojok dan angka ukuran tetap sama besar di layar
-    Point last, panFrom;
+    Point last, panFrom, dragFrom;
     bool panning, space, moved;
     Tool tool = Tool.Move;
     string status = "";
@@ -144,6 +144,12 @@ public partial class MainWindow : Window
 
     string Summary() => Lang.T("Summary", sheets.Sum(x => x.Count), sheets.Count);
 
+    void CheckSheet(int i) => Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks, GapMm);
+    void CheckAll() { for (int i = 0; i < sheets.Count; i++) CheckSheet(i); }
+
+    // Jarak antar stiker berubah: stiker yang jadi terlalu dekat langsung merah, sampai disusun ulang.
+    void Gap_Changed(object s, TextChangedEventArgs e) { if (!restoring && sheets.Count > 0) { CheckAll(); Redraw(); } }
+
     bool CutsValid()
     {
         if (!Kiss.On && !Die.On) { MessageBox.Show(Lang.T("NeedCut"), App.Brand); return false; }
@@ -218,7 +224,7 @@ public partial class MainWindow : Window
         sheets = [.. d.Sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList())];
         (sheetH, sheetW, tooBig) = ([.. d.SheetH], d.SheetW, d.TooBig);
         sel = drag = null;
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        CheckAll();
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
@@ -353,6 +359,7 @@ public partial class MainWindow : Window
 
     void Arrange()
     {
+        CancelDrag(); // file CDR bisa selesai dimuat saat stiker sedang ditarik
         if (items.Count == 0) { Redraw(Lang.T("NestFirst")); return; }
         if (!CutsValid()) return;
         Mouse.OverrideCursor = Cursors.Wait;
@@ -370,7 +377,7 @@ public partial class MainWindow : Window
             sheetW = CW;
             sheets = RowsBox.IsChecked == true ? Nest.Rows(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks) : Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
             sheetH = sheets.Select(_ => CH).ToList();
-            for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+            CheckAll();
             sel = null;
             (clip, clipSheet) = (null, -1); // posisi yang disalin tidak berlaku lagi
             Redraw(Summary());
@@ -406,7 +413,7 @@ public partial class MainWindow : Window
     {
         foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
         List.Items.Refresh();
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        CheckAll();
         Redraw(msg + "  " + Summary());
         Commit();
     }
@@ -451,7 +458,7 @@ public partial class MainWindow : Window
     {
         if (sel == null) return;
         act(sel);
-        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
+        CheckSheet(selSheet);
         Redraw(Summary());
         Commit();
     }
@@ -462,13 +469,18 @@ public partial class MainWindow : Window
         sheets[selSheet].Remove(sel);
         sel = null;
         DropEmpty();
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        CheckAll();
         Redraw(sheets.Count > 0 ? Summary() : "");
         Commit();
     }
 
-    // Putar 90°, lalu snap ke posisi kosong terdekat (tidak menabrak, jarak antar stiker tetap).
-    void RotateSel() => EditSel(p => { p.Rot = (p.Rot + 90) % 360; Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks); });
+    // Putar 90°, lalu snap ke posisi kosong terdekat (tidak menabrak, jarak antar stiker tetap). Tidak ada tempat: tetap seperti semula.
+    void RotateSel()
+    {
+        if (sel == null) return;
+        if (Nest.Turn(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks)) EditSel(_ => { });
+        else Redraw(Lang.T("NoRoomTurn", sel.S.Name));
+    }
     void Rotate_Click(object s, RoutedEventArgs e) => RotateSel();
 
     // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK.
@@ -573,7 +585,7 @@ public partial class MainWindow : Window
         RegMarksNone.IsChecked = !enabled;
         RegMarks1.IsChecked = enabled;
         // Stiker di area pindai tanda jadi merah; Susun otomatis memindahkannya.
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        CheckAll();
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
@@ -749,6 +761,7 @@ public partial class MainWindow : Window
     // ---- Keyboard, gaya Photoshop ----
     void Window_KeyDown(object s, KeyEventArgs e)
     {
+        if (drag != null || sizing >= 0) { e.Handled = true; return; } // mouse masih ditahan: Ctrl+Z, Delete, dan lainnya menunggu stiker dilepas
         bool typing = Keyboard.FocusedElement is TextBox; // Ctrl+Z/Y di kotak teks = undo teks bawaan
         if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
@@ -860,7 +873,7 @@ public partial class MainWindow : Window
     // pindah ke posisi kosong terdekat seperti saat digeser; salinan lain yang jadi bertabrakan ditandai merah.
     void EndResize()
     {
-        bool changed = sizeTip != null && Math.Abs(sizeW - sel!.S.ArtW) >= 0.05;
+        bool changed = sizeTip != null && Math.Abs(sizeW - sel!.S.ArtW) >= 0.05, fits;
         (sizing, sizeTip) = (-1, null);
         Sheets.ReleaseMouseCapture();
         if (!changed) { Redraw(); return; }
@@ -873,7 +886,8 @@ public partial class MainWindow : Window
             Replace(old, n);
             Nest.SwapDesign(sheets, old, n);
             (sel.X, sel.Y) = (sizeBox.X, sizeBox.Y);
-            Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
+            fits = Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
+            if (!fits) Nest.KeepInside(sel, sheetW, sheetH[selSheet], MarginMm);
         }
         catch (Exception ex)
         {
@@ -884,9 +898,9 @@ public partial class MainWindow : Window
         }
         finally { Mouse.OverrideCursor = null; }
         List.Items.Refresh();
-        for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
+        CheckAll();
         var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
-        Redraw(Lang.T("Resized", sel.S.Name, F(aw), F(ah)) + "  " + Summary());
+        Redraw(Lang.T(fits ? "Resized" : "ResizedNoRoom", sel.S.Name, F(aw), F(ah)) + "  " + Summary());
         Commit();
         FreeMemory();
     }
@@ -915,6 +929,7 @@ public partial class MainWindow : Window
         if (sel != null)
         {
             last = e.GetPosition(sheet);
+            dragFrom = new Point(sel.X, sel.Y);
             drag = sel;
             Sheets.CaptureMouse();
         }
@@ -929,7 +944,13 @@ public partial class MainWindow : Window
         var pt = e.GetPosition(c);
         drag.X += pt.X - last.X;
         drag.Y += pt.Y - last.Y;
-        if (!moved && pt != last) HideHandles();
+        if (!moved && pt != last)
+        {
+            HideHandles();
+            // Selama ditarik, stiker terlihat di luar lembarnya dan di atas lembar lain. Redraw mengembalikan keduanya.
+            c.ClipToBounds = false;
+            Panel.SetZIndex((UIElement)c.Parent, 1);
+        }
         moved |= pt != last;
         last = pt;
         foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == drag) el.RenderTransform = Nest.Xf(drag);
@@ -939,13 +960,58 @@ public partial class MainWindow : Window
     {
         if (sizing >= 0) { EndResize(); return; }
         if (drag == null) return;
-        // Snap magnet: stiker yang digeser pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap).
-        if (moved) Nest.Snap(sheets[selSheet], drag, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
+        var note = moved ? DropSticker(drag, e) : null;
         drag = null;
         moved = false;
         Sheets.ReleaseMouseCapture();
-        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
-        Redraw(Summary());
+        CheckSheet(selSheet);
+        Redraw(note == null ? Summary() : note + "  " + Summary());
         Commit();
     }
+
+    // Snap magnet: stiker yang dilepas pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap), di lembar lain bila dilepas di atasnya.
+    // Tidak ada tempat: kembali ke posisi awal, jadi tidak pernah tertinggal di luar lembar. Mengembalikan pesan untuk operator.
+    string? DropSticker(Placed p, MouseEventArgs e)
+    {
+        int to = SheetAt(e);
+        if (to >= 0 && to != selSheet)
+        {
+            var at = e.GetPosition(canvases[to]) - (last - new Point(p.X, p.Y));
+            (p.X, p.Y) = (dragFrom.X, dragFrom.Y);
+            if (!Nest.MoveTo(sheets[selSheet], sheets[to], p, at.X, at.Y, sheetW, sheetH[to], MarginMm, GapMm, HasRegMarks)) return Lang.T("SheetFull", to + 1, p.S.Name);
+            CheckSheet(selSheet); // lembar asal; lembar tujuan diperiksa pemanggil
+            DropEmpty();
+            selSheet = sheets.FindIndex(sh => sh.Contains(p));
+            return Lang.T("MovedTo", p.S.Name, selSheet + 1);
+        }
+        if (Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks)) return null;
+        (p.X, p.Y) = (dragFrom.X, dragFrom.Y);
+        return Lang.T("NoRoom", p.S.Name);
+    }
+
+    // Lembar di bawah kursor; -1 di celah antar-lembar atau di luar tampilan (saat zoom besar lembar bisa berlanjut di bawah panel kanan).
+    int SheetAt(MouseEventArgs e)
+    {
+        var v = e.GetPosition(View);
+        if (v.X < 0 || v.Y < 0 || v.X > View.ViewportWidth || v.Y > View.ViewportHeight) return -1;
+        for (int i = 0; i < sheets.Count; i++)
+        {
+            var pt = e.GetPosition(canvases[i]);
+            if (pt.X >= 0 && pt.Y >= 0 && pt.X <= canvases[i].Width && pt.Y <= canvases[i].Height) return i;
+        }
+        return -1;
+    }
+
+    // Tarikan dibatalkan: stiker kembali ke posisi awal, tanpa langkah urungkan. false = tidak ada yang sedang ditarik.
+    bool CancelDrag()
+    {
+        if (drag == null && sizing < 0) return false;
+        if (drag != null) (drag.X, drag.Y) = (dragFrom.X, dragFrom.Y);
+        (drag, moved, sizing, sizeTip) = (null, false, -1, null);
+        Sheets.ReleaseMouseCapture();
+        return true;
+    }
+
+    // Capture hilang di tengah tarikan (Alt+Tab, dialog, tombol tengah mouse): tanpa ini stiker mengikuti kursor walau tombol sudah dilepas.
+    void Sheets_Lost(object s, MouseEventArgs e) { if (CancelDrag()) Redraw(); }
 }
