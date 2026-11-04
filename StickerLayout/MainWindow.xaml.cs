@@ -309,6 +309,14 @@ public partial class MainWindow : Window
     {
         if (!it.CanClean || !CutsValid()) return;
         var w = new CleanupWindow(it.Edited ?? it.Raster, it.Name) { Owner = this };
+
+        var workArea = SystemParameters.WorkArea;
+        w.MaxWidth = workArea.Width - 40;
+        w.MaxHeight = workArea.Height - 40;
+        if (w.Width > w.MaxWidth) w.Width = w.MaxWidth;
+        if (w.Height > w.MaxHeight) w.Height = w.MaxHeight;
+        w.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
         bool ok = w.ShowDialog() == true && w.Result != null;
         var result = w.Result;
         w = null;
@@ -335,6 +343,13 @@ public partial class MainWindow : Window
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
             var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, loadedPdf: it.Pdf);
             w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape) { Owner = this };
+
+            var workArea = SystemParameters.WorkArea;
+            w.MaxWidth = workArea.Width - 40;
+            w.MaxHeight = workArea.Height - 40;
+            if (w.Width > w.MaxWidth) w.Width = w.MaxWidth;
+            if (w.Height > w.MaxHeight) w.Height = w.MaxHeight;
+            w.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         finally { Mouse.OverrideCursor = null; }
@@ -994,5 +1009,60 @@ public partial class MainWindow : Window
         
         // Matikan AllowDrop di Window saat di Home, nyalakan saat di Editor
         AllowDrop = !home; 
+    }
+
+    void MoreItem_Click(object s, RoutedEventArgs e)
+    {
+        if (s is not Button btn) return;
+        if (btn.Resources["MorePopup"] is not Popup popup) return;
+
+        popup.PlacementTarget = btn;
+        popup.Placement = PlacementMode.Right;
+
+        if (popup.Child is FrameworkElement child)
+        {
+            child.DataContext = btn.DataContext;
+
+            if (child is Border border && border.Child is StackPanel stack)
+            {
+                foreach (var item in stack.Children.OfType<MenuItem>())
+                {
+                    item.DataContext = btn.DataContext;
+                    
+                    // HAPUS dulu event listener yang mungkin menumpuk dari klik sebelumnya
+                    item.Click -= MenuAction_Click; 
+                    
+                    // Pasang event listener yang baru
+                    item.Click += MenuAction_Click;
+                }
+            }
+        }
+
+        popup.IsOpen = true;
+    }
+
+    // Fungsi handler yang bersih (tanpa perlu mencari Parent/Popup)
+    void MenuAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item) return;
+        if (item.DataContext is not Sticker st) return;
+
+        string action = item.Tag?.ToString();
+        if (action == "Clean")
+        {
+            Clean(st); // Panggil fungsi Clean asli
+        }
+        else if (action == "Cut")
+        {
+            // Kita buat Button dummy karena CutItem_Click butuh sender ber-DataContext
+            var dummyBtn = new Button { DataContext = st };
+            CutItem_Click(dummyBtn, e);
+        }
+
+        // Tutup popup setelah diklik
+        if (item.Parent is ItemsControl ic && ic.Parent is Border b && b.Parent is Popup popup)
+        {
+            popup.IsOpen = false;
+        }
     }
 }
