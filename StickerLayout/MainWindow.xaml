@@ -215,21 +215,40 @@
                                                         </StackPanel>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2" VerticalAlignment="Top">
-                                                        <Button Content="&#xE75C;" Click="CleanItem_Click" IsEnabled="{Binding CanClean}" ToolTipService.ShowOnDisabled="True"
-                                                                Height="20" AutomationProperties.Name="{DynamicResource Clean}">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                                                                    <Setter Property="ToolTip" Value="{DynamicResource CleanTip}"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding CanClean}" Value="False">
-                                                                            <Setter Property="ToolTip" Value="{DynamicResource CleanVector}"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
+
+                                                        <Button x:Name="MoreBtn" Style="{StaticResource IconBtn}" Content="&#xE712;" Height="20"
+                                                                Click="MoreItem_Click"
+                                                                ToolTip="{DynamicResource MoreTip}" AutomationProperties.Name="{DynamicResource MoreTip}">
+                                                            <Button.Resources>
+                                                                <Popup x:Key="MorePopup" Placement="Right" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                                                                    <Border Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                                                            CornerRadius="4" Padding="2">
+                                                                        <StackPanel>
+                                                                            <!-- Menu Rapikan (Clean) -->
+                                                                            <MenuItem Tag="Clean">
+                                                                                <MenuItem.Header>
+                                                                                    <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE75C;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource Clean}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </MenuItem.Header>
+                                                                            </MenuItem>
+
+                                                                            <!-- Menu Garis Potong (Cut) -->
+                                                                            <MenuItem Tag="Cut">
+                                                                                <MenuItem.Header>
+                                                                                    <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource CutEdit}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </MenuItem.Header>
+                                                                            </MenuItem>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </Popup>
+                                                            </Button.Resources>
                                                         </Button>
-                                                        <Button Style="{StaticResource IconBtn}" Content="&#xE70F;" Click="CutItem_Click" Height="20"
-                                                                ToolTip="{DynamicResource CutTip}" AutomationProperties.Name="{DynamicResource CutEdit}"/>
+
                                                         <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" Click="RemoveItem_Click" Height="20"
                                                                 ToolTip="{DynamicResource Remove}" AutomationProperties.Name="{DynamicResource Remove}"/>
                                                         <Button Style="{StaticResource IconBtn}" Content="&#xE72C;" Click="ResetItem_Click" Height="20"
