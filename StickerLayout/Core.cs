@@ -782,6 +782,38 @@ public static class Paper
     };
 }
 
+// Keadaan sementara selama stiker ditarik: stiker, lembar asal dan tujuan, mode, dan geseran.
+// Dokumen (isi lembar, X, Y, Rot) baru berubah di Drop, dan hanya bila berhasil. Batal cukup membuang objek ini.
+public sealed class DragState(IEnumerable<Placed> group, int fromSheet)
+{
+    readonly List<(Placed P, double X, double Y, int Rot)> start = [.. group.Select(p => (p, p.X, p.Y, p.Rot))];
+    public int FromSheet => fromSheet;
+    public int ToSheet = -1; // lembar di bawah kursor; -1 = celah antar-lembar atau di luar tampilan
+    public bool Copy;        // false = pindah
+    public Vector Offset;    // geseran dari posisi awal (mm)
+    public bool Moved => Offset != default;
+    public bool Away => ToSheet >= 0 && ToSheet != fromSheet;
+
+    // Stiker, atau salinannya, ke posisi kosong terdekat dari posisi barunya. Satu saja tidak muat = null, dokumen tidak berubah.
+    // Salinan masuk ke satu lembar: ToSheet, atau lembar asal bila dilepas di celah. Pindah tanpa lembar lain: tiap stiker di lembarnya sendiri.
+    public List<Placed>? Drop(List<List<Placed>> sheets, IList<double> sheetH, double cw, double margin, double gap, bool marks = false)
+    {
+        if (Copy)
+        {
+            int to = ToSheet >= 0 ? ToSheet : fromSheet;
+            var copies = start.Select(s => new Placed { S = s.P.S, Rot = s.Rot, X = s.X + Offset.X, Y = s.Y + Offset.Y }).ToList();
+            return Nest.MoveTo(sheets, copies, to, cw, sheetH[to], margin, gap, marks) ? copies : null;
+        }
+        var moved = start.Select(s => s.P).ToList();
+        foreach (var (p, x, y, _) in start) (p.X, p.Y) = (x + Offset.X, y + Offset.Y);
+        bool ok = Away ? Nest.MoveTo(sheets, moved, ToSheet, cw, sheetH[ToSheet], margin, gap, marks)
+            : moved.All(p => sheets.FindIndex(sh => sh.Contains(p)) is var i && Nest.Snap(sheets[i], p, cw, sheetH[i], margin, gap, marks));
+        if (ok) return moved;
+        foreach (var (p, x, y, rot) in start) (p.X, p.Y, p.Rot) = (x, y, rot);
+        return null;
+    }
+}
+
 public static class Nest
 {
     // mm per sel grid nesting. 1 mm: jarak nyata antar stiker lebih dekat ke jarak yang diminta (median ±3,2 mm untuk

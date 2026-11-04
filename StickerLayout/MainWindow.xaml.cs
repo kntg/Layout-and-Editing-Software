@@ -23,7 +23,8 @@ public partial class MainWindow : Window
     List<double> sheetH = [];
     List<Canvas> canvases = [];
     double sheetW, panH, panV;
-    Placed? sel, drag;
+    Placed? sel;
+    DragState? drag; // null = tidak sedang ditarik
     readonly HashSet<Placed> sels = [];   // semua stiker terpilih; sel = yang utama (panel info)
     System.Windows.Shapes.Rectangle? band; // kotak seret pilih (rubber-band)
     Point bandFrom;                        // titik awal rubber-band (koordinat kanvas lembar)
@@ -34,9 +35,8 @@ public partial class MainWindow : Window
     Vector sizeGrab;
     Border? sizeTip;
     readonly ScaleTransform unzoom = new(); // membatalkan zoom, supaya titik pojok dan angka ukuran tetap sama besar di layar
-    Point last, panFrom;
-    List<(Placed P, double X, double Y)> dragFrom = []; // posisi awal semua stiker yang ditarik
-    bool panning, space, moved;
+    Point dragGrab, panFrom; // dragGrab: titik yang dipegang, di lembar asal
+    bool panning, space, altUsed; // altUsed: Alt dipakai saat menarik, jadi melepasnya tidak membuka menu
     Tool tool = Tool.Move;
     string status = "";
 
@@ -454,11 +454,16 @@ public partial class MainWindow : Window
     // Akhir aksi yang menambah stiker: jumlah per desain ikut hasil, lalu periksa, gambar ulang, dan simpan langkah urungkan.
     void AfterAdd(string msg)
     {
-        foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
-        List.Items.Refresh();
+        CountCopies();
         CheckAll();
         Redraw(msg + "  " + Summary());
         Commit();
+    }
+
+    void CountCopies()
+    {
+        foreach (var it in items) if (sheets.Sum(sh => sh.Count(p => p.S == it)) is > 0 and var n) it.Copies = n; // yang tidak muat sama sekali tetap
+        List.Items.Refresh();
     }
 
     // Pilih satu stiker (buang pilihan lain). sel = primer untuk panel info.
@@ -894,7 +899,13 @@ public partial class MainWindow : Window
     // ---- Keyboard, gaya Photoshop ----
     void Window_KeyDown(object s, KeyEventArgs e)
     {
-        if (drag != null || sizing >= 0 || band != null) { e.Handled = true; return; } // mouse masih ditahan: Ctrl+Z, Delete, dan lainnya menunggu stiker dilepas
+        if (drag != null || sizing >= 0 || band != null) // mouse masih ditahan: Ctrl+Z, Delete, dan lainnya menunggu stiker dilepas; Esc membatalkan
+        {
+            if (e.Key == Key.Escape && CancelDrag()) Redraw();
+            TrackDrag();
+            e.Handled = true;
+            return;
+        }
         bool typing = Keyboard.FocusedElement is TextBox; // Ctrl+Z/Y di kotak teks = undo teks bawaan
         if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
@@ -946,6 +957,13 @@ public partial class MainWindow : Window
 
     void Window_KeyUp(object s, KeyEventArgs e)
     {
+        if (altUsed && e.SystemKey is Key.LeftAlt or Key.RightAlt)
+        {
+            altUsed = false;
+            TrackDrag();
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Space || !space) return;
         space = false;
         UpdateCursor();
@@ -1074,9 +1092,8 @@ public partial class MainWindow : Window
 
             if (sels.Count > 0)
             {
-                last = e.GetPosition(sheet);
-                dragFrom = [.. sels.Select(p => (p, p.X, p.Y))];
-                drag = sel;              // penanda bahwa seret sedang aktif
+                dragGrab = e.GetPosition(sheet);
+                drag = new DragState(sels, selSheet);
                 Sheets.CaptureMouse();
             }
             Redraw();
@@ -1129,19 +1146,18 @@ public partial class MainWindow : Window
         }
 
         if (drag == null) return;
-        if (!moved && pt != last)
+        var off = pt - dragGrab;
+        if (!drag.Moved && off != default)
         {
             HideHandles();
             // Selama ditarik, stiker terlihat di luar lembarnya dan di atas lembar lain. Redraw mengembalikan keduanya.
             foreach (var cv in SelCanvases()) { cv.ClipToBounds = false; Panel.SetZIndex((UIElement)cv.Parent, 1); }
         }
-        double dx = pt.X - last.X, dy = pt.Y - last.Y;
-        foreach (var p in sels) { p.X += dx; p.Y += dy; }
-        moved |= pt != last;
-        last = pt;
-        foreach (var cv in SelCanvases())
+        drag.Offset = off;
+        TrackDrag();
+        foreach (var cv in SelCanvases()) // hanya tampilan yang bergeser: X dan Y stiker baru berubah saat dilepas
             foreach (var el in cv.Children.OfType<FrameworkElement>())
-                if (el.Tag is Placed p && sels.Contains(p)) el.RenderTransform = Nest.Xf(p);
+                if (el.Tag is Placed p && sels.Contains(p)) el.RenderTransform = Nest.Xf(p, 1, p.X + off.X, p.Y + off.Y);
     }
 
     void Sheets_Up(object s, MouseButtonEventArgs e)
@@ -1163,66 +1179,68 @@ public partial class MainWindow : Window
         }
 
         if (drag == null) return;
-        var note = moved ? DropSelection(e) : null;
+        TrackDrag();
+        var note = drag.Moved ? DropSelection(drag, e) : null;
         drag = null;
-        moved = false;
         Sheets.ReleaseMouseCapture();
         CheckSel();
         Redraw(note == null ? Summary() : note + "  " + Summary());
         Commit();
     }
 
-    // Snap magnet: stiker yang dilepas pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap), di lembar lain bila dilepas di atasnya.
-    // Satu saja tidak punya tempat: semua kembali ke posisi awal, jadi tidak ada yang tertinggal di luar lembar. Mengembalikan pesan untuk operator.
-    string? DropSelection(MouseEventArgs e)
+    // Lembar tujuan dan mode mengikuti kursor dan tombol Alt; baris status memberi tahu operator.
+    void TrackDrag()
     {
-        int to = SheetAt(e);
-        if (to >= 0 && to != selSheet)
-        {
-            var shift = e.GetPosition(canvases[to]) - last;
-            foreach (var p in sels) { p.X += shift.X; p.Y += shift.Y; }
-            if (!Nest.MoveTo(sheets, sels, to, sheetW, sheetH[to], MarginMm, GapMm, HasRegMarks))
-            {
-                RestoreDrag();
-                return Lang.T("SheetFull", to + 1, SelWho);
-            }
-            CheckAll(); // lembar asal ikut berubah
-            DropEmpty();
-            selSheet = sheets.FindIndex(sh => sh.Contains(sel!));
-            return Lang.T("MovedTo", SelWho, selSheet + 1);
-        }
-        foreach (var p in sels)
-        {
-            int i = sheets.FindIndex(sh => sh.Contains(p));
-            if (Nest.Snap(sheets[i], p, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks)) continue;
-            RestoreDrag();
-            return Lang.T("NoRoom", SelWho);
-        }
-        return null;
+        if (drag == null) return;
+        (drag.ToSheet, drag.Copy) = (SheetAt(), (Keyboard.Modifiers & ModifierKeys.Alt) != 0);
+        altUsed |= drag.Copy;
+        if (drag.Moved) Status.Text = Lang.T(drag.Copy ? "DragCopy" : "DragMove", (drag.ToSheet >= 0 ? drag.ToSheet : drag.FromSheet) + 1);
     }
 
-    void RestoreDrag() { foreach (var (p, x, y) in dragFrom) (p.X, p.Y) = (x, y); }
+    // Snap magnet: stiker yang dilepas pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap), di lembar lain bila dilepas di atasnya.
+    // Alt: salinannya yang ditaruh di sana, stiker asal tetap. Satu saja tidak punya tempat: tidak ada yang berubah. Mengembalikan pesan untuk operator.
+    string? DropSelection(DragState d, MouseEventArgs e)
+    {
+        if (d.Away) d.Offset = e.GetPosition(canvases[d.ToSheet]) - dragGrab;
+        string who = SelWho;
+        int to = d.ToSheet >= 0 ? d.ToSheet : d.FromSheet;
+        if (d.Drop(sheets, sheetH, sheetW, MarginMm, GapMm, HasRegMarks) is not { } placed)
+            return d.Copy ? Lang.T("CopyFull", to + 1, who) : d.Away ? Lang.T("SheetFull", to + 1, who) : Lang.T("NoRoom", who);
+        if (d.Copy)
+        {
+            sels.Clear();
+            sels.UnionWith(placed);
+            sel = placed[^1];
+            selSheet = to;
+            CountCopies();
+            return Lang.T("CopiedTo", who, to + 1);
+        }
+        if (!d.Away) return null;
+        CheckAll(); // lembar asal ikut berubah
+        DropEmpty();
+        selSheet = sheets.FindIndex(sh => sh.Contains(sel!));
+        return Lang.T("MovedTo", who, selSheet + 1);
+    }
 
     // Lembar di bawah kursor; -1 di celah antar-lembar atau di luar tampilan (saat zoom besar lembar bisa berlanjut di bawah panel kanan).
-    int SheetAt(MouseEventArgs e)
+    int SheetAt()
     {
-        var v = e.GetPosition(View);
+        var v = Mouse.GetPosition(View);
         if (v.X < 0 || v.Y < 0 || v.X > View.ViewportWidth || v.Y > View.ViewportHeight) return -1;
         for (int i = 0; i < sheets.Count; i++)
         {
-            var pt = e.GetPosition(canvases[i]);
+            var pt = Mouse.GetPosition(canvases[i]);
             if (pt.X >= 0 && pt.Y >= 0 && pt.X <= canvases[i].Width && pt.Y <= canvases[i].Height) return i;
         }
         return -1;
     }
 
-    // Tarikan dibatalkan: stiker kembali ke posisi awal, tanpa langkah urungkan. false = tidak ada yang sedang ditarik.
+    // Tarikan dibatalkan: dokumen tidak berubah, karena posisi sementara hanya ada di tampilan. Pemanggil menggambar ulang. false = tidak ada yang sedang ditarik.
     bool CancelDrag()
     {
         if (drag == null && sizing < 0 && band == null) return false;
-        if (drag != null) RestoreDrag();
         (band?.Parent as Canvas)?.Children.Remove(band);
-        (drag, band, moved, sizing, sizeTip) = (null, null, false, -1, null);
+        (drag, band, sizing, sizeTip) = (null, null, -1, null);
         Sheets.ReleaseMouseCapture();
         return true;
     }
