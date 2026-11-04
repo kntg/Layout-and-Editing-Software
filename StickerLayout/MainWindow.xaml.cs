@@ -24,6 +24,9 @@ public partial class MainWindow : Window
     List<Canvas> canvases = [];
     double sheetW, panH, panV;
     Placed? sel, drag;
+    readonly HashSet<Placed> sels = [];   // semua stiker terpilih; sel = yang utama (panel info)
+    System.Windows.Shapes.Rectangle? band; // kotak seret pilih (rubber-band)
+    Point bandFrom;                        // titik awal rubber-band (koordinat kanvas lembar)
     (Sticker S, int Rot, double X, double Y)? clip; // stiker yang disalin; null dengan clipSheet terisi = kanvas
     int selSheet, tooBig, clipSheet = -1, sizing = -1; // sizing: titik pojok yang sedang ditarik
     double sizeW;
@@ -78,9 +81,9 @@ public partial class MainWindow : Window
         {
             double h = i < sheetH.Count ? sheetH[i] : CH;
             var ps = i < sheets.Count ? sheets[i] : [];
-            var c = Nest.Sheet(ps, w, h, MarginMm, sel, i, HasRegMarks);
+            var c = Nest.Sheet(ps, w, h, MarginMm, sels, i, HasRegMarks);
             c.LayoutTransform = zoom;
-            if (sel != null && i == selSheet) AddHandles(c, sel);
+            if (sel != null && i == selSheet && sels.Count <= 1) AddHandles(c, sel);
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
             double su = Yield.Use(ps, w, h, MarginMm);
@@ -135,7 +138,7 @@ public partial class MainWindow : Window
         {
             var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
             SelThumb.Source = sel.S.Preview;
-            SelName.Text = sel.S.Name;
+            SelName.Text = sels.Count > 1 ? $"{sels.Count} stiker terpilih" : sel.S.Name;
             SelSize.Text = $"{F(aw)} × {F(ah)} mm";
             SelRot.Text = $"{sel.Rot}°";
             SelPos.Text = $"X {F(sel.X)}   Y {F(sel.Y)} mm";
@@ -159,7 +162,8 @@ public partial class MainWindow : Window
     {
         sheets = [];
         sheetH = [];
-        sel = drag = null;
+        ClearSel();
+        drag = null;
         tooBig = 0;
         Redraw("");
     }
@@ -217,7 +221,8 @@ public partial class MainWindow : Window
         List.Items.Refresh();
         sheets = [.. d.Sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList())];
         (sheetH, sheetW, tooBig) = ([.. d.SheetH], d.SheetW, d.TooBig);
-        sel = drag = null;
+        ClearSel();
+        drag = null;
         for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
@@ -243,9 +248,12 @@ public partial class MainWindow : Window
     }
 
     // File baru langsung disusun: satu klik lebih sedikit untuk operator.
+    bool loading; // AddFiles bisa menunggu CorelDRAW (await); cegah muat kedua berjalan bersamaan
+
     public async void AddFiles(IEnumerable<string> files)
     {
-        if (!CutsValid()) return;
+        if (loading || !CutsValid()) return;
+        loading = true;
         int before = items.Count;
         Mouse.OverrideCursor = Cursors.Wait;
         try
@@ -263,7 +271,7 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex) { MessageBox.Show($"{Path.GetFileName(f)}: {ex.Message}", Lang.T("LoadFail")); }
         }
-        finally { Mouse.OverrideCursor = null; }
+        finally { Mouse.OverrideCursor = null; loading = false; }
         if (items.Count == before) { Status.Text = status; return; }
         bool first = sheets.Count == 0;
         Arrange();
@@ -277,7 +285,7 @@ public partial class MainWindow : Window
         items.Remove(st);
         foreach (var sh in sheets) sh.RemoveAll(p => p.S == st);
         DropEmpty();
-        sel = null;
+        ClearSel();
         if (items.Count == 0) tooBig = 0;
         Redraw(sheets.Count > 0 ? Summary() : "");
         Commit();
@@ -386,7 +394,7 @@ public partial class MainWindow : Window
             sheets = RowsBox.IsChecked == true ? Nest.Rows(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks) : Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
             sheetH = sheets.Select(_ => CH).ToList();
             for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
-            sel = null;
+            ClearSel();
             (clip, clipSheet) = (null, -1); // posisi yang disalin tidak berlaku lagi
             Redraw(Summary());
         }
@@ -426,6 +434,23 @@ public partial class MainWindow : Window
         Commit();
     }
 
+    // Pilih satu stiker (buang pilihan lain). sel = primer untuk panel info.
+    void SelectOne(Placed? p)
+    {
+        sels.Clear();
+        sel = p;
+        if (p != null) sels.Add(p);
+    }
+
+    // Tambah/buang satu stiker dari pilihan (Ctrl+klik). sel = yang terakhir disentuh.
+    void Toggle(Placed p)
+    {
+        if (!sels.Add(p)) { sels.Remove(p); sel = sels.FirstOrDefault(); }
+        else sel = p;
+    }
+
+    void ClearSel() { sels.Clear(); sel = null; }
+
     // Duplikat kanvas: hasil edit ikut tersalin, beda dengan menaikkan jumlah lalu Susun. WrapPanel menaruh lembar baru di kanan lembar asal,
     // atau di bawah bila baris penuh.
     void DuplicateSheet(int i)
@@ -464,18 +489,19 @@ public partial class MainWindow : Window
 
     void EditSel(Action<Placed> act)
     {
-        if (sel == null) return;
-        act(sel);
-        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
+        if (sels.Count == 0) return;
+        foreach (var p in sels) act(p);
+        // Pilihan bisa lintas lembar (rubber-band), jadi cek ulang setiap lembar yang berisi stiker terpilih, bukan hanya selSheet.
+        for (int i = 0; i < sheets.Count; i++) if (sheets[i].Any(sels.Contains)) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
         Redraw(Summary());
         Commit();
     }
 
     void DeleteSel()
     {
-        if (sel == null) return;
-        sheets[selSheet].Remove(sel);
-        sel = null;
+        if (sels.Count == 0) return;
+        foreach (var p in sels) foreach (var sh in sheets) sh.Remove(p); // pilihan bisa lintas lembar
+        ClearSel();
         DropEmpty();
         for (int i = 0; i < sheets.Count; i++) Nest.Check(sheets[i], sheetW, sheetH[i], MarginMm, HasRegMarks);
         Redraw(sheets.Count > 0 ? Summary() : "");
@@ -483,7 +509,13 @@ public partial class MainWindow : Window
     }
 
     // Putar 90°, lalu snap ke posisi kosong terdekat (tidak menabrak, jarak antar stiker tetap).
-    void RotateSel() => EditSel(p => { p.Rot = (p.Rot + 90) % 360; Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks); });
+    // Snap di lembar tempat stiker berada (pilihan bisa lintas lembar), bukan selSheet.
+    void RotateSel() => EditSel(p =>
+    {
+        p.Rot = (p.Rot + 90) % 360;
+        var sh = sheets.FirstOrDefault(x => x.Contains(p));
+        if (sh is { } s && sheets.IndexOf(s) is var i and >= 0) Nest.Snap(s, p, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks);
+    });
     void Rotate_Click(object s, RoutedEventArgs e) => RotateSel();
 
     // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK.
@@ -492,9 +524,10 @@ public partial class MainWindow : Window
         if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
         var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "print-ticket.pdf" };
         if (dlg.ShowDialog() != true) return;
+        if (sheets.SelectMany(sh => sh).FirstOrDefault() is not { } placed) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
         try
         {
-            var st = sheets[0][0].S; // pengaturan yang dipakai untuk layout ini
+            var st = placed.S; // pengaturan yang dipakai untuk layout ini
             var lines = new List<string>();
             if (st.LoadedKiss.On) lines.Add(Lang.T("TicketCut", Lang.T("Kiss"), st.LoadedKiss.Off, st.LoadedKiss.Smooth));
             if (st.LoadedDie.On) lines.Add(Lang.T("TicketCut", Lang.T("Die"), st.LoadedDie.Off, st.LoadedDie.Smooth));
@@ -941,45 +974,114 @@ public partial class MainWindow : Window
             if (d is Canvas { Tag: int }) { sheet = (Canvas)d; break; }
         }
         View.Focus();
-        if (corner >= 0 && sel != null && sheet != null)
+        bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+
+        if (sheet == null) { ClearSel(); Redraw(); return; }
+        selSheet = (int)sheet.Tag;
+
+        // Klik titik pojok stiker terpilih: mulai ubah ukuran (fitur Welcome-UI).
+        if (corner >= 0 && sel != null && sels.Count <= 1)
         {
             sizing = corner;
             sizeGrab = e.GetPosition(sheet) - Corner(sel, corner); // relatif terhadap pojok: stiker tidak melompat saat titiknya baru diklik
             Sheets.CaptureMouse();
             return;
         }
-        sel = sheet == null ? null : hit;
-        if (sheet != null) selSheet = (int)sheet.Tag; // klik area kosong: kanvas ini yang disalin Ctrl+C
-        if (sel != null)
+
+        if (hit != null)
         {
-            last = e.GetPosition(sheet);
-            drag = sel;
-            Sheets.CaptureMouse();
+            // Ctrl+klik: tambah/buang dari pilihan. Klik stiker yang sudah terpilih: pertahankan grup (bisa seret bersama).
+            if (ctrl) Toggle(hit);
+            else if (!sels.Contains(hit)) SelectOne(hit);
+            else sel = hit;
+
+            if (sels.Count > 0)
+            {
+                last = e.GetPosition(sheet);
+                drag = sel;              // penanda bahwa seret sedang aktif
+                Sheets.CaptureMouse();
+            }
+            Redraw();
+            return;
         }
-        Redraw();
+
+        // Klik ruang kosong: mulai kotak seret-pilih (rubber-band) pada lembar ini.
+        bool had = sels.Count > 0;
+        // Titik awal diukur terhadap kanvas yang sedang hidup (sheet) SEBELUM Redraw.
+        // Setelah Redraw kanvas dibangun ulang dan belum di-layout, GetPosition terhadapnya
+        // mengembalikan offset salah → margin kotak seret aneh. Satuan kanvas = mm, sama di
+        // kanvas lama dan baru, jadi nilai bandFrom tetap valid setelah rebuild.
+        bandFrom = e.GetPosition(sheet);
+        if (!ctrl) ClearSel();
+        if (had) Redraw();   // bersihkan sorotan pilihan lama sebelum menambah kotak seret
+        if (selSheet < 0 || selSheet >= canvases.Count) return;
+        band = new System.Windows.Shapes.Rectangle
+        {
+            Width = 0, Height = 0,
+            Stroke = Nest.SelBrush, StrokeThickness = 0.4, StrokeDashArray = [3, 2],
+            Fill = new SolidColorBrush(Color.FromArgb(32, 0, 120, 215)), IsHitTestVisible = false
+        };
+        Canvas.SetLeft(band, bandFrom.X);
+        Canvas.SetTop(band, bandFrom.Y);
+        // Kotak BELUM ditambah ke kanvas di sini. Rectangle tanpa ukuran nyata meregang penuh
+        // (tampak kotak seluruh lembar saat klik-tahan tanpa geser). Baru ditambah di Sheets_Move
+        // setelah kursor benar-benar bergerak, jadi awalnya selalu tepat di titik klik.
+        Sheets.CaptureMouse();
     }
 
     void Sheets_Move(object s, MouseEventArgs e)
     {
         if (sizing >= 0) { SizeTo(e.GetPosition(canvases[selSheet]) - sizeGrab); return; }
-        if (drag == null) return;
+        if (band == null && drag == null) return;
+        if (selSheet < 0 || selSheet >= canvases.Count) return;
         var c = canvases[selSheet];
         var pt = e.GetPosition(c);
-        drag.X += pt.X - last.X;
-        drag.Y += pt.Y - last.Y;
-        if (!moved && pt != last) HideHandles();
+
+        if (band != null)
+        {
+            double x = Math.Min(pt.X, bandFrom.X), y = Math.Min(pt.Y, bandFrom.Y);
+            Canvas.SetLeft(band, x);
+            Canvas.SetTop(band, y);
+            band.Width = Math.Abs(pt.X - bandFrom.X);
+            band.Height = Math.Abs(pt.Y - bandFrom.Y);
+            // Tambah ke kanvas pada gerak pertama (lihat Sheets_Down): sebelum ini kotak punya
+            // ukuran nyata, jadi tidak pernah meregang penuh.
+            if (band.Parent == null && !c.Children.Contains(band)) c.Children.Add(band);
+            return;
+        }
+
+        if (drag == null) return;
+        if (!moved && pt != last) HideHandles(); // sembunyikan titik pojok saat mulai seret (fitur Welcome-UI)
+        double dx = pt.X - last.X, dy = pt.Y - last.Y;
+        foreach (var p in sels) { p.X += dx; p.Y += dy; }
         moved |= pt != last;
         last = pt;
-        foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == drag) el.RenderTransform = Nest.Xf(drag);
+        foreach (var el in c.Children.OfType<FrameworkElement>())
+            if (el.Tag is Placed p && sels.Contains(p)) el.RenderTransform = Nest.Xf(p);
     }
 
     void Sheets_Up(object s, MouseButtonEventArgs e)
     {
         if (sizing >= 0) { EndResize(); return; }
+        if (band != null)
+        {
+            var box = new Rect(Canvas.GetLeft(band), Canvas.GetTop(band), band.Width, band.Height);
+            if (selSheet >= 0 && selSheet < canvases.Count) canvases[selSheet].Children.Remove(band);
+            band = null;
+            Sheets.ReleaseMouseCapture();
+            if (selSheet < 0 || selSheet >= sheets.Count) { Redraw(); return; }
+            // Pilih stiker yang kotak batasnya beririsan dengan kotak seret.
+            foreach (var p in sheets[selSheet])
+                if (box.IntersectsWith(new Rect(p.X, p.Y, p.BW, p.BH))) sels.Add(p);
+            sel = sels.LastOrDefault();
+            Redraw();
+            return;
+        }
+
         if (drag == null) return;
-        // Snap magnet: stiker yang digeser pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap).
-        if (moved) Nest.Snap(sheets[selSheet], drag, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
         drag = null;
+        // Snap magnet: tiap stiker terpilih pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap).
+        if (moved) foreach (var p in sels) Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
         moved = false;
         Sheets.ReleaseMouseCapture();
         Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
