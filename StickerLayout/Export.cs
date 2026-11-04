@@ -51,13 +51,13 @@ public static class Export
         Line(Lang.T("TicketPaper", paper, cw, sheetH.Max(), margin), 0, 9);
         Line(Lang.T("TicketSheets", sheets.Count), 1);
         Line(Lang.T("TicketPcs", all.Count), 1);
-        Line(Lang.T("TicketUse", use, 1 - use), 1);
+        Line(Lang.T("TicketUse", Yield.Shown(use), 1 - Yield.Shown(use)), 1);
         Line(Lang.T(regular ? "TargetReg" : "TargetIrr", t.Low, t.High, t.Green), 0, 11);
 
         const int MaxSheets = 10, MaxDesigns = 20;
         Line(Lang.T("TicketPerSheet"), 1);
         for (int i = 0; i < Math.Min(sheets.Count, MaxSheets); i++)
-            Line(Lang.T("TicketSheetLine", i + 1, sheets[i].Count, Yield.Use(sheets[i], cw, sheetH[i], margin)), 0, 5);
+            Line(Lang.T("TicketSheetLine", i + 1, sheets[i].Count, Yield.Shown(Yield.Use(sheets[i], cw, sheetH[i], margin))), 0, 5);
         if (sheets.Count > MaxSheets) Line(Lang.T("TicketMore", sheets.Count - MaxSheets), 0, 5);
         Line("", 0, 5);
         var designs = all.GroupBy(p => p.S).ToList();

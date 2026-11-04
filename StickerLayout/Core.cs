@@ -92,7 +92,7 @@ public class Placed
     public Sticker S = null!;
     public double X, Y;
     public int Rot;
-    public bool Bad;                             // tumpang tindih atau keluar margin
+    public bool Bad;                             // tumpang tindih, terlalu dekat, atau keluar margin
     public double BW => Rot % 180 == 0 ? S.W : S.H;
     public double BH => Rot % 180 == 0 ? S.H : S.W;
     public (double x, double y) T => Rot switch { 90 => (S.H, 0), 180 => (S.W, S.H), 270 => (0, S.W), _ => (0, 0) };
@@ -749,6 +749,9 @@ public static class Yield
         return f > 0 ? ps.Sum(p => p.S.AreaMm2) / f : 0;
     }
 
+    // Luas stiker melebihi area hanya bila stiker bertumpuk (misalnya setelah ukurannya diubah), jadi angka untuk operator dibatasi 100%. Warnanya lihat Level.
+    public static double Shown(double use) => Math.Min(use, 1);
+
     // Reguler = bentuk rata-rata (ditimbang luas) mengisi >= 75% kotaknya (persegi, lingkaran); selain itu irregular.
     public static bool Regular(IEnumerable<Placed> ps)
     {
@@ -765,6 +768,7 @@ public static class Yield
     public static int Level(double use, bool regular)
     {
         var t = Target(regular);
+        if (use > 1) return 0; // stiker bertumpuk, bukan target tercapai
         return use >= t.Green ? 2 : use >= t.Low ? 1 : 0;
     }
 }
@@ -965,6 +969,59 @@ public static class Nest
         return true;
     }
 
+    // Pindah ke lembar lain: tiap stiker ke posisi kosong terdekat dari posisinya sekarang. Satu tidak muat = semua batal: false, stiker dan semua lembar tidak berubah.
+    public static bool MoveTo(List<List<Placed>> sheets, IReadOnlyCollection<Placed> group, int to, double cw, double ch, double margin, double gap, bool marks = false)
+    {
+        var was = group.Select(p => (p, p.X, p.Y)).ToList();
+        var taken = sheets[to].Except(group).ToList();
+        foreach (var p in group)
+        {
+            if (!Snap(taken, p, cw, ch, margin, gap, marks))
+            {
+                foreach (var (q, x, y) in was) (q.X, q.Y) = (x, y);
+                return false;
+            }
+            taken.Add(p);
+        }
+        foreach (var sh in sheets) sh.RemoveAll(group.Contains);
+        sheets[to].AddRange(group);
+        return true;
+    }
+
+    // Putar 90°, lalu posisi kosong terdekat. false = tidak ada tempat; rotasi dan posisi tidak berubah.
+    public static bool Turn(List<Placed> ps, Placed p, double cw, double ch, double margin, double gap, bool marks = false)
+    {
+        int rot = p.Rot;
+        p.Rot = (rot + 90) % 360;
+        if (Snap(ps, p, cw, ch, margin, gap, marks)) return true;
+        p.Rot = rot;
+        return false;
+    }
+
+    // Tidak ada posisi kosong: kotak stiker tetap di dalam area cetak supaya terlihat dan bisa ditarik lagi. Check menandainya merah.
+    public static void KeepInside(Placed p, double cw, double ch, double margin)
+    {
+        p.X = Math.Clamp(p.X, margin, Math.Max(margin, cw - margin - p.BW));
+        p.Y = Math.Clamp(p.Y, margin, Math.Max(margin, ch - margin - p.BH));
+    }
+
+    // Tempel beberapa stiker: tiap salinan di kanan aslinya, di lembarnya sendiri (PasteNext). Satu tidak muat = tidak ada yang ditambahkan (null).
+    public static List<Placed>? PasteAll(List<List<Placed>> sheets, IList<double> sheetH, IEnumerable<(Sticker S, int Rot, double X, double Y, int Sheet)> clip, double cw, double margin, double gap, bool marks = false)
+    {
+        var added = new List<Placed>();
+        foreach (var c in clip)
+        {
+            if (PasteNext(sheets[c.Sheet], c.S, c.Rot, c.X, c.Y, cw, sheetH[c.Sheet], margin, gap, marks) is not { } n)
+            {
+                foreach (var sh in sheets) sh.RemoveAll(added.Contains);
+                return null;
+            }
+            sheets[c.Sheet].Add(n);
+            added.Add(n);
+        }
+        return added;
+    }
+
     // Penuhi lembar (tombol Compact): customer membayar per lembar, jadi ruang kosong di semua lembar diisi salinan desain
     // (jumlah > 0) bergiliran sampai tidak ada yang muat. Grid hunian dan TryPlace sama dengan susun otomatis.
     // Mengembalikan jumlah stiker yang ditambahkan.
@@ -1134,9 +1191,9 @@ public static class Nest
         return true;
     }
 
-    // Tandai stiker yang tumpang tindih (jejak garis terluar), yang jejaknya (ditambah bleed) keluar margin, atau yang masuk
-    // area pindai tanda registrasi (marks). Kembalikan jumlahnya.
-    public static int Check(List<Placed> ps, double cw, double ch, double margin, bool marks = false)
+    // Tandai stiker yang tumpang tindih (jejak garis terluar), lebih dekat dari jarak antar stiker (gap), yang jejaknya (ditambah bleed)
+    // keluar margin, atau yang masuk area pindai tanda registrasi (marks). Kembalikan jumlahnya.
+    public static int Check(List<Placed> ps, double cw, double ch, double margin, bool marks = false, double gap = 0)
     {
         var feet = ps.Select(p => FootOf(p.S, p.Rot)).ToList();
         var keep = KeepOut(cw, ch, margin, marks, 0);
@@ -1149,17 +1206,30 @@ public static class Nest
             Rect Box(int x0, int y0, int x1, int y1) => new(p.X + x0 * Cell - e, p.Y + y0 * Cell - e, (x1 - x0 + 1) * Cell + 2 * e, (y1 - y0 + 1) * Cell + 2 * e);
             p.Bad |= keep.Any(r => Overlap(r, Box(f.MinX, f.MinY, f.MaxX, f.MaxY)) && f.Edge.Any(c => Overlap(r, Box(c.X, c.Y, c.X, c.Y))));
         }
+        // Sel dan jarak sama dengan grid hunian (Occupancy, Stamp), jadi hasil Snap dan susun otomatis tidak pernah ditandai.
+        (int X, int Y) Origin(Placed p) => ((int)Math.Round((p.X - margin) / Cell), (int)Math.Round((p.Y - margin) / Cell));
         var owner = new Dictionary<(int, int), Placed>();
         for (int i = 0; i < ps.Count; i++)
         {
             var p = ps[i];
-            int ox = (int)Math.Round(p.X / Cell), oy = (int)Math.Round(p.Y / Cell);
+            var (ox, oy) = Origin(p);
             foreach (var (x, y) in feet[i].Cells)
             {
                 if (owner.TryGetValue((ox + x, oy + y), out var o) && o != p) o.Bad = p.Bad = true;
                 else owner[(ox + x, oy + y)] = p;
             }
         }
+        int gc = CellsOf(gap);
+        if (gc > 0)
+            for (int i = 0; i < ps.Count; i++)
+            {
+                var p = ps[i];
+                var (ox, oy) = Origin(p);
+                foreach (var (x, y) in feet[i].Edge)
+                    for (int dy = -gc; dy <= gc; dy++)
+                        for (int dx = -gc; dx <= gc; dx++)
+                            if (owner.TryGetValue((ox + x + dx, oy + y + dy), out var o) && o != p) o.Bad = p.Bad = true;
+            }
         return ps.Count(p => p.Bad);
     }
 

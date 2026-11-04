@@ -21,8 +21,10 @@ Isi README ini:
 1. **Tambah file.** Ada tiga cara: tarik file ke jendela, klik **Tambah file…** (Ctrl+O atau Ctrl+I), atau buka file lewat "Open with". File langsung disusun di lembar.
    - Format: PDF, AI (yang disimpan PDF-compatible), CDR, PNG, JPG, SVG. PDF dengan banyak halaman menjadi satu desain per halaman.
    - CDR dibuka lewat CorelDRAW yang terpasang. Jendela Printech tidak macet selama menunggu.
+   - Bila aplikasi dibuka tanpa file, muncul halaman sambutan: tarik file ke kotaknya atau klik **Buka Folder**.
 2. **Atur desain** di panel **Desain**.
-   - Setiap desain punya lebar artwork (mm) dan jumlah (pcs).
+   - Setiap desain punya lebar artwork (mm) dan jumlah (pcs). Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
+   - **Lainnya** (ikon titik tiga) berisi Rapikan gambar dan Edit garis potong.
    - PDF/AI/CDR memakai ukuran aslinya. PNG/JPG/SVG memakai "Lebar awal" (bawaan 50 mm).
    - Angka dpi merah berarti resolusinya di bawah 150 dpi, dan hasil cetaknya akan pecah.
 3. **Pilih kertas** di panel **Kertas**.
@@ -34,13 +36,14 @@ Isi README ini:
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang.
 5. **Periksa layout.**
-   - **Seret stiker:** stiker pindah ke posisi kosong terdekat. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
-   - **Stiker bertanda merah:** tumpang tindih dengan stiker lain atau keluar margin.
+   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Pilih banyak stiker:** Ctrl+klik menambah atau melepas stiker dari pilihan. Seret dari area kosong lembar membuat kotak pilih. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda. Titik pojok hanya muncul saat satu stiker terpilih.
+   - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin. Selama luas stiker melebihi lembar karena bertumpuk, angka bahan tampil 100% dan merah; susun ulang untuk melihat angka sebenarnya.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Proporsi tetap, dan lebar × tinggi artwork tampil di dekat kursor. Saat mouse dilepas, ukuran baru berlaku untuk semua salinan desain itu dan garis potong dihitung ulang. Salinan lain yang jadi bertabrakan ditandai merah; klik Susun otomatis untuk menyusunnya ulang.
    - **Hemat atau Rapi:** pilihan di toolbar. Hemat (bawaan) memadatkan stiker dan boleh memutarnya, jadi bahannya paling hemat. Rapi menyusun stiker per baris dan kolom dengan tepi kiri rata dan desain yang sama berkumpul, tetapi bahan bisa lebih boros. Susun otomatis, tambah file, dan ganti kertas mengikuti pilihan ini.
    - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Rapi dipilih, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
    - **Duplikat kanvas:** tombol **Duplikat** di judul lembar menyalin lembar itu utuh, termasuk hasil edit, ke lembar baru di sampingnya. Lembar berjajar ke kanan dan turun ke bawah bila baris di layar penuh. Bahan bertambah 1 lembar, dan jumlah (pcs) tiap desain ikut bertambah. Cara keyboard: klik area kosong di kanvas, Ctrl+C, lalu Ctrl+V.
-   - **Salin-tempel stiker:** klik stiker, Ctrl+C, lalu Ctrl+V. Salinan berada tepat di kanan stiker asli; bila baris penuh, turun ke baris berikutnya. Susun otomatis tetap menyusun ulang semua stiker dari jumlah pcs, jadi hasil duplikat dan tempel hilang (bisa diurungkan).
+   - **Salin-tempel stiker:** klik stiker, Ctrl+C, lalu Ctrl+V. Salinan berada tepat di kanan stiker asli; bila baris penuh, turun ke baris berikutnya. Beberapa stiker terpilih tersalin bersama; bila satu saja tidak punya tempat, tidak ada yang ditempel. Susun otomatis tetap menyusun ulang semua stiker dari jumlah pcs, jadi hasil duplikat dan tempel hilang (bisa diurungkan).
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
 6. **Export.**
    - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
@@ -62,7 +65,7 @@ Isi README ini:
 
 ### Editor garis potong
 
-Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan desain itu.
+Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis potong**. Hasilnya berlaku untuk semua salinan desain itu.
 
 - **Bentuk.**
   - Pilihan: Otomatis, kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam.
@@ -90,18 +93,18 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 ### Rapikan gambar
 
 - **Untuk:** desain berupa gambar, yaitu PNG, JPG, SVG, dan PDF yang ditempel sebagai gambar.
-- **Cara membuka:** ikon penghapus di baris desain, atau klik dua kali gambar kecil desainnya.
+- **Cara membuka:** **Lainnya** (ikon titik tiga) di baris desain, lalu **Rapikan gambar**; atau klik dua kali gambar kecil desainnya.
 - **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**.
 - **Catatan:** file vektor (PDF/AI/CDR) dirapikan di CorelDRAW supaya warnanya tetap utuh. Fitur ini dibekukan, tidak dikembangkan lagi.
 
 ### Tampilan dan bahasa
 
-- **Zoom:** Ctrl + roda mouse, Ctrl++ / Ctrl+-. Pas layar: Ctrl+0 atau F4.
+- **Zoom:** Ctrl + roda mouse, Ctrl++ / Ctrl+-. Pas layar: Ctrl+0 atau F4. Saat diperbesar, jumlah lembar per baris tetap dan titik di bawah kursor tidak berpindah; lembar yang melebihi layar digeser. Saat diperkecil, jumlah lembar per baris bertambah bila muat. Pas layar, Susun otomatis, dan mengubah lebar jendela menata ulang.
 - **Geser tampilan:** alat Hand (H), tahan Spasi, atau tombol tengah mouse.
 - **Alat Zoom (Z):** klik untuk memperbesar, Alt+klik untuk memperkecil.
 - **Penggaris (mm):** tampil di atas dan kiri lembar. Bisa disembunyikan lewat tombol penggaris di batang alat kiri.
 - **Bahasa:** menu **Bahasa**, pilih Indonesia atau English.
-- **Tanda registrasi:** menu **Tanda registrasi**, pilih `SA regmark type2 auto 33 0.00 2.83 28.35 283.46 283.46 0` (bawaan) atau Tidak ada.
+- **Tanda registrasi:** menu **Tampilan**, centang **Tanda registrasi** (bawaan: mati).
   - Pilihan bawaan itu menggambar siku L hitam di 4 pojok lembar, ikut di layar, preview JPG, dan PDF.
   - Stiker tidak ditaruh dalam 6 mm dari tanda (area pindai menurut manual Graphtec). Stiker yang masuk area itu ditandai merah; klik Susun otomatis untuk memindahkannya.
 
@@ -122,7 +125,8 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | R | Putar stiker yang dipilih 90° |
 | Delete | Hapus stiker yang dipilih (di editor: hapus titik yang dipilih) |
 | Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
-| Ctrl+C, lalu Ctrl+V | Salin dan tempel stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
+| Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
+| Ctrl+klik | Tambah atau lepas stiker dari pilihan |
 
 ## Arti pesan dan peringatan
 
@@ -132,7 +136,9 @@ Buka lewat ikon pensil di baris desain. Hasilnya berlaku untuk semua salinan des
 | "Tidak ada tempat di kanan atau bawah stiker ini…" | Salinan stiker tidak muat di lembar ini. Hapus stiker lain, atau pakai Duplikat di judul lembar untuk lembar baru. |
 | "… desain resolusi rendah" | Di bawah 150 dpi pada lebar itu. Minta file asli ke customer, atau perkecil desainnya. |
 | "… PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" | PDF dicetak sebagai gambar, bukan vektor. Periksa ketajaman dan warnanya sebelum cetak. |
-| "… tumpang tindih/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
+| "… tumpang tindih/terlalu dekat/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
+| "Tidak ada tempat…" | Stiker tidak muat di tujuan, jadi kembali ke posisi awal, atau putarannya dibatalkan. Hapus stiker lain, atau klik Susun otomatis. |
+| "… diubah menjadi …, tetapi tidak ada posisi kosong" | Ukuran baru berlaku, tetapi stiker bertabrakan dan ditandai merah. Klik Susun otomatis. |
 | "CorelDRAW tidak terpasang…" | Export CDR ke PDF dulu di PC yang ada CorelDRAW-nya, lalu tambahkan PDF-nya. |
 | "CorelDRAW tidak merespons dalam 30 detik…" | Cek jendela CorelDRAW, mungkin ada dialog yang terbuka. Atau export CDR ke PDF secara manual. |
 | "File AI ini tidak bisa dibaca…" | AI disimpan tanpa opsi PDF-compatible. Simpan ulang dari Illustrator dengan "Create PDF Compatible File", atau export ke PDF. |
@@ -185,7 +191,7 @@ Langkah:
 
 - [Kebutuhan aplikasi](docs/kebutuhan-aplikasi.md) (dulu bernama PRD): tujuan, fitur, keputusan, batasan, daftar uji untuk operator, dan cara menjalankan (§11).
 - [Catatan riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S20 dan hasilnya.
+- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S22 dan hasilnya.
 - [Skenario uji stabilitas](docs/UJI-STABILITAS.md): skenario P1–P10 (proses pembantu CDR, kerja paralel, memori) dan hasilnya.
 - [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.

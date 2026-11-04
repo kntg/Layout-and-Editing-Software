@@ -50,17 +50,13 @@
                         <MenuItem x:Name="RegMarksToggleMenu" 
                                   Header="{DynamicResource RegMarks}" 
                                   IsCheckable="True" 
-                                  IsChecked="True" 
+                                  IsChecked="False" 
                                   Click="RegMarksMenu_Click" />
                     </MenuItem>
                     <MenuItem Header="{DynamicResource Lang}">
                         <MenuItem x:Name="LangId" Header="Indonesia" Tag="id" IsChecked="True" Click="Lang_Click"/>
                         <MenuItem x:Name="LangEn" Header="English" Tag="en" Click="Lang_Click"/>
                     </MenuItem>
-                    <!-- <MenuItem Header="{DynamicResource RegMarks}">
-                        <MenuItem x:Name="RegMarksNone" Header="{DynamicResource RegMarksNone}" Tag="none" IsCheckable="True" Click="RegMarks_Click"/>
-                        <MenuItem x:Name="RegMarks1" Header="{DynamicResource RegMarks1}" Tag="1" IsCheckable="True" IsChecked="True" Click="RegMarks_Click"/>
-                    </MenuItem> -->
                 </Menu>
             </DockPanel>
         </Border>
@@ -211,29 +207,54 @@
                                                             </TextBlock>
                                                             <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
                                                         </DockPanel>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                        <Grid Margin="0,5,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
                                                             <TextBox Width="50" Style="{StaticResource Num}" Text="{Binding WidthMm, StringFormat=0.#}" ToolTip="{DynamicResource WidthTip}"/>
-                                                            <TextBlock Text="{Binding HText}" Style="{StaticResource Small}" Margin="5,0,10,0"/>
-                                                            <TextBox Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource QtyTip}"/>
-                                                            <TextBlock Text="pcs" Style="{StaticResource Small}" Margin="5,0,0,0"/>
-                                                        </StackPanel>
+                                                            <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip="{Binding HText}" Text="{Binding HText}" Style="{StaticResource Small}" Margin="5,0,6,0"/>
+                                                            <TextBox Grid.Column="2" Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource QtyTip}"/>
+                                                            <TextBlock Grid.Column="3" Text="pcs" Style="{StaticResource Small}" Margin="5,0,0,0"/>
+                                                        </Grid>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2" VerticalAlignment="Top">
-                                                        <Button Content="&#xE75C;" Click="CleanItem_Click" IsEnabled="{Binding CanClean}" ToolTipService.ShowOnDisabled="True"
-                                                                Height="20" AutomationProperties.Name="{DynamicResource Clean}">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                                                                    <Setter Property="ToolTip" Value="{DynamicResource CleanTip}"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding CanClean}" Value="False">
-                                                                            <Setter Property="ToolTip" Value="{DynamicResource CleanVector}"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
+
+                                                        <Button x:Name="MoreBtn" Style="{StaticResource IconBtn}" Content="&#xE712;" Height="20"
+                                                                Click="MoreItem_Click"
+                                                                ToolTip="{DynamicResource MoreTip}" AutomationProperties.Name="{DynamicResource MoreTip}">
+                                                            <Button.Resources>
+                                                                <Popup x:Key="MorePopup" Placement="Right" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                                                                    <Border Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                                                            CornerRadius="4" Padding="2">
+                                                                        <StackPanel>
+                                                                            <!-- Menu Rapikan (Clean) -->
+                                                                            <MenuItem Tag="Clean">
+                                                                                <MenuItem.Header>
+                                                                                    <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE75C;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource Clean}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </MenuItem.Header>
+                                                                            </MenuItem>
+
+                                                                            <!-- Menu Garis Potong (Cut) -->
+                                                                            <MenuItem Tag="Cut">
+                                                                                <MenuItem.Header>
+                                                                                    <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource CutEdit}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </MenuItem.Header>
+                                                                            </MenuItem>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                </Popup>
+                                                            </Button.Resources>
                                                         </Button>
-                                                        <Button Style="{StaticResource IconBtn}" Content="&#xE70F;" Click="CutItem_Click" Height="20"
-                                                                ToolTip="{DynamicResource CutTip}" AutomationProperties.Name="{DynamicResource CutEdit}"/>
+
                                                         <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" Click="RemoveItem_Click" Height="20"
                                                                 ToolTip="{DynamicResource Remove}" AutomationProperties.Name="{DynamicResource Remove}"/>
                                                         <Button Style="{StaticResource IconBtn}" Content="&#xE72C;" Click="ResetItem_Click" Height="20"
@@ -361,7 +382,7 @@
                                         <TextBox x:Name="DieSm" Grid.Row="2" Grid.Column="3" Style="{StaticResource Num}" Text="2" Margin="0,6,0,0"/>
                                     </Grid>
                                     <DockPanel Margin="0,10,0,0">
-                                        <TextBox x:Name="GapBox" Style="{StaticResource Num}" Text="2" Width="58" DockPanel.Dock="Right"/>
+                                        <TextBox x:Name="GapBox" TextChanged="Gap_Changed" Style="{StaticResource Num}" Text="2" Width="58" DockPanel.Dock="Right"/>
                                         <TextBlock Text="{DynamicResource Gap}" Style="{StaticResource Label}"/>
                                     </DockPanel>
                                     <DockPanel Margin="0,6,0,0" ToolTip="{DynamicResource BleedTip}">
@@ -401,13 +422,13 @@
                         
                         <Grid Grid.Row="1" Grid.Column="1">
                             <!-- Perubahan: Membungkus ScrollViewer dengan Grid agar konten selalu di tengah -->
-                            <ScrollViewer x:Name="View" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
+                            <ScrollViewer x:Name="View" SizeChanged="View_SizeChanged" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
                                         Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel" ScrollChanged="View_ScrollChanged"
                                         PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
                                 
-                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
-                                                MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up">
+                                <!-- Grid selebar tampilan: klik di luar lembar tetap sampai ke Sheets_Down dan melepas pilihan. Lembar berada di tengah. -->
+                                <Grid Background="Transparent" MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up" LostMouseCapture="Sheets_Lost">
+                                    <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
