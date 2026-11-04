@@ -482,6 +482,22 @@ public partial class MainWindow : Window
         AfterAdd(Lang.T("Pasted", c.S.Name));
     }
 
+    // Ctrl+D: duplikat stiker terpilih di lembarnya sendiri. Salinan pakai Sticker yang sama (artwork & geometri tidak digandakan),
+    // diberi offset oleh PasteNext supaya tidak menimpa aslinya. Asli tidak berubah; salinan jadi pilihan baru. Satu Commit.
+    void DuplicateSel()
+    {
+        if (sel is not { } src) return;                         // tidak ada pilihan: no-op
+        int i = sheets.FindIndex(sh => sh.Contains(src));
+        if (i < 0) return;
+        if (Nest.PasteNext(sheets[i], src.S, src.Rot, src.X, src.Y, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks) is not { } n)
+        { Redraw(Lang.T("DupFull")); return; }                  // tidak ada tempat valid: asli tidak berubah, salinan tidak dibuat
+        sheets[i].Add(n);
+        (sel, selSheet) = (n, i);
+        sels.Clear();
+        sels.Add(n);
+        AfterAdd(Lang.T("Duplicated", src.S.Name));             // Check semua lembar, Redraw, Commit sekali
+    }
+
     void Copy_Click(object s, RoutedEventArgs e) => CopySel();
     void Paste_Click(object s, RoutedEventArgs e) => Paste();
 
@@ -835,6 +851,7 @@ public partial class MainWindow : Window
                 case Key.Y when !typing: Redo(); break;
                 case Key.C when !typing: CopySel(); break;
                 case Key.V when !typing: Paste(); break;
+                case Key.D when !typing: DuplicateSel(); break;
                 case Key.O: case Key.I: Add_Click(s, e); break; // Ctrl+I = Import di CorelDRAW
                 case Key.E: Export_Click(s, e); break;
                 case Key.L: Arrange(); break;
@@ -1078,13 +1095,88 @@ public partial class MainWindow : Window
 
         if (drag == null) return;
         drag = null;
-        // Snap magnet: tiap stiker terpilih pindah ke posisi kosong terdekat (tidak menabrak, jarak tetap).
-        if (moved) foreach (var p in sels) Nest.Snap(sheets[selSheet], p, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
-        moved = false;
         Sheets.ReleaseMouseCapture();
-        Nest.Check(sheets[selSheet], sheetW, sheetH[selSheet], MarginMm, HasRegMarks);
+        int from = selSheet;
+
+        // Lembar tujuan: kanvas di bawah titik lepas (jalan naik visual tree seperti Sheets_Down). -1 = lepas di luar kanvas.
+        int to = DropSheet(e);
+
+        // Pindah antar kanvas: hanya saat benar-benar menyeret, satu lembar tujuan yang jelas, dan beda dari asal. Pilihan lintas
+        // lembar (rubber-band) tetap dipindah di lembarnya masing-masing (tidak dipindahkan antar kanvas).
+        bool didMove = moved;
+        bool cross = moved && to >= 0 && to != from && from >= 0 && from < sheets.Count
+                     && sels.Count > 0 && sels.All(p => from < sheets.Count && sheets[from].Contains(p));
+        moved = false;
+
+        if (cross)
+        {
+            // Posisi lepas pada kanvas tujuan (satuan mm, sama di semua kanvas). Pindahkan tiap stiker ke sana lalu Snap+Check.
+            var drop = e.GetPosition(canvases[to]);
+            var moving = sels.ToList();
+            var landed = new List<Placed>();
+            foreach (var p in moving)
+            {
+                var (ox, oy) = (p.X, p.Y);
+                (p.X, p.Y) = (drop.X, drop.Y);
+                // Snap mencari posisi kosong valid di lembar tujuan. Gagal (tidak muat) = stiker tetap di lembar asal pada
+                // koordinat aslinya; tidak pernah ditinggalkan di luar lembar. Baru pindahkan collection setelah valid.
+                if (Nest.Snap(sheets[to], p, sheetW, sheetH[to], MarginMm, GapMm, HasRegMarks))
+                {
+                    sheets[from].Remove(p);     // lepas referensi Placed dari collection asal
+                    sheets[to].Add(p);          // ke collection tujuan; S (Sticker) tidak disentuh, artwork/geometri tetap
+                    landed.Add(p);
+                }
+                else (p.X, p.Y) = (ox, oy);     // rollback: tetap di lembar asal, posisi semula
+            }
+
+            if (landed.Count == 0)              // tidak ada yang muat: dokumen tidak berubah
+            {
+                Redraw(Lang.T("MoveFull", to + 1));
+                return;
+            }
+
+            Nest.Check(sheets[from], sheetW, sheetH[from], MarginMm, HasRegMarks);
+            Nest.Check(sheets[to], sheetW, sheetH[to], MarginMm, HasRegMarks);
+            DropEmpty();                        // lembar asal kosong setelah pindah ikut dibuang
+            // selSheet bisa bergeser setelah DropEmpty: cari ulang lembar yang kini memuat salah satu stiker pindah.
+            int now = sheets.FindIndex(sh => sh.Contains(landed[^1]));
+            selSheet = now >= 0 ? now : Math.Clamp(to, 0, Math.Max(0, sheets.Count - 1));
+            sels.Clear();
+            foreach (var p in landed) if (sheets.Any(sh => sh.Contains(p))) sels.Add(p);
+            sel = landed[^1];                   // pilihan mengarah ke objek pada lembar tujuan
+            Redraw(Lang.T("MovedSheet", sel.S.Name, selSheet + 1));
+            Commit();                           // satu transaksi untuk keseluruhan perpindahan
+            return;
+        }
+
+        // Dalam lembar yang sama: Snap magnet tiap stiker terpilih ke posisi kosong terdekat (hanya bila benar-benar menyeret).
+        if (from >= 0 && from < sheets.Count)
+        {
+            if (didMove) foreach (var p in sels) Nest.Snap(sheets[from], p, sheetW, sheetH[from], MarginMm, GapMm, HasRegMarks);
+            Nest.Check(sheets[from], sheetW, sheetH[from], MarginMm, HasRegMarks);
+        }
         Redraw(Summary());
         Commit();
+    }
+
+    // Indeks lembar di bawah posisi mouse saat dilepas (Canvas.Tag = indeks). -1 bila lepas di luar kanvas mana pun.
+    // Mouse di-capture oleh Sheets selama seret, jadi e.OriginalSource = Sheets, bukan kanvas tujuan. Hit-test titik lepas
+    // untuk menemukan kanvas yang benar-benar ada di bawah kursor.
+    int DropSheet(MouseEventArgs e)
+    {
+        int found = -1;
+        VisualTreeHelper.HitTest(Sheets, null, r =>
+        {
+            for (DependencyObject? d = r.VisualHit; d != null; d = VisualTreeHelper.GetParent(d))
+            {
+                // Lewati stiker yang sedang diseret: elemennya masih di kanvas asal dan menutupi kursor, bisa membuat
+                // hit-test mengembalikan lembar asal. Teruskan ke lapisan di belakangnya.
+                if (d is FrameworkElement { Tag: Placed p } && sels.Contains(p)) return HitTestResultBehavior.Continue;
+                if (d is Canvas { Tag: int k }) { found = k; return HitTestResultBehavior.Stop; }
+            }
+            return HitTestResultBehavior.Continue;
+        }, new PointHitTestParameters(e.GetPosition(Sheets)));
+        return found;
     }
 
     void ShowHome(bool home)
