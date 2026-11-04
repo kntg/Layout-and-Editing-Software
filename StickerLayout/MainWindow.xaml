@@ -207,12 +207,18 @@
                                                             </TextBlock>
                                                             <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
                                                         </DockPanel>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                        <Grid Margin="0,5,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
                                                             <TextBox Width="50" Style="{StaticResource Num}" Text="{Binding WidthMm, StringFormat=0.#}" ToolTip="{DynamicResource WidthTip}"/>
-                                                            <TextBlock Text="{Binding HText}" Style="{StaticResource Small}" Margin="5,0,10,0"/>
-                                                            <TextBox Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource QtyTip}"/>
-                                                            <TextBlock Text="pcs" Style="{StaticResource Small}" Margin="5,0,0,0"/>
-                                                        </StackPanel>
+                                                            <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip="{Binding HText}" Text="{Binding HText}" Style="{StaticResource Small}" Margin="5,0,6,0"/>
+                                                            <TextBox Grid.Column="2" Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource QtyTip}"/>
+                                                            <TextBlock Grid.Column="3" Text="pcs" Style="{StaticResource Small}" Margin="5,0,0,0"/>
+                                                        </Grid>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2" VerticalAlignment="Top">
 
@@ -420,9 +426,9 @@
                                         Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel" ScrollChanged="View_ScrollChanged"
                                         PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
                                 
-                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent"
-                                                MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up" LostMouseCapture="Sheets_Lost">
+                                <!-- Grid selebar tampilan: klik di luar lembar tetap sampai ke Sheets_Down dan melepas pilihan. Lembar berada di tengah. -->
+                                <Grid Background="Transparent" MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up" LostMouseCapture="Sheets_Lost">
+                                    <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>

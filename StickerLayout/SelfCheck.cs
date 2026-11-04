@@ -108,7 +108,7 @@ public static class SelfCheck
                 $"D6: 149,6 dpi tampil {DpiOf(1496).DpiText}, merah {DpiOf(1496).LowDpi}; 149,4 dpi tampil {DpiOf(1494).DpiText}, merah {DpiOf(1494).LowDpi}");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah); 149,6 dpi = {DpiOf(1496).DpiText} tidak merah");
 
-            // Skenario uji garis potong S1-S9 dan S11-S20 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S22 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)
@@ -1110,6 +1110,29 @@ public static class SelfCheck
                 dropBad.Add($"tidak dijaga di dalam area cetak: {over.X},{over.Y} dan {under.X},{under.Y}");
             S(21, "pindah antar-lembar dan jarak antar stiker: tanpa tempat stiker tidak berubah, Check menandai yang terlalu dekat dan tidak menandai hasil Snap atau susun otomatis", dropBad.Count == 0,
                 string.Join("; ", dropBad.Distinct()));
+
+            // S22: pilih banyak dan bahan. Beberapa stiker ditempel bersama, semua atau tidak sama sekali. Stiker bertumpuk tidak boleh membuat bahan tampil di atas 100% atau hijau.
+            var groupBad = new List<string>();
+            var glue = new List<List<Placed>> { new() { Lay(30, 30), Lay(100, 30) }, new() { Lay(30, 30) } };
+            (Sticker, int, double, double, int)[] glueClip = [(brick, 0, 30, 30, 0), (brick, 0, 100, 30, 0), (brick, 0, 30, 30, 1)];
+            var glued = Nest.PasteAll(glue, [A4H, A4H], glueClip, A4W, Margin, Gap);
+            if (glued == null || glued.Count != 3 || glue[0].Count != 4 || glue[1].Count != 2 || glued[0].X >= glued[1].X || glued[0].Y != glued[1].Y
+                || glue.Sum(sh => Nest.Check(sh, A4W, A4H, Margin, false, Gap)) != 0)
+                groupBad.Add("tempel berkelompok: tiap salinan harus di lembarnya sendiri, urut, dan tidak bertabrakan");
+            var roomy = new List<Placed> { Lay(30, 30) };
+            int fullCount = crowd.Count;
+            (Sticker, int, double, double, int)[] tooMany = [(brick, 0, 30, 30, 0), (brick, 0, 30, 30, 1)];
+            if (Nest.PasteAll([roomy, crowd], [A4H, A4H], tooMany, A4W, Margin, Gap) != null || roomy.Count != 1 || crowd.Count != fullCount)
+                groupBad.Add("tempel berkelompok tanpa tempat: sebagian salinan tertinggal");
+            var heap = new List<List<Placed>> { Enumerable.Range(0, 60).Select(_ => Lay(30, 30)).ToList() };
+            double heapUse = Yield.Use(heap[0], A4W, A4H, Margin);
+            if (heapUse <= 1) groupBad.Add($"uji butuh bahan di atas 100%, dapat {heapUse:P0}");
+            if (Yield.Level(heapUse, true) != 0 || Yield.Level(heapUse, false) != 0) groupBad.Add("bahan di atas 100% tampil sebagai target tercapai");
+            if (Yield.Shown(heapUse) != 1 || Yield.Shown(0.6) != 0.6) groupBad.Add($"tampilan bahan {Yield.Shown(heapUse):P0} untuk {heapUse:P0}");
+            var heapTicket = Export.TicketLines("A4", heap, A4W, [A4H], Margin, ["uji pengaturan"]).Select(l => l.Text).ToList();
+            if (!heapTicket.Contains(Lang.T("TicketUse", 1.0, 0.0)) || !heapTicket.Contains(Lang.T("TicketSheetLine", 1, 60, 1.0)))
+                groupBad.Add("Print Ticket menulis bahan di atas 100%");
+            S(22, "pilih banyak dan bahan: tempel berkelompok semua atau tidak sama sekali; bahan di atas 100% tampil 100% dan merah, juga di Print Ticket", groupBad.Count == 0, string.Join("; ", groupBad));
 
             Check(fails.Count == 0, "skenario gagal: " + string.Join(", ", fails));
 

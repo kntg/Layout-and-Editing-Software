@@ -749,6 +749,9 @@ public static class Yield
         return f > 0 ? ps.Sum(p => p.S.AreaMm2) / f : 0;
     }
 
+    // Luas stiker melebihi area hanya bila stiker bertumpuk (misalnya setelah ukurannya diubah), jadi angka untuk operator dibatasi 100%. Warnanya lihat Level.
+    public static double Shown(double use) => Math.Min(use, 1);
+
     // Reguler = bentuk rata-rata (ditimbang luas) mengisi >= 75% kotaknya (persegi, lingkaran); selain itu irregular.
     public static bool Regular(IEnumerable<Placed> ps)
     {
@@ -765,6 +768,7 @@ public static class Yield
     public static int Level(double use, bool regular)
     {
         var t = Target(regular);
+        if (use > 1) return 0; // stiker bertumpuk, bukan target tercapai
         return use >= t.Green ? 2 : use >= t.Low ? 1 : 0;
     }
 }
@@ -999,6 +1003,23 @@ public static class Nest
     {
         p.X = Math.Clamp(p.X, margin, Math.Max(margin, cw - margin - p.BW));
         p.Y = Math.Clamp(p.Y, margin, Math.Max(margin, ch - margin - p.BH));
+    }
+
+    // Tempel beberapa stiker: tiap salinan di kanan aslinya, di lembarnya sendiri (PasteNext). Satu tidak muat = tidak ada yang ditambahkan (null).
+    public static List<Placed>? PasteAll(List<List<Placed>> sheets, IList<double> sheetH, IEnumerable<(Sticker S, int Rot, double X, double Y, int Sheet)> clip, double cw, double margin, double gap, bool marks = false)
+    {
+        var added = new List<Placed>();
+        foreach (var c in clip)
+        {
+            if (PasteNext(sheets[c.Sheet], c.S, c.Rot, c.X, c.Y, cw, sheetH[c.Sheet], margin, gap, marks) is not { } n)
+            {
+                foreach (var sh in sheets) sh.RemoveAll(added.Contains);
+                return null;
+            }
+            sheets[c.Sheet].Add(n);
+            added.Add(n);
+        }
+        return added;
     }
 
     // Penuhi lembar (tombol Compact): customer membayar per lembar, jadi ruang kosong di semua lembar diisi salinan desain
