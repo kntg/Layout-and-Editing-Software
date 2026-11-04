@@ -9,12 +9,12 @@
     
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100"/> <!-- Lebar Sidebar Kiri -->
+            <ColumnDefinition Width="Auto"/> <!-- Lebar Sidebar Kiri: lihat Width di Border panel kiri -->
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
-        <!-- Panel Kiri (Menu Vertikal) -->
-        <Border Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+        <!-- Panel Kiri (Menu Vertikal). Disembunyikan sampai tombolnya berfungsi: kode kliknya masih pesan sementara. Hapus Visibility untuk memunculkannya lagi. -->
+        <Border Width="100" Visibility="Collapsed" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
             <StackPanel Margin="0,15,0,0">
                 
                 <!-- New File -->

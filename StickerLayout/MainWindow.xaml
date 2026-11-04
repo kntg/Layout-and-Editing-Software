@@ -422,7 +422,7 @@
                         
                         <Grid Grid.Row="1" Grid.Column="1">
                             <!-- Perubahan: Membungkus ScrollViewer dengan Grid agar konten selalu di tengah -->
-                            <ScrollViewer x:Name="View" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
+                            <ScrollViewer x:Name="View" SizeChanged="View_SizeChanged" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource Ink0}"
                                         Focusable="True" FocusVisualStyle="{x:Null}" PreviewMouseWheel="View_Wheel" ScrollChanged="View_ScrollChanged"
                                         PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
                                 

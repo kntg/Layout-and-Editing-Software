@@ -77,6 +77,7 @@ public static class Lang
         ["Resized"] = ("{0} diubah menjadi {1} × {2} mm.", "{0} resized to {1} × {2} mm."),
         ["ResizedNoRoom"] = ("{0} diubah menjadi {1} × {2} mm, tetapi tidak ada posisi kosong. Pakai Susun otomatis.", "{0} resized to {1} × {2} mm, but there is no free spot. Use Auto layout."),
         ["NStickers"] = ("{0} stiker", "{0} stickers"),
+        ["NSelected"] = ("{0} stiker terpilih", "{0} stickers selected"),
         ["MovedTo"] = ("{0} dipindah ke lembar {1}.", "{0} moved to sheet {1}."),
         ["SheetFull"] = ("Tidak ada tempat di lembar {0}. {1} kembali ke posisi awal.", "No room on sheet {0}. {1} went back to where it was."),
         ["NoRoom"] = ("Tidak ada tempat. {0} kembali ke posisi awal.", "No room. {0} went back to where it was."),

@@ -139,7 +139,7 @@ public partial class MainWindow : Window
         {
             var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
             SelThumb.Source = sel.S.Preview;
-            SelName.Text = sels.Count > 1 ? $"{sels.Count} stiker terpilih" : sel.S.Name;
+            SelName.Text = sels.Count > 1 ? Lang.T("NSelected", sels.Count) : sel.S.Name;
             SelSize.Text = $"{F(aw)} × {F(ah)} mm";
             SelRot.Text = $"{sel.Rot}°";
             SelPos.Text = $"X {F(sel.X)}   Y {F(sel.Y)} mm";
@@ -185,7 +185,7 @@ public partial class MainWindow : Window
     bool restoring;
 
     string[] Settings() => [PaperBox.SelectedItem as string ?? "", CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text,
-        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text, $"{RowsBox.IsChecked}"];
+        $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text, $"{RowsBox.IsChecked}", $"{HasRegMarks}"];
 
     Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name))],
         [.. sheets.Select(sh => sh.Select(p => (p.S, p.X, p.Y, p.Rot)).ToList())], [.. sheetH], sheetW, tooBig, Settings());
@@ -222,6 +222,7 @@ public partial class MainWindow : Window
             (KissOn.IsChecked, KissOff.Text, KissSm.Text) = (v[5] == "True", v[6], v[7]);
             (DieOn.IsChecked, DieOff.Text, DieSm.Text) = (v[8] == "True", v[9], v[10]);
             (BleedBox.Text, WidthBox.Text, RowsBox.IsChecked, DenseBox.IsChecked) = (v[11], v[12], v[13] == "True", v[13] != "True");
+            RegMarksToggleMenu.IsChecked = v[14] == "True";
         }
         finally { restoring = false; }
         items.Clear();
@@ -658,6 +659,7 @@ public partial class MainWindow : Window
         // IsCheckable: WPF sudah mengubah IsChecked saat diklik. Stiker di area pindai tanda jadi merah; Susun otomatis memindahkannya.
         CheckAll();
         Redraw(sheets.Count > 0 ? Summary() : "");
+        Commit();
     }
 
     void Window_Loaded(object s, RoutedEventArgs e)
@@ -774,8 +776,10 @@ public partial class MainWindow : Window
 
     // WrapPanel di dalam ScrollViewer mendapat lebar tak terbatas, jadi lembar tidak pernah turun ke bawah. Batasi selebar tampilan.
     // Jumlah lembar per baris hanya bertambah (saat zoom out dan muat), supaya zoom in tidak memindahkan lembar ke baris lain: lembar yang
-    // melebihi tampilan digeser. Pas layar dan Susun menghitungnya dari awal.
-    // ponytail: mengecilkan jendela tidak mengurangi kolom sampai Pas layar atau Susun.
+    // melebihi tampilan digeser. Pas layar, Susun, dan perubahan lebar tampilan menghitungnya dari awal.
+    // ViewportWidth baru terbarui setelah ini: LimitWrap dipanggil oleh ScrollChanged.
+    void View_SizeChanged(object s, SizeChangedEventArgs e) { if (e.WidthChanged) wrapCols = 1; }
+
     const double SheetPad = 18;
     double headW;
     void LimitWrap()

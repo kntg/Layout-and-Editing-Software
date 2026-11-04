@@ -21,7 +21,7 @@ Isi README ini:
 1. **Tambah file.** Ada tiga cara: tarik file ke jendela, klik **Tambah file…** (Ctrl+O atau Ctrl+I), atau buka file lewat "Open with". File langsung disusun di lembar.
    - Format: PDF, AI (yang disimpan PDF-compatible), CDR, PNG, JPG, SVG. PDF dengan banyak halaman menjadi satu desain per halaman.
    - CDR dibuka lewat CorelDRAW yang terpasang. Jendela Printech tidak macet selama menunggu.
-   - Bila aplikasi dibuka tanpa file, muncul halaman sambutan: tarik file ke kotaknya atau klik **Buka Folder**. Tombol di sisi kirinya (File Baru, File Terbaru, Pengaturan, Bantuan) belum berfungsi.
+   - Bila aplikasi dibuka tanpa file, muncul halaman sambutan: tarik file ke kotaknya atau klik **Buka Folder**.
 2. **Atur desain** di panel **Desain**.
    - Setiap desain punya lebar artwork (mm) dan jumlah (pcs). Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
    - **Lainnya** (ikon titik tiga) berisi Rapikan gambar dan Edit garis potong.
@@ -99,12 +99,12 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 
 ### Tampilan dan bahasa
 
-- **Zoom:** Ctrl + roda mouse, Ctrl++ / Ctrl+-. Pas layar: Ctrl+0 atau F4. Saat diperbesar, jumlah lembar per baris tetap dan titik di bawah kursor tidak berpindah; lembar yang melebihi layar digeser. Saat diperkecil, jumlah lembar per baris bertambah bila muat. Pas layar dan Susun otomatis menata ulang.
+- **Zoom:** Ctrl + roda mouse, Ctrl++ / Ctrl+-. Pas layar: Ctrl+0 atau F4. Saat diperbesar, jumlah lembar per baris tetap dan titik di bawah kursor tidak berpindah; lembar yang melebihi layar digeser. Saat diperkecil, jumlah lembar per baris bertambah bila muat. Pas layar, Susun otomatis, dan mengubah lebar jendela menata ulang.
 - **Geser tampilan:** alat Hand (H), tahan Spasi, atau tombol tengah mouse.
 - **Alat Zoom (Z):** klik untuk memperbesar, Alt+klik untuk memperkecil.
 - **Penggaris (mm):** tampil di atas dan kiri lembar. Bisa disembunyikan lewat tombol penggaris di batang alat kiri.
 - **Bahasa:** menu **Bahasa**, pilih Indonesia atau English.
-- **Tanda registrasi:** menu **Tampilan**, centang **Tanda registrasi** (bawaan: aktif).
+- **Tanda registrasi:** menu **Tampilan**, centang **Tanda registrasi** (bawaan: mati).
   - Pilihan bawaan itu menggambar siku L hitam di 4 pojok lembar, ikut di layar, preview JPG, dan PDF.
   - Stiker tidak ditaruh dalam 6 mm dari tanda (area pindai menurut manual Graphtec). Stiker yang masuk area itu ditandai merah; klik Susun otomatis untuk memindahkannya.
 
