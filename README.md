@@ -36,7 +36,7 @@ Isi README ini:
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang.
 5. **Periksa layout.**
-   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Pilih banyak stiker:** Ctrl+klik menambah atau melepas stiker dari pilihan. Seret dari area kosong lembar membuat kotak pilih. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda. Titik pojok hanya muncul saat satu stiker terpilih.
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin. Selama luas stiker melebihi lembar karena bertumpuk, angka bahan tampil 100% dan merah; susun ulang untuk melihat angka sebenarnya.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Proporsi tetap, dan lebar × tinggi artwork tampil di dekat kursor. Saat mouse dilepas, ukuran baru berlaku untuk semua salinan desain itu dan garis potong dihitung ulang. Salinan lain yang jadi bertabrakan ditandai merah; klik Susun otomatis untuk menyusunnya ulang.
@@ -127,6 +127,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
 | Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
 | Ctrl+klik | Tambah atau lepas stiker dari pilihan |
+| Alt + seret stiker | Salin stiker ke titik lepas, juga ke lembar lain |
+| Esc saat menarik | Batalkan tarikan, atur ukuran, atau kotak pilih |
 
 ## Arti pesan dan peringatan
 

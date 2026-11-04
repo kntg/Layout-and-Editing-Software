@@ -1134,6 +1134,48 @@ public static class SelfCheck
                 groupBad.Add("Print Ticket menulis bahan di atas 100%");
             S(22, "pilih banyak dan bahan: tempel berkelompok semua atau tidak sama sekali; bahan di atas 100% tampil 100% dan merah, juga di Print Ticket", groupBad.Count == 0, string.Join("; ", groupBad));
 
+            // S23: keadaan sementara saat stiker ditarik. Dokumen tidak berubah sebelum dilepas; pindah, salin, dan tanpa tempat.
+            var stateBad = new List<string>();
+            List<double> twoH = [A4H, A4H];
+            var (tugA, tugB) = (Lay(30, 30), Lay(100, 30, 90));
+            List<List<Placed>> tugBook = [[tugA, tugB, Lay(30, 200)], [Lay(30, 30)]];
+            var tug = new DragState([tugA, tugB], 0) { Offset = new Vector(0, 120), ToSheet = 1 };
+            if ((tugA.X, tugA.Y) != (30, 30) || tugBook[0].Count != 3 || tugBook[1].Count != 1 || !tug.Moved || !tug.Away || tug.FromSheet != 0)
+                stateBad.Add("dokumen berubah sebelum stiker dilepas");
+            tug.Copy = true;
+            var made = tug.Drop(tugBook, twoH, A4W, Margin, Gap);
+            if (made == null || made.Count != 2 || tugBook[0].Count != 3 || tugBook[1].Count != 3 || (tugA.X, tugA.Y) != (30, 30) || made.Contains(tugA) || made.Contains(tugB)
+                || !made.All(tugBook[1].Contains) || made[1].Rot != 90 || made[0].Y <= 30 || Nest.Check(tugBook[1], A4W, A4H, Margin, false, Gap) != 0)
+                stateBad.Add("salin ke lembar lain: asli harus tetap, salinan di lembar tujuan dengan rotasi sama");
+            var gapCopy = new DragState([tugA], 0) { Offset = new Vector(150, 300), Copy = true };
+            var gapMade = gapCopy.Drop(tugBook, twoH, A4W, Margin, Gap);
+            if (gapMade == null || gapMade.Count != 1 || tugBook[0].Count != 4 || !tugBook[0].Contains(gapMade[0]) || Nest.Check(tugBook[0], A4W, A4H, Margin, false, Gap) != 0)
+                stateBad.Add("salin di celah antar-lembar: salinan harus di lembar asal");
+            var (fullA, fullB) = (Lay(30, 30), Lay(100, 30));
+            List<List<Placed>> fullBook = [[fullA, fullB], Nest.Run([Box(40, 30, 40)], A4W, A4H, Margin, Gap, out _)[0]];
+            int fullCount2 = fullBook[1].Count;
+            var fullCopy = new DragState([fullA, fullB], 0) { Offset = new Vector(5, 5), ToSheet = 1, Copy = true };
+            if (fullCopy.Drop(fullBook, twoH, A4W, Margin, Gap) != null || fullBook[0].Count != 2 || fullBook[1].Count != fullCount2 || (fullA.X, fullA.Y) != (30, 30))
+                stateBad.Add("salin tanpa tempat: dokumen harus tetap");
+            var fullMove = new DragState([fullA, fullB], 0) { Offset = new Vector(5, 5), ToSheet = 1 };
+            if (fullMove.Drop(fullBook, twoH, A4W, Margin, Gap) != null || fullBook[0].Count != 2 || fullBook[1].Count != fullCount2 || (fullA.X, fullA.Y) != (30, 30) || (fullB.X, fullB.Y) != (100, 30))
+                stateBad.Add("pindah tanpa tempat: stiker harus kembali ke posisi awal");
+            var moveA = Lay(30, 30);
+            List<List<Placed>> moveBook = [[moveA], [Lay(30, 30)]];
+            var moved2 = new DragState([moveA], 0) { Offset = new Vector(0, 120), ToSheet = 1 }.Drop(moveBook, twoH, A4W, Margin, Gap);
+            if (moved2 == null || moved2[0] != moveA || moveBook[0].Count != 0 || moveBook[1].Count != 2 || !moveBook[1].Contains(moveA) || moveA.Y <= 30)
+                stateBad.Add("pindah ke lembar lain gagal");
+            var nearA = Lay(30, 30);
+            List<List<Placed>> nearBook = [[nearA], []];
+            var nearDrop = new DragState([nearA], 0) { Offset = new Vector(50, 60), ToSheet = 0 }.Drop(nearBook, twoH, A4W, Margin, Gap);
+            if (nearDrop == null || nearBook[0].Count != 1 || Math.Abs(nearA.X - 80) > 1 || Math.Abs(nearA.Y - 90) > 1)
+                stateBad.Add($"pindah di lembar yang sama: posisi {nearA.X},{nearA.Y}");
+            var hugeP = new Placed { S = Box(400, 400), X = 30, Y = 30 };
+            List<List<Placed>> hugeBook = [[hugeP], []];
+            if (new DragState([hugeP], 0) { Offset = new Vector(9, 9) }.Drop(hugeBook, twoH, A4W, Margin, Gap) != null || (hugeP.X, hugeP.Y) != (30, 30) || hugeBook[0].Count != 1)
+                stateBad.Add("pindah di lembar yang sama tanpa tempat: stiker harus kembali ke posisi awal");
+            S(23, "keadaan sementara saat stiker ditarik: dokumen tidak berubah sebelum dilepas; pindah dan salin semua atau tidak sama sekali; stiker asal tetap saat disalin", stateBad.Count == 0, string.Join("; ", stateBad));
+
             Check(fails.Count == 0, "skenario gagal: " + string.Join(", ", fails));
 
             Save(Export.Snapshot(Nest.Sheet(sheets[0], A4W, A4H, Margin, null, 0), A4W, A4H, 4), Path.Combine(dir, "layout-1.png"));
