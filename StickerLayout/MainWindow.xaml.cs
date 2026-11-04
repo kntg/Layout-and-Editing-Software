@@ -1149,7 +1149,7 @@ public partial class MainWindow : Window
         if (sender is not MenuItem item) return;
         if (item.DataContext is not Sticker st) return;
 
-        string action = item.Tag?.ToString();
+        string action = item.Tag?.ToString() ?? "";
         if (action == "Clean")
         {
             Clean(st); // Panggil fungsi Clean asli
