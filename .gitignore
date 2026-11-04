@@ -1,6 +1,7 @@
 bin/
 obj/
 .vs/
+.kiro/
 # keluaran self-check (dibuat ulang oleh --selfcheck)
 samples/export.pdf
 samples/export-manual.pdf
