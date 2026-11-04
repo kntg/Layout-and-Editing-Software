@@ -197,6 +197,8 @@ public static class Lang
         ["ExportBad"] = ("Ada stiker tumpang tindih/terlalu dekat/keluar margin. Tetap export?", "Some stickers overlap, are too close, or exceed the margin. Export anyway?"),
         ["PdfRaster"] = ("{0}: PDF ditempel sebagai gambar, bukan vektor ({1}).", "{0}: PDF placed as an image, not vector ({1})."),
 
+        ["MoreTip"] = ("Lainnya", "More"),
+
         ["HomeWelcome"] = ("Selamat Datang di Printech", "Welcome To Printech"),
         ["HomeDesc"] = ("Solusi cerdas untuk layout stiker dan cetak Anda", "Smart solution for your sticker layout and print"),
         ["MenuNew"] = ("File Baru", "New File"),
