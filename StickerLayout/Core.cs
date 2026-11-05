@@ -1333,7 +1333,8 @@ public static class Nest
     // Satuan kanvas = mm. Tag kanvas = indeks lembar, Tag stiker = Placed. sels null = tanpa pilihan (mis. preview/export).
     public static Canvas Sheet(IEnumerable<Placed> ps, double cw, double ch, double margin, IReadOnlyCollection<Placed>? sels, int index, bool regMarks = false)
     {
-        var root = new Canvas { Width = cw, Height = ch, Background = Brushes.White, ClipToBounds = true, Tag = index };
+        // Tanpa pembulatan tata letak: pembulatan milik jendela menghitung per piksel, padahal satuan lembar mm, jadi gambar bergeser dari garis potong.
+        var root = new Canvas { Width = cw, Height = ch, Background = Brushes.White, ClipToBounds = true, Tag = index, UseLayoutRounding = false };
         root.Children.Add(new System.Windows.Shapes.Rectangle
         {
             Width = Math.Max(0, cw - 2 * margin), Height = Math.Max(0, ch - 2 * margin), Stroke = Brushes.LightGray, StrokeThickness = 0.3,

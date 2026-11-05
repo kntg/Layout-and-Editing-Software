@@ -838,6 +838,7 @@ public partial class MainWindow : Window
     {
         LimitWrap();
         UpdateRulers();
+        if (drag is { Moved: true }) DragToCursor(); // digulir atau di-zoom selagi menarik: kursor diam, tetapi lembarnya bergeser. Klik tanpa gerakan tetap bukan tarikan
     }
 
     // WrapPanel di dalam ScrollViewer mendapat lebar tak terbatas, jadi lembar tidak pernah turun ke bawah. Batasi selebar tampilan.
@@ -1207,8 +1208,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        DragToCursor();
+    }
+
+    // Stiker mengikuti kursor. Satuannya mm dari lembar asal, jadi zoom dan gulir ikut terhitung; lewat lembar lain pun posisinya tetap di bawah kursor.
+    void DragToCursor()
+    {
         if (drag == null) return;
-        var off = pt - dragGrab;
+        var off = Mouse.GetPosition(canvases[drag.FromSheet]) - dragGrab;
         if (!drag.Moved && off != default)
         {
             HideHandles();
@@ -1263,7 +1270,7 @@ public partial class MainWindow : Window
     // Alt: salinannya yang ditaruh di sana, stiker asal tetap. Satu saja tidak punya tempat: tidak ada yang berubah. Mengembalikan pesan untuk operator.
     string? DropSelection(DragState d, MouseEventArgs e)
     {
-        if (d.Away) d.Offset = e.GetPosition(canvases[d.ToSheet]) - dragGrab;
+        d.Offset = e.GetPosition(canvases[d.ToSheet >= 0 ? d.ToSheet : d.FromSheet]) - dragGrab; // dari kursor saat dilepas, di lembar tujuan
         string who = SelWho;
         int to = d.ToSheet >= 0 ? d.ToSheet : d.FromSheet;
         if (d.Drop(sheets, sheetH, sheetW, MarginMm, GapMm, HasRegMarks) is not { } placed)

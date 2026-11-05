@@ -1228,7 +1228,8 @@ public static class SelfCheck
             var foundBad = FoundErrors(dir, kiss, die);
             Check(foundBad.Count == 0, "temuan 2026-11-05: " + string.Join("; ", foundBad));
             log.Add("file gambar diganti lalu dihapus: muat ulang tetap memakai gambar saat dimuat; foto bertanda orientasi EXIF 1-8 tegak di layar, file export, dan sesudah muat ulang; pratinjau JPG tanpa bingkai merah; "
-                + "kotak lebar menerima koma dan titik; export ke file terkunci memberi pesan untuk operator");
+                + "kotak lebar menerima koma dan titik; export ke file terkunci memberi pesan untuk operator; "
+                + "gambar dan garis margin di dalam jendela tepat di posisi datanya; dilepas di lembar lain tepat di grid pada 4 rotasi");
 
             // Penuhi lembar (Compact): stiker bertambah bergiliran, jumlah lembar tetap, tidak ada tabrakan atau keluar margin,
             // dan setelah penuh tidak ada lagi yang muat.
@@ -1553,6 +1554,50 @@ public static class SelfCheck
                 try { save(); bad.Add($"export {kind} ke file terkunci tidak gagal"); }
                 catch (Exception ex) when (ex is not OutOfMemoryException) { if (MainWindow.SaveFail(ex) != Lang.T("SaveFail")) bad.Add($"export {kind} ke file terkunci: pesan teknis '{ex.Message}'"); }
         File.Delete(locked);
+
+        // Lembar di dalam jendela: pembulatan tata letak milik jendela ikut turun ke lembar, yang satuannya mm. Gambar dan garis margin harus tetap
+        // di posisi datanya; kalau dibulatkan ke piksel, gambar bergeser dari garis potong sampai ±0,4 mm pada skala layar 125%.
+        var onScreen = new Placed { S = framed.S, X = 30, Y = 30 };
+        var sheetHost = new System.Windows.Controls.Grid { UseLayoutRounding = true };
+        var hosted = Nest.Sheet([onScreen], A4W, A4H, Margin, new HashSet<Placed>(), 0);
+        sheetHost.Children.Add(hosted);
+        sheetHost.Measure(new Size(A4W, A4H));
+        sheetHost.Arrange(new Rect(0, 0, A4W, A4H));
+        sheetHost.UpdateLayout();
+        static IEnumerable<DependencyObject> Tree(DependencyObject o)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(o); i++)
+            {
+                var c = VisualTreeHelper.GetChild(o, i);
+                yield return c;
+                foreach (var d in Tree(c)) yield return d;
+            }
+        }
+        static bool Near(Rect a, Rect b) => Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) + Math.Abs(a.Width - b.Width) + Math.Abs(a.Height - b.Height) < 0.001;
+        var shownArt = Tree(hosted).OfType<System.Windows.Controls.Image>().First();
+        var artBox = shownArt.TransformToAncestor(hosted).TransformBounds(new Rect(0, 0, shownArt.ActualWidth, shownArt.ActualHeight));
+        var artWant = new Rect(onScreen.X + framed.S.Off, onScreen.Y + framed.S.Off, framed.S.ArtW, framed.S.ArtH);
+        if (!Near(artBox, artWant)) bad.Add($"gambar di dalam jendela {artBox}, harapan {artWant}");
+        var marginLine = hosted.Children.OfType<System.Windows.Shapes.Rectangle>().First();
+        var lineBox = marginLine.TransformToAncestor(hosted).TransformBounds(new Rect(0, 0, marginLine.ActualWidth, marginLine.ActualHeight));
+        var lineWant = new Rect(Margin, Margin, A4W - 2 * Margin, A4H - 2 * Margin);
+        if (!Near(lineBox, lineWant)) bad.Add($"garis margin di dalam jendela {lineBox}, harapan {lineWant}");
+
+        // Dilepas di lembar lain, tiap rotasi: tepat di grid, di posisi kosong terdekat dari titik lepas, dan digambar di kotak yang sama.
+        // Ada stiker lain di titik lepas: posisi kosong terdekat, jarak antar stiker tetap dijaga.
+        foreach (int rot in new[] { 0, 90, 180, 270 })
+        {
+            var moved = new Placed { S = framed.S, X = 20, Y = 30, Rot = rot };
+            var book = new List<List<Placed>> { new() { moved }, new() };
+            bool dropped = new DragState([moved], 0) { ToSheet = 1, Offset = new Vector(60.3, 80.4) }.Drop(book, [A4H, A4H], A4W, Margin, Gap) != null;
+            var box = Nest.Xf(moved).TransformBounds(new Rect(0, 0, moved.S.W, moved.S.H));
+            if (!dropped || book[0].Count != 0 || book[1].Count != 1 || Math.Abs(moved.X - 80) > 0.001 || Math.Abs(moved.Y - 110) > 0.001 || !Near(box, new Rect(moved.X, moved.Y, moved.BW, moved.BH)))
+                bad.Add($"dilepas di lembar lain, rotasi {rot}: berhasil {dropped}, posisi {moved.X},{moved.Y}, kotak {box}");
+            var crowded = new Placed { S = framed.S, X = 20, Y = 30, Rot = rot };
+            var crowdBook = new List<List<Placed>> { new() { crowded }, new() { new Placed { S = framed.S, X = 80, Y = 110 } } };
+            if (new DragState([crowded], 0) { ToSheet = 1, Offset = new Vector(60.3, 80.4) }.Drop(crowdBook, [A4H, A4H], A4W, Margin, Gap) == null || Nest.Check(crowdBook[1], A4W, A4H, Margin, false, Gap) != 0)
+                bad.Add($"dilepas di atas stiker lain, rotasi {rot}: posisi {crowded.X},{crowded.Y}");
+        }
         return bad;
     }
 
