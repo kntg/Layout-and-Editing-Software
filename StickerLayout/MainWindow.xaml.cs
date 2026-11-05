@@ -505,7 +505,7 @@ public partial class MainWindow : Window
     {
         if (sheets.Count == 0) return;
         clipSheet = Math.Clamp(selSheet, 0, sheets.Count - 1);
-        clip = [.. sels.OrderBy(p => p.Y).ThenBy(p => p.X).Select(p => (p.S, p.Rot, p.X, p.Y, sheets.FindIndex(sh => sh.Contains(p))))];
+        clip = SelItems();
         Redraw(sel == null ? Lang.T("SheetCopied", clipSheet + 1) : Lang.T("StickerCopied", SelWho));
     }
 
@@ -516,29 +516,26 @@ public partial class MainWindow : Window
         if (clipSheet < 0 || clipSheet >= sheets.Count || clip.Any(c => c.Sheet >= sheets.Count || !items.Contains(c.S))) { Redraw(Lang.T("PasteEmpty")); return; }
         if (clip.Count == 0) { DuplicateSheet(clipSheet); return; }
         List<(Sticker S, int Rot, double X, double Y, int Sheet)> src = clip is [var one] && sel?.S == one.S ? [(one.S, one.Rot, sel.X, sel.Y, selSheet)] : clip;
-        if (Nest.PasteAll(sheets, sheetH, src, sheetW, MarginMm, GapMm, HasRegMarks) is not { } added) { Redraw(Lang.T("PasteFull")); return; }
+        PasteItems(src, "PasteFull", "Pasted");
+    }
+
+    // Semua stiker terpilih, urut dari kiri atas, beserta lembarnya.
+    List<(Sticker S, int Rot, double X, double Y, int Sheet)> SelItems() =>
+        [.. sels.OrderBy(p => p.Y).ThenBy(p => p.X).Select(p => (p.S, p.Rot, p.X, p.Y, sheets.FindIndex(sh => sh.Contains(p))))];
+
+    // Tiap salinan di kanan aslinya; satu saja tidak muat = tidak ada yang ditambahkan. Salinannya jadi pilihan baru, satu langkah urungkan.
+    void PasteItems(List<(Sticker S, int Rot, double X, double Y, int Sheet)> src, string full, string done)
+    {
+        if (Nest.PasteAll(sheets, sheetH, src, sheetW, MarginMm, GapMm, HasRegMarks) is not { } added) { Redraw(Lang.T(full)); return; }
         sels.Clear();
         sels.UnionWith(added);
         sel = added[^1];
         selSheet = sheets.FindIndex(sh => sh.Contains(added[^1]));
-        AfterAdd(Lang.T("Pasted", SelWho));
+        AfterAdd(Lang.T(done, SelWho));
     }
 
-    // Ctrl+D: duplikat stiker terpilih di lembarnya sendiri. Salinan pakai Sticker yang sama (artwork & geometri tidak digandakan),
-    // diberi offset oleh PasteNext supaya tidak menimpa aslinya. Asli tidak berubah; salinan jadi pilihan baru. Satu Commit.
-    void DuplicateSel()
-    {
-        if (sel is not { } src) return;                         // tidak ada pilihan: no-op
-        int i = sheets.FindIndex(sh => sh.Contains(src));
-        if (i < 0) return;
-        if (Nest.PasteNext(sheets[i], src.S, src.Rot, src.X, src.Y, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks) is not { } n)
-        { Redraw(Lang.T("DupFull")); return; }                  // tidak ada tempat valid: asli tidak berubah, salinan tidak dibuat
-        sheets[i].Add(n);
-        (sel, selSheet) = (n, i);
-        sels.Clear();
-        sels.Add(n);
-        AfterAdd(Lang.T("Duplicated", src.S.Name));             // Check semua lembar, Redraw, Commit sekali
-    }
+    // Ctrl+D: duplikat semua stiker terpilih, tiap salinan di lembar aslinya. Salinan pakai Sticker yang sama (artwork & geometri tidak digandakan). Asli tidak berubah.
+    void DuplicateSel() { if (sels.Count > 0) PasteItems(SelItems(), "DupFull", "Duplicated"); }
 
     void Copy_Click(object s, RoutedEventArgs e) => CopySel();
     void Paste_Click(object s, RoutedEventArgs e) => Paste();

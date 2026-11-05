@@ -126,7 +126,7 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | Delete | Hapus stiker yang dipilih (di editor: hapus titik yang dipilih) |
 | Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
 | Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
-| Ctrl+D | Duplikat stiker yang dipilih di kanan atau bawahnya. Bila beberapa stiker terpilih: hanya yang terakhir disentuh |
+| Ctrl+D | Duplikat semua stiker yang dipilih di kanan atau bawahnya. Bila satu saja tidak punya tempat, tidak ada yang ditambahkan |
 | Ctrl+klik | Tambah atau lepas stiker dari pilihan |
 | Alt + seret stiker | Salin stiker ke titik lepas, juga ke lembar lain |
 | Esc saat menarik | Batalkan tarikan, atur ukuran, atau kotak pilih |
