@@ -34,7 +34,7 @@ Isi README ini:
    - Kiss-cut: bawaan aktif, offset 2 mm, Halus 1 mm.
    - Die-cut: bawaan mati, offset 4 mm, Halus 2 mm.
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
-   - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang.
+   - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang. Lebar boleh memakai koma atau titik (62,5 atau 62.5).
 5. **Periksa layout.**
    - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Pilih banyak stiker:** Ctrl+klik menambah atau melepas stiker dari pilihan. Seret dari area kosong lembar membuat kotak pilih. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda. Titik pojok hanya muncul saat satu stiker terpilih.
@@ -47,7 +47,7 @@ Isi README ini:
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
 6. **Export.**
    - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
-   - **Export preview JPG…** (Ctrl+Shift+E): untuk konfirmasi ke customer lewat WhatsApp.
+   - **Export preview JPG…** (Ctrl+Shift+E): untuk konfirmasi ke customer lewat WhatsApp. Bingkai merah tidak ikut di JPG.
    - **Export Print Ticket** (menu File): ringkasan satu halaman A4 untuk lampiran SPK.
    - **Export SVG** (menu File): satu file SVG per lembar dengan layer Artwork, Kiss Cut, Die Cut, dan tanda registrasi. Artwork di dalamnya berupa gambar dan warnanya RGB; export PDF tetap menjaga vektor dan CMYK.
 7. **Cetak dan potong.**
@@ -123,7 +123,7 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | V / H / Z | Alat Pilih / Geser tampilan / Zoom |
 | Spasi (tahan), tombol tengah mouse | Geser tampilan sementara |
 | R | Putar stiker yang dipilih 90° |
-| Delete | Hapus stiker yang dipilih (di editor: hapus titik yang dipilih) |
+| Delete | Hapus stiker yang dipilih; jumlah pcs desainnya ikut turun (di editor: hapus titik yang dipilih) |
 | Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
 | Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
 | Ctrl+D | Duplikat semua stiker yang dipilih di kanan atau bawahnya. Bila satu saja tidak punya tempat, tidak ada yang ditambahkan |
@@ -137,6 +137,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | --- | --- |
 | "… lebih besar dari kertas" | Desain tidak muat di area cetak. Perkecil lebarnya, atau pilih kertas yang lebih besar. |
 | "Tidak ada tempat di kanan atau bawah stiker ini…" | Salinan stiker tidak muat di lembar ini. Hapus stiker lain, atau pakai Duplikat di judul lembar untuk lembar baru. |
+| "… tidak bisa dipakai. Isi angka minimal …" | Ada kotak angka yang salah ketik atau di bawah batasnya. Betulkan angkanya; kursor sudah ada di kotak itu. |
+| "File tidak bisa disimpan…" | File tujuan sedang dibuka di program lain, disk penuh, atau folder tidak boleh ditulis. Tutup filenya atau pilih tempat lain, lalu coba lagi. |
 | "… desain resolusi rendah" | Di bawah 150 dpi pada lebar itu. Minta file asli ke customer, atau perkecil desainnya. |
 | "… PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" | PDF dicetak sebagai gambar, bukan vektor. Periksa ketajaman dan warnanya sebelum cetak. |
 | "… tumpang tindih/terlalu dekat/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
@@ -246,7 +248,7 @@ python Printech-TestData/validasi.py             # harus "RINGKAS: SEMUA LULUS" 
 
 Tambahan sesuai bagian yang diubah:
 
-- **Tampilan, editor, atau alur di jendela aplikasi:** jalankan juga uji tata letak (`ui-edit-layout.ps1`, 10/10 langkah lulus), yang memakai mouse dan keyboard sungguhan, ditambah uji tampilan lain yang terkait. Jalankan dengan Windows PowerShell 5.1, dan jangan pakai PC selama uji. Daftarnya ada di [panduan data uji](Printech-TestData/README.md).
+- **Tampilan, editor, atau alur di jendela aplikasi:** cek dengan tangan bagian yang berubah, memakai [daftar cek tampilan](docs/kebutuhan-aplikasi.md#cek-tampilan-setelah-perubahan). Skrip yang memakai mouse dan keyboard sungguhan, misalnya uji tata letak (`ui-edit-layout.ps1`), tidak wajib lagi (keputusan 2026-11-05), karena PC tidak boleh dipakai selama skrip berjalan. Skripnya tetap ada di [panduan data uji](Printech-TestData/README.md).
 - **Dokumen:** periksa formatnya dengan markdownlint. Bila kasus uji alur lengkap berubah, ubah `docs/pengujian/buat-uji-alur-lengkap.py` atau templatnya, lalu jalankan skrip itu.
 
 ### Alat pengembang

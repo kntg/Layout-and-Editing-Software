@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using BitmapToVector;
@@ -17,6 +18,17 @@ namespace StickerLayout;
 // Satu garis potong: aktif, jarak dari artwork, dan radius penghalus lekukan (mm).
 public record Cut(bool On, double Off, double Smooth);
 
+// Angka milimeter di kotak isian: koma dan titik sama-sama tanda desimal (62,5 = 62.5), sama di semua kotak.
+public sealed class MmText : IValueConverter
+{
+    public static readonly MmText I = new();
+    public static double? Parse(string? text) => double.TryParse(text?.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+    public static string Show(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+    public object Convert(object value, Type target, object parameter, CultureInfo culture) => Show((double)value);
+    // Tidak terbaca atau bukan angka positif: nilai lama tetap dan kotaknya ditandai merah.
+    public object ConvertBack(object value, Type target, object parameter, CultureInfo culture) => Parse(value as string) is > 0 and var v ? v : DependencyProperty.UnsetValue;
+}
+
 public class Sticker
 {
     public string Name { get; set; } = "";
@@ -26,7 +38,12 @@ public class Sticker
     public int Page;
     public string? Pdf;                          // PDF yang ditempel vektor saat export (PDF/AI asli atau hasil konversi CDR)
     public byte[] Raster = [];                   // gambar yang ditempel saat export bila bukan vektor
-    public byte[]? Edited;                       // PNG hasil "Rapikan gambar"; dipakai menggantikan file asli
+    public byte[]? Edited;                       // gambar pengganti file asli: hasil "Rapikan gambar", atau gambar saat dimuat sesudah muat ulang
+    public (DateTime, long)? SvgStamp;           // versi file SVG saat digambar; null = bukan SVG yang dibaca dari file
+    // Gambar untuk muat ulang. File asli tidak dibaca lagi, karena bisa sudah diubah, dipindah, atau dihapus sesudah dimuat.
+    // SVG digambar ulang selama filenya masih sama, supaya tetap tajam pada lebar baru; gambar yang ditautkan SVG hanya terbaca dari folder aslinya.
+    // null = baca dari sumbernya (PDF lewat salinan saat dimuat).
+    public byte[]? Frozen => Edited ?? (Pdf != null || SvgStamp is { } v && v == Loader.Stamp(Source) ? null : Raster);
     public bool CanClean => Pdf == null;         // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh
     // PDF/AI/CDR yang tidak bisa ditempel vektor (halaman diputar, tidak terbaca PDFsharp): ditempel sebagai gambar RGB.
     public bool PdfAsImage => Pdf == null && Path.GetExtension(Source).ToLowerInvariant() is ".pdf" or ".ai" or ".cdr";
@@ -41,7 +58,7 @@ public class Sticker
     public double AreaMm2;                       // luas di dalam garis potong terluar
     public BitmapSource Preview { get; set; } = null!; // artwork yang sudah di-crop, salinan kecil untuk layar
     public int PxW;                                     // lebar artwork dalam piksel asli (untuk dpi)
-    public string HText => $"× {ArtH:0.#} mm";        // tinggi artwork di daftar desain
+    public string HText => $"× {MmText.Show(ArtH)} mm"; // tinggi artwork di daftar desain
     // Resolusi cetak untuk desain yang ditempel sebagai gambar. Target riset 300 ppi; 150 = batas kasar,
     // sesuaikan setelah melihat hasil cetak Develop.
     public const double MinDpi = 150;
@@ -153,7 +170,7 @@ public static partial class Loader
     public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed)
     {
         double k = it.WidthMm / it.LoadedW;
-        return Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Edited, bleed: bleed, loadedPdf: it.Pdf,
+        return Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf,
             manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape);
     }
 
@@ -174,6 +191,7 @@ public static partial class Loader
         }
         else if (edited == null && ext == ".svg")
         {
+            s.SvgStamp = Stamp(path);
             // File rusak: pesan untuk operator (D9), pesan teknis tetap di InnerException.
             try { full = RenderSvg(path, widthMm); }
             catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T("BadSvg"), ex); }
@@ -185,7 +203,17 @@ public static partial class Loader
             s.Edited = edited;
             s.Raster = edited ?? File.ReadAllBytes(path);
             using var ms = new MemoryStream(s.Raster);
-            try { full = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0]; }
+            try
+            {
+                full = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+                // Foto HP menyimpan piksel miring ditambah tanda orientasi. Export dan Rapikan memakai Raster, jadi yang disimpan gambar tegaknya.
+                // ponytail: gambar tegak disimpan PNG, jadi PDF foto seperti ini lebih besar; simpan sebagai JPG bila ukurannya mengganggu.
+                if (edited == null && ExifTurn(full) is { } turn)
+                {
+                    full = new CachedBitmap(new TransformedBitmap(full, turn), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                    s.Raster = Png(full);
+                }
+            }
             catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T("BadImage"), ex); }
             media = new Rect(0, 0, full.PixelWidth, full.PixelHeight);
         }
@@ -467,6 +495,25 @@ public static partial class Loader
         var copy = BitmapSource.Create(t.PixelWidth, t.PixelHeight, t.DpiX, t.DpiY, PixelFormats.Pbgra32, null, px, t.PixelWidth * 4);
         copy.Freeze();
         return copy;
+    }
+
+    // Transformasi yang menegakkan foto menurut tanda orientasi EXIF. null = sudah tegak atau tanpa tanda; file tanpa EXIF dan metadata rusak termasuk di sini.
+    static Transform? ExifTurn(BitmapSource b)
+    {
+        object? tag;
+        try { tag = (b.Metadata as BitmapMetadata)?.GetQuery("/app1/ifd/{ushort=274}"); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
+        return tag switch
+        {
+            (ushort)2 => new MatrixTransform(-1, 0, 0, 1, 0, 0),
+            (ushort)3 => new MatrixTransform(-1, 0, 0, -1, 0, 0),
+            (ushort)4 => new MatrixTransform(1, 0, 0, -1, 0, 0),
+            (ushort)5 => new MatrixTransform(0, 1, 1, 0, 0, 0),
+            (ushort)6 => new MatrixTransform(0, 1, -1, 0, 0, 0),
+            (ushort)7 => new MatrixTransform(0, -1, -1, 0, 0, 0),
+            (ushort)8 => new MatrixTransform(0, -1, 1, 0, 0, 0),
+            _ => null,
+        };
     }
 
     public static byte[] Png(BitmapSource b)
@@ -1307,7 +1354,7 @@ public static class Nest
             c.Children.Add(art);
             if (s.KissGeo is { } k) c.Children.Add(new System.Windows.Shapes.Path { Data = k, Stroke = KissBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
             if (s.DieGeo is { } d) c.Children.Add(new System.Windows.Shapes.Path { Data = d, Stroke = DieBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
-            if (p.Bad || sels != null && sels.Contains(p))
+            if (sels != null && (p.Bad || sels.Contains(p))) // bingkai merah dan pilihan hanya untuk layar, tidak ikut pratinjau untuk customer
                 c.Children.Add(new System.Windows.Shapes.Rectangle
                 {
                     Width = s.W, Height = s.H, Stroke = p.Bad ? Brushes.Red : SelBrush, StrokeThickness = p.Bad ? 0.8 : 0.6,

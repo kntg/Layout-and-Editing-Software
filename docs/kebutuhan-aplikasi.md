@@ -46,13 +46,13 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 | F4 | Kertas: pilihan A0–A6, **A3+ 320×480 (bawaan)**, SRA3, SRA4, ukuran bebas (custom), dan tombol putar orientasi | Ada |
 | F5 | Margin tepi kertas bisa diatur (area kosong untuk tanda registrasi dan printer) | Ada |
 | F6 | Susun otomatis ke banyak lembar; lembar baru dibuat otomatis | Ada |
-| F7 | Edit hasil susunan: seret, putar 90°, hapus, tombol Delete/R/panah. Muncul peringatan bila stiker tumpang tindih, lebih dekat dari jarak antar stiker, atau keluar margin | Ada |
+| F7 | Edit hasil susunan: seret, putar 90°, hapus, tombol Delete/R/panah. Muncul peringatan bila stiker tumpang tindih, lebih dekat dari jarak antar stiker, atau keluar margin. Menghapus stiker menurunkan jumlah pcs desainnya, jadi Susun otomatis tidak mengembalikannya; bila semua salinan dihapus, jumlahnya 0 dan desain tetap di daftar (2026-11-05) | Ada |
 | F8 | Perbesar/perkecil tampilan (zoom) seperti di Word: Ctrl+roda mouse (titik di bawah kursor tetap di tempat), persen, tombol "Pas layar". Alat Hand/Zoom, tahan Spasi, atau tombol tengah mouse untuk menggeser tampilan | Ada |
 | F9 | Export PDF: artwork tetap vektor dengan warna asli. Kiss-cut = magenta 100%, die-cut = cyan 100%, warna CMYK murni (DeviceCMYK; tanpa RGB/sRGB atau profil warna ICC; dicek otomatis di skenario uji S8) | Ada |
 | F10 | Bahasa tampilan: Indonesia dan English | Ada |
 | F11 | Tampilan gaya Photoshop: tema gelap, menu, bilah pilihan (options bar), batang alat, panel lipat (Desain dengan gambar kecil, Pilihan, Kertas, Garis potong), baris status dengan meter bahan dan peringatan, tarik-dan-lepas file (drag & drop), file langsung disusun saat ditambahkan | Ada |
 | F12 | Resolusi cetak (dpi) tiap desain yang ditempel sebagai gambar. Merah dan masuk peringatan bila di bawah 150 dpi (target 300 dpi). Gunanya menangkap foto terkompres dari WhatsApp sebelum dicetak | Ada |
-| F13 | Export preview JPG (Ctrl+Shift+E): satu JPG per lembar, sisi panjang ±2000 piksel, untuk konfirmasi ke customer lewat WhatsApp | Ada |
+| F13 | Export preview JPG (Ctrl+Shift+E): satu JPG per lembar, sisi panjang ±2000 piksel, untuk konfirmasi ke customer lewat WhatsApp. Bingkai merah tidak ikut, dan bila ada stiker bertanda merah Printech bertanya dulu (2026-11-05) | Ada |
 | F14 | Shortcut seperti CorelDRAW: Ctrl+I = tambah file, F4 / Shift+F4 = pas layar (selain Ctrl+O dan Ctrl+0) | Ada |
 | F15 | Rapikan gambar (pengganti langkah Photoshop), untuk desain yang ditempel sebagai gambar: hapus latar otomatis, penghapus klik, toleransi warna, kikis tepi 0–3 piksel, urungkan dan kembalikan. Dibuka lewat menu Lainnya di baris desain atau klik dua kali pada gambar kecil desain. Garis potong dihitung ulang dari hasilnya | Ada. Di luar cakupan prototipe: tidak dikembangkan |
 | F16 | Garis potong dengan sedikit titik (node) dan kurva mulus untuk pisau Graphtec: tanpa sudut tajam, kecuali desain kotak (F25) dan preset bentuk (F26); isian "Halus" sekarang juga menghaluskan bentuk sehingga titiknya berkurang (lihat Keputusan) | Ada |
@@ -76,7 +76,7 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 | F34 | Pindah stiker antar-lembar (permintaan user): selama diseret, stiker tetap terlihat di luar lembarnya dan di atas lembar lain. Dilepas di atas lembar lain: stiker pindah ke posisi kosong terdekat di lembar itu dengan rotasi yang sama. Lembar tujuan tidak ada tempat: stiker kembali ke posisi awal dan muncul pesan. Lembar asal yang jadi kosong hilang, seperti saat menghapus stiker terakhirnya. Dilepas di luar semua lembar: posisi kosong terdekat di lembar asal. Satu Ctrl+Z membatalkan semuanya. Selama mouse ditahan, shortcut keyboard diabaikan; bila tarikan terputus (misalnya Alt+Tab), tarikan batal dan stiker kembali ke posisi awal. Beberapa stiker terpilih bergerak bersama: bila satu saja tidak punya tempat, semuanya kembali ke posisi awal | Ada (2026-11-03) |
 | F35 | Pilih banyak stiker (dibuat oleh Jonathan): Ctrl+klik menambah atau melepas stiker dari pilihan, dan seret dari area kosong membuat kotak pilih pada lembar itu. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda, dan tiap stiker diperiksa di lembarnya sendiri. Titik pojok ukuran hanya muncul saat satu stiker terpilih | Ada (2026-11-03) |
 | F36 | Halaman sambutan (dibuat oleh Yansen): tampil bila aplikasi dibuka tanpa file. File bisa ditarik ke kotaknya atau dipilih lewat Buka Folder. Panel kirinya (File Baru, File Terbaru, Pengaturan, dan Bantuan) disembunyikan sampai tombolnya berfungsi, karena baru menampilkan pesan sementara (keputusan user 2026-11-04) | Sebagian (2026-11-03) |
-| F37 | Tombol Kembalikan dan menu Lainnya di baris desain (dibuat oleh Yansen): Kembalikan mengembalikan jumlah ke 1 lalu menyusun ulang; Lainnya berisi Rapikan gambar dan Edit garis potong | Ada (2026-11-04) |
+| F37 | Tombol Kembalikan dan menu Lainnya di baris desain (dibuat oleh Yansen): Kembalikan mengembalikan jumlah ke 1 lalu menyusun ulang; Lainnya berisi Rapikan gambar dan Edit garis potong. Rapikan gambar mati untuk desain vektor (PDF/AI/CDR), dan tooltipnya menjelaskan alasannya | Ada (2026-11-04) |
 | F38 | Salin dengan Alt + seret dan batal dengan Esc (permintaan user): stiker yang dilepas sambil menahan Alt tetap di tempatnya, dan salinannya ditaruh di posisi kosong terdekat dari titik lepas, juga di lembar lain. Dilepas di celah antar-lembar: salinan masuk lembar asal. Beberapa stiker: semua atau tidak sama sekali. Jumlah (pcs) ikut naik, salinannya terpilih, dan satu tarikan adalah satu langkah urungkan. Esc selama menarik, mengatur ukuran, atau membuat kotak pilih membatalkannya tanpa langkah urungkan. Selama menarik, baris status menyebut mode dan lembar tujuan. Isi lembar dan posisi stiker baru berubah saat dilepas | Ada (2026-11-05) |
 | F39 | Duplikat stiker dengan Ctrl+D (dibuat oleh Jonathan): salinan stiker terpilih berada di kanan atau bawahnya, dengan aturan yang sama dengan tempel. Stiker asal tidak berubah, salinannya terpilih, dan satu Ctrl+D adalah satu langkah urungkan. Beberapa stiker terpilih ikut semua; bila satu saja tidak punya tempat, tidak ada yang ditambahkan dan muncul pesan | Ada (2026-11-05). Beberapa stiker belum diuji dengan mouse |
 
@@ -156,6 +156,8 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
   - Hasil ukur (versi rilis, prosesor 12 thread): susun 130 stiker 57 → 43 ms. Gambar 4000×3000: hapus latar 119 → 97 ms (pengisian area atau flood fill tetap berurutan), kikis tepi 103 → 31 ms, tampilan 62 → 20 ms. Memori saat diam tidak berubah (total working set versi lama 148–152 MB, versi baru 148–153 MB, 4 kali ukur).
   - Hapus latar dan penghapus klik di jendela Rapikan dihitung di latar belakang, jadi jendela tetap merespons. Hanya pembaruan tampilan (±20–70 ms) yang berjalan di jalur utama tampilan.
   - Sejak 2026-10-19, file PDF/AI disalin ke folder sementara saat dimuat. Export dan Susun memakai salinan itu, jadi artwork tetap sama dengan dasar garis potong walau file asli diubah, dipindah, atau dihapus. Untuk memakai isi baru, tambahkan file itu lagi.
+  - Sejak 2026-11-05, gambar PNG dan JPG juga tidak dibaca ulang dari file asli saat lebar atau garis potong berubah. Muat ulang memakai gambar yang sudah ada di memori, jadi file asli boleh diubah, dipindah, atau dihapus. SVG tetap digambar ulang supaya tajam selama filenya masih sama, dan dibaca dari folder aslinya karena gambar yang ditautkan SVG hanya terbaca dari sana (dicoba: dari folder lain gambar tautannya hilang). Bila filenya berubah atau hilang, SVG memakai gambar terakhir.
+  - Foto bertanda orientasi (foto HP) ditegakkan saat dimuat, dan gambar tegak itu yang dipakai di layar, Rapikan, PDF, dan SVG (2026-11-05).
   - Sejak 2026-10-19, hasil konversi CDR disimpan per versi file (waktu ubah + ukuran). CDR yang diedit lalu ditambah ulang dikonversi lagi.
   - Skenario uji P1–P10: [skenario uji stabilitas](UJI-STABILITAS.md).
 - **Persiapan cetak (prepress)** (2026-10-17, spesifikasi leader bagian 3):
@@ -165,7 +167,8 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 - **Indikator dan kemudahan bagi operator** (2026-10-17, spesifikasi leader bagian 4):
   - Bentuk teratur (reguler) atau tidak teratur (irregular) ditentukan otomatis: bila rata-rata isi bentuk terhadap kotaknya (ditimbang menurut luas) minimal 75%, dihitung teratur (persegi ±1, lingkaran ±0,79, bintang ±0,57). Batas hijau bentuk tidak teratur (60%) tidak disebut di spesifikasi; dipakai aturan yang sama dengan bentuk teratur, yaitu batas bawah + 5 poin.
   - Tempel otomatis (snap) memakai grid susun 1 mm (posisi kosong terdekat), bukan perhitungan bentuk poligon (NFP). Geser dengan panah keyboard tetap bebas. Bila tidak ada tempat kosong, stiker kembali ke posisi awal dan muncul pesan (keputusan user 2026-11-03). Sebelumnya stiker tertinggal di posisi lepas dan ditandai merah, bisa di luar lembar sehingga tidak terlihat.
-  - Stiker yang lebih dekat dari setelan Jarak antar stiker ditandai merah seperti tumpang tindih (keputusan user 2026-11-03), dan Export bertanya dulu. Sel dan jaraknya sama dengan grid susun, jadi hasil susun otomatis dan tempel otomatis tidak pernah ditandai. Mengubah angka Jarak langsung memeriksa ulang semua lembar.
+  - Stiker yang lebih dekat dari setelan Jarak antar stiker ditandai merah seperti tumpang tindih (keputusan user 2026-11-03), dan Export bertanya dulu. Sel dan jaraknya sama dengan grid susun, jadi hasil susun otomatis dan tempel otomatis tidak pernah ditandai. Mengubah angka Jarak atau margin langsung memeriksa ulang semua lembar.
+  - Kotak lebar desain menerima koma dan titik sebagai tanda desimal, seperti kotak di panel. Teks yang tidak terbaca atau angka bukan positif membuat kotaknya merah dan lebar tetap. Angka panel yang salah (kertas, margin, jarak, offset, Halus, bleed, lebar bawaan) tidak lagi diam-diam diganti nilai bawaan: Susun, tambah file, dan export berhenti dengan pesan, dan kursor pindah ke kotak itu (2026-11-05).
   - Angka bahan dibatasi paling tinggi 100%, dan merah bila luas stiker melebihi area lembar (keputusan user 2026-11-04). Itu hanya terjadi bila stiker bertumpuk, jadi angka sebenarnya baru terbaca setelah disusun ulang. Print Ticket mengikuti aturan yang sama.
   - Zoom in tidak mengurangi jumlah lembar per baris, supaya titik di bawah kursor tetap di tempat, dan lembar yang melebihi tampilan digeser (keputusan user 2026-11-04). Zoom out menambah jumlah lembar per baris bila muat, sehingga lembar bisa berpindah baris. Pas layar, Susun otomatis, dan perubahan lebar jendela menghitungnya dari awal.
   - Pilihan bahan siap pakai (preset bahan) dihapus 2026-10-23: menurut user/leader tidak diperlukan, karena offset, Halus, margin, dan jarak diatur langsung. Nilai awalnya tetap dicatat di [catatan riset](RESEARCH.md) bagian 13 sebagai riwayat riset.
@@ -189,8 +192,11 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 - Export SVG (F29): artwork selalu berupa gambar, bukan vektor. Desain PDF/AI memakai gambar tampilan layar (paling besar 1600 piksel, RGB), jadi stiker besar bisa kurang tajam. Warna border dan garis potong memakai RGB, karena SVG tidak punya CMYK. Export PDF tetap menjaga vektor dan CMYK.
 - Yang dipotong: garis luar, ditambah lubang asli artwork yang tetap terbuka setelah offset dan Halus (stiker donat). Rongga yang terbentuk saat offset menutup celah artwork (misalnya huruf C besar) dan lubang yang tertutup offset tidak dipotong. Garis dalam tidak bisa dimatikan per desain; hapus lewat editor garis potong bila tidak diinginkan. Lubang yang lebih sempit dari offset bisa ditambahkan lewat smart select (klik di dalam lubang).
 - Susun otomatis belum optimal (stiker ditaruh di tempat kosong pertama, greedy).
-- Stiker belum bisa dipindah antar-lembar. Rotasi hanya kelipatan 90°.
+- Rotasi hanya kelipatan 90°.
 - Warna di layar hanya pratinjau. Akurasi warna dijaga di file export.
+- Foto bertanda orientasi disimpan sebagai PNG setelah ditegakkan, jadi PDF-nya lebih besar daripada JPG aslinya.
+- SVG yang file aslinya sudah berubah atau hilang diperbesar dari gambar terakhir, jadi bisa kurang tajam. Angka dpi tetap memberi tahu kapan perlu.
+- Spasi selalu menggeser tampilan selama kursor tidak di kotak teks, jadi Spasi tidak menekan tombol atau kotak centang yang sedang fokus. Tanpa batas ini, tombol yang baru diklik akan tertekan lagi saat operator menahan Spasi untuk menggeser.
 - Rapikan gambar: latar foto yang ramai (bukan warna polos) belum bisa dihapus otomatis; gambar di atas 4000 piksel diperkecil ke 4000 piksel saat dirapikan.
 - Pengurangan titik: target 60–80% tercapai pada logo kasar dan bentuk bulat. Teks dan bintang turun 33–59% karena sudutnya adalah detail asli. Logo dengan gelombang tepi yang nyata (`png-rough-edge.png` di data uji) hanya turun 54%. Target 60% hanya berlaku untuk logo kasar seperti `rough.jpg` (pemeriksaan otomatis S1); logo bergelombang hanya dicatat (keputusan D5, 2026-10-27). Di area cekung, garis bisa bergeser keluar sampai ±0,5 mm (kiss) atau ±0,7 mm (die): border sedikit lebih lebar. Halus 0 mematikan penghalusan bentuk.
 - CDR: batas 30 detik belum dikalibrasi di PC operator. Bila CorelDRAW menggantung karena dialog yang tidak terlihat, tutup CorelDRAW lalu tambahkan file lagi.
@@ -241,6 +247,63 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 16. Di editor, pilih titik, lalu seret pegangan kurvanya (handle). Coba juga Jadikan kurva/Jadikan garis dan Node halus/Node sudut. Apakah titik dan kurvanya sama saat PDF dibuka di CorelDRAW, dan apakah pisau Graphtec mulus pada kurva?
 17. Di editor, pilih warna border (misalnya Merah), Simpan, cetak di Develop, lalu potong di Graphtec. Apakah warnanya sesuai, dan tidak ada tepi putih di garis potong walau pisau sedikit bergeser? Perlukah perpanjangan 1 mm diubah?
 18. Catat setiap error atau kejanggalan, lalu kirim ke pengembang.
+
+### Cek tampilan setelah perubahan
+
+Dicek dengan tangan saat sempat; cukup bagian yang berubah. Skrip yang memakai mouse dan keyboard sungguhan tidak wajib lagi (keputusan user 2026-11-05), karena PC tidak boleh dipakai selama skrip berjalan.
+
+**Menarik stiker:**
+
+- Seret stiker ke lembar lain. Stiker terlihat di atas lembar lain selama ditarik, lalu pindah ke sana. Lembar asal yang kosong hilang, dan Ctrl+Z mengembalikannya.
+- Lepas stiker di celah antar-lembar: stiker tetap di lembar asal. Lepas di lembar yang penuh: stiker kembali ke posisi awal dan muncul pesan.
+- Tahan Alt saat melepas: stiker asal tetap, salinannya di titik lepas, dan jumlah pcs naik. Satu Ctrl+Z membatalkannya. Sesudah Alt dilepas, tombol panah langsung menggeser stiker.
+- Selagi menarik: baris status menyebut mode dan lembar tujuan, Esc membatalkan, serta Ctrl+Z dan Delete diabaikan.
+
+**Memilih beberapa stiker:**
+
+- Ctrl+klik dua stiker, atau seret dari area kosong lembar untuk kotak pilih: panel menulis "2 stiker terpilih". Klik di luar lembar melepas pilihan.
+- Seret, putar (R), hapus (Delete), Ctrl+C lalu Ctrl+V, dan Alt + seret: semua stiker terpilih ikut, juga bila berada di lembar berbeda.
+- Ctrl+D pada beberapa stiker: semuanya terduplikat. **Belum pernah dicoba.**
+- Bahasa English: panel menulis "2 stickers selected".
+
+**Salin dan ukuran:**
+
+- Ctrl+C lalu Ctrl+V: salinan di kanan stiker asal, dan turun ke baris berikutnya bila penuh. Tombol Duplikat di judul lembar: lembar baru di sampingnya.
+- Ctrl+D pada satu stiker: salinan di kanan dan terpilih. Delete menghapus salinannya, bukan stiker asal.
+- Klik stiker: 4 titik muncul di pojok. Tarik titik: lebar × tinggi tampil di dekat kursor, dan saat dilepas semua salinan ikut berubah. Klik titik tanpa menarik: ukuran tetap.
+- Perbesar stiker sampai bertumpuk: stiker merah, dan angka bahan 100% berwarna merah.
+
+**Tata letak dasar:**
+
+- Geser stiker sampai menempel stiker lain, putar, geser dengan panah, dan hapus. Ubah jumlah dan lebar, lalu Susun otomatis.
+- Pilih Hemat dan Rapi, lalu bandingkan hasilnya. Coba Penuhi lembar.
+- Naikkan angka Jarak antar stiker: stiker yang terlalu dekat jadi merah. Kembalikan angkanya: merahnya hilang.
+- Export saat ada stiker merah: muncul pertanyaan dulu. Ganti kertas dan bahasa. Buka pemeriksaan garis potong.
+
+**Perbaikan temuan 2026-11-05 (sudah dibuktikan tanpa mouse dan keyboard, belum dicoba dengan tangan):**
+
+- Ketik 62,5 di kotak lebar lalu Susun otomatis: lebar 62,5 mm. Ketik abc: kotaknya merah dan lebar tetap.
+- Ketik lebar baru lalu langsung Ctrl+L tanpa pindah kotak: angka baru dipakai.
+- Naikkan Margin: stiker yang keluar margin langsung merah. Ketik abc di Margin lalu Susun otomatis: muncul pesan dan kursor pindah ke kotak itu.
+- Buka foto miring dari HP: tegak di layar, preview JPG, dan PDF.
+- Hapus atau ganti nama file gambar sesudah dimuat, lalu ubah lebar dan Susun otomatis: tetap berhasil dengan gambar yang sama.
+- Buka file dari halaman sambutan: lembar langsung pas layar.
+- Delete pada satu stiker: jumlah pcs turun, dan Susun otomatis tidak mengembalikannya.
+- Menu Lainnya pada desain PDF: Rapikan gambar mati, dan tooltipnya menjelaskan alasannya. Pada desain JPG: menu tertutup saat jendela Rapikan terbuka.
+- Hapus desain yang lebih besar dari kertas: peringatannya hilang.
+- Salin stiker dari lembar 3, kosongkan lembar 1, lalu Ctrl+V: salinan masuk ke lembar yang sama dengan stiker asalnya.
+- Export ke PDF yang masih terbuka di program lain: pesannya mudah dipahami. Preview JPG saat ada stiker merah: bertanya dulu, dan bingkai merah tidak ikut di JPG.
+- Pilih satu stiker, lalu Ctrl+klik area kosong di lembar lain: 4 titik tetap di stiker itu.
+- Tahan Spasi atau tombol tengah mouse, Alt+Tab, lalu kembali: tampilan tidak mengikuti kursor. Tekan tombol tengah saat menarik stiker: tarikan batal, tampilan bergeser, dan berhenti saat tombol dilepas.
+- Ganti bahasa: penanda garis di daftar desain ikut berubah.
+
+**Tampilan:**
+
+- Ctrl + roda di atas stiker pada 6 lembar: saat diperbesar, jumlah lembar per baris tetap dan stiker di bawah kursor tidak melompat.
+- Perkecil jendela: jumlah lembar per baris berkurang, tanpa bilah geser mendatar.
+- Daftar 8 desain atau lebih: kata pcs utuh.
+- Buka aplikasi tanpa file: halaman sambutan tanpa panel kiri. Tarik file dan Buka Folder berfungsi.
+- Menu Tampilan, Tanda registrasi (bawaan mati): centang, lalu Ctrl+Z mengembalikannya.
 
 ## 11. Menjalankan
 

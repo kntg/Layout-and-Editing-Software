@@ -49,10 +49,9 @@ public partial class MainWindow : Window
         PaperBox.SelectedItem = "A3+"; // kertas stiker Develop (AP 55)
     }
 
-    static double D(TextBox t, double def, double min = 0.01) =>
-        double.TryParse(t.Text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v >= min ? v : def;
+    static double D(TextBox t, double def, double min = 0.01) => MmText.Parse(t.Text) is { } v && v >= min ? v : def;
 
-    static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+    static string F(double v) => MmText.Show(v);
 
     double CW => D(CanvasW, 297, 10);
     double CH => D(CanvasH, 420, 10);
@@ -84,7 +83,7 @@ public partial class MainWindow : Window
             var ps = i < sheets.Count ? sheets[i] : [];
             var c = Nest.Sheet(ps, w, h, MarginMm, sels, i, HasRegMarks);
             c.LayoutTransform = zoom;
-            if (sel != null && i == selSheet && sels.Count <= 1) AddHandles(c, sel);
+            if (sel != null && ps.Contains(sel) && sels.Count <= 1) AddHandles(c, sel); // di lembar stikernya, bukan lembar yang terakhir diklik
             canvases.Add(c);
             var head = new DockPanel { Margin = new Thickness(1, 0, 1, 7) };
             double su = Yield.Use(ps, w, h, MarginMm);
@@ -152,11 +151,28 @@ public partial class MainWindow : Window
     void CheckAll() { for (int i = 0; i < sheets.Count; i++) CheckSheet(i); }
     void CheckSel() { for (int i = 0; i < sheets.Count; i++) if (sheets[i].Any(sels.Contains)) CheckSheet(i); } // pilihan bisa lintas lembar
 
-    // Jarak antar stiker berubah: stiker yang jadi terlalu dekat langsung merah, sampai disusun ulang.
-    void Gap_Changed(object s, TextChangedEventArgs e) { if (!restoring && sheets.Count > 0) { CheckAll(); Redraw(); } }
+    // Jarak antar stiker atau margin berubah: stiker yang jadi terlalu dekat atau keluar margin langsung merah, sampai disusun ulang.
+    void Spacing_Changed(object s, TextChangedEventArgs e) { if (!restoring && sheets.Count > 0) { CheckAll(); Redraw(); } }
+
+    // Kotak angka pertama yang tidak terbaca atau di bawah batasnya, beserta batas itu.
+    (TextBox? Box, double Min) BadNumber() => new (TextBox? Box, double Min)[]
+        { (CanvasW, 10), (CanvasH, 10), (MarginBox, 0), (KissOff, 0), (KissSm, 0), (DieOff, 0), (DieSm, 0), (BleedBox, 0), (GapBox, 0), (WidthBox, 0.01) }
+        .FirstOrDefault(n => double.IsNaN(D(n.Box!, double.NaN, n.Min)));
+
+    // Angka yang salah ketik tidak diam-diam diganti nilai bawaan: operator diberi tahu lebih dulu.
+    bool NumbersValid()
+    {
+        var (box, min) = BadNumber();
+        if (box == null) return true;
+        MessageBox.Show(Lang.T("BadNumber", box.Text, min), App.Brand);
+        box.Focus();
+        box.SelectAll();
+        return false;
+    }
 
     bool CutsValid()
     {
+        if (!NumbersValid()) return false;
         if (!Kiss.On && !Die.On) { MessageBox.Show(Lang.T("NeedCut"), App.Brand); return false; }
         if (Kiss.On && Die.On && Die.Off <= Kiss.Off) { MessageBox.Show(Lang.T("DieInside"), App.Brand); return false; }
         // Bleed tidak boleh melewati jarak antar stiker: warna tidak pernah masuk garis potong tetangga.
@@ -244,7 +260,21 @@ public partial class MainWindow : Window
     void DropEmpty()
     {
         for (int i = sheets.Count - 1; i >= 0; i--)
-            if (sheets[i].Count == 0) { sheets.RemoveAt(i); sheetH.RemoveAt(i); }
+        {
+            if (sheets[i].Count > 0) continue;
+            sheets.RemoveAt(i);
+            sheetH.RemoveAt(i);
+            if (clip.Count == 0 && clipSheet == i) clipSheet = -1; // kanvas yang disalin sudah tidak ada
+            Renumber(x => Math.Min(x > i ? x - 1 : x, sheets.Count - 1));
+        }
+    }
+
+    // Lembar bertambah atau berkurang: nomor lembar yang disimpan (salinan, klik terakhir) ikut bergeser.
+    void Renumber(Func<int, int> to)
+    {
+        clip = [.. clip.Select(c => (c.S, c.Rot, c.X, c.Y, to(c.Sheet)))];
+        clipSheet = to(clipSheet);
+        selSheet = to(selSheet);
     }
 
     void Add_Click(object s, RoutedEventArgs e) => OpenFileDialog();
@@ -283,19 +313,20 @@ public partial class MainWindow : Window
         finally { Mouse.OverrideCursor = null; loading = false; }
         if (items.Count == before) { Status.Text = status; return; }
         bool first = sheets.Count == 0;
+        ShowHome(false); // lebih dulu: selama halaman sambutan tampil, tampilan lembar belum punya ukuran untuk Pas layar
         Arrange();
-        if (first) Fit();
-        ShowHome(false); 
+        if (first) { View.UpdateLayout(); Fit(); }
     }
 
     void RemoveItem_Click(object s, RoutedEventArgs e)
     {
         if ((s as FrameworkElement)?.DataContext is not Sticker st) return;
+        // ponytail: dihitung dari selisih jumlah dan yang termuat. Jumlah yang baru diketik tanpa Susun ikut terhitung, sampai Susun berikutnya menghitung ulang.
+        tooBig -= Math.Clamp(st.Copies - sheets.Sum(sh => sh.Count(p => p.S == st)), 0, tooBig); // salinan desain ini yang tidak termuat ikut hilang dari peringatan
         items.Remove(st);
         foreach (var sh in sheets) sh.RemoveAll(p => p.S == st);
         DropEmpty();
         ClearSel();
-        if (items.Count == 0) tooBig = 0;
         Redraw(sheets.Count > 0 ? Summary() : "");
         Commit();
     }
@@ -324,7 +355,8 @@ public partial class MainWindow : Window
 
     void Clean(Sticker it)
     {
-        if (!it.CanClean || !CutsValid()) return;
+        if (!it.CanClean) { Redraw(Lang.T("CleanVector")); return; }
+        if (!CutsValid()) return;
         var w = new CleanupWindow(it.Edited ?? it.Raster, it.Name) { Owner = this };
 
         var workArea = SystemParameters.WorkArea;
@@ -358,7 +390,7 @@ public partial class MainWindow : Window
         try
         {
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
-            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, loadedPdf: it.Pdf);
+            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, loadedPdf: it.Pdf);
             w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape) { Owner = this };
 
             var workArea = SystemParameters.WorkArea;
@@ -377,7 +409,7 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Edited, bleed: BleedMm, loadedPdf: it.Pdf,
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, bleed: BleedMm, loadedPdf: it.Pdf,
                 manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
@@ -401,6 +433,8 @@ public partial class MainWindow : Window
     void Arrange()
     {
         CancelDrag(); // file CDR bisa selesai dimuat saat stiker sedang ditarik
+        // Ctrl+L atau menu saat kursor masih di kotak lebar desain: angka yang baru diketik ikut dipakai.
+        (FocusManager.GetFocusedElement(this) as TextBox)?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         wrapCols = 1;
         if (items.Count == 0) { Redraw(Lang.T("NestFirst")); return; }
         if (!CutsValid()) return;
@@ -494,6 +528,7 @@ public partial class MainWindow : Window
     {
         if (i < 0 || i >= sheets.Count || sheets[i].Count == 0) return;
         Nest.CopySheet(sheets, sheetH, i);
+        Renumber(x => x > i ? x + 1 : x);
         ClearSel();
         AfterAdd(Lang.T("SheetDuped", i + 1, i + 2));
         var added = canvases[i + 1];
@@ -515,7 +550,7 @@ public partial class MainWindow : Window
     {
         if (clipSheet < 0 || clipSheet >= sheets.Count || clip.Any(c => c.Sheet >= sheets.Count || !items.Contains(c.S))) { Redraw(Lang.T("PasteEmpty")); return; }
         if (clip.Count == 0) { DuplicateSheet(clipSheet); return; }
-        List<(Sticker S, int Rot, double X, double Y, int Sheet)> src = clip is [var one] && sel?.S == one.S ? [(one.S, one.Rot, sel.X, sel.Y, selSheet)] : clip;
+        List<(Sticker S, int Rot, double X, double Y, int Sheet)> src = clip is [var one] && sel?.S == one.S ? [(one.S, one.Rot, sel.X, sel.Y, sheets.FindIndex(sh => sh.Contains(sel!)))] : clip;
         PasteItems(src, "PasteFull", "Pasted");
     }
 
@@ -552,7 +587,11 @@ public partial class MainWindow : Window
     void DeleteSel()
     {
         if (sels.Count == 0) return;
+        var designs = sels.Select(p => p.S).ToHashSet();
         foreach (var p in sels) foreach (var sh in sheets) sh.Remove(p); // pilihan bisa lintas lembar
+        // Jumlah di daftar ikut, supaya Susun otomatis tidak mengembalikan stiker yang baru dihapus. Bisa menjadi 0; desainnya tetap di daftar.
+        foreach (var d in designs) d.Copies = sheets.Sum(sh => sh.Count(p => p.S == d));
+        List.Items.Refresh();
         ClearSel();
         DropEmpty();
         CheckAll();
@@ -579,6 +618,7 @@ public partial class MainWindow : Window
     void Ticket_Click(object s, RoutedEventArgs e)
     {
         if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
+        if (!NumbersValid()) return;
         var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "print-ticket.pdf" };
         if (dlg.ShowDialog() != true) return;
         if (sheets.SelectMany(sh => sh).FirstOrDefault() is not { } placed) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
@@ -592,16 +632,25 @@ public partial class MainWindow : Window
             Export.Ticket(dlg.FileName, PaperBox.SelectedItem as string ?? "Custom", sheets, sheetW, sheetH, MarginMm, lines);
             Redraw(Lang.T("Saved", dlg.FileName));
         }
-        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
+        catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
     }
     void DeletePlaced_Click(object s, RoutedEventArgs e) => DeleteSel();
     void Exit_Click(object s, RoutedEventArgs e) => Close();
 
+    // Sebelum file keluar: sudah ada susunan, angka terbaca, dan operator tahu bila ada stiker bertanda merah.
+    bool ReadyToExport()
+    {
+        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return false; }
+        return NumbersValid() && (!sheets.Any(x => x.Any(p => p.Bad))
+            || MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes);
+    }
+
+    // File tujuan terkunci (masih terbuka di program lain), disk penuh, atau folder tanpa izin: pesan untuk operator, bukan pesan teknis.
+    internal static string SaveFail(Exception ex) => ex is IOException or UnauthorizedAccessException ? Lang.T("SaveFail") : ex.Message;
+
     void Export_Click(object s, RoutedEventArgs e)
     {
-        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
-        if (sheets.Any(x => x.Any(p => p.Bad)) &&
-            MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!ReadyToExport()) return;
         var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "layout.pdf" };
         if (dlg.ShowDialog() != true) return;
         Mouse.OverrideCursor = Cursors.Wait;
@@ -610,14 +659,14 @@ public partial class MainWindow : Window
             var warn = Export.Pdf(dlg.FileName, sheets, sheetW, sheetH, HasRegMarks, MarginMm);
             Redraw(string.Join("  ", warn.Prepend(Lang.T("Saved", dlg.FileName))));
         }
-        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
+        catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
         finally { Mouse.OverrideCursor = null; }
     }
 
     // JPG ringan untuk konfirmasi ke customer (WhatsApp) sebelum cetak.
     void Preview_Click(object s, RoutedEventArgs e)
     {
-        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
+        if (!ReadyToExport()) return;
         var dlg = new SaveFileDialog { Filter = "JPG|*.jpg", FileName = "preview.jpg" };
         if (dlg.ShowDialog() != true) return;
         Mouse.OverrideCursor = Cursors.Wait;
@@ -626,16 +675,14 @@ public partial class MainWindow : Window
             var files = Export.Preview(dlg.FileName, sheets, sheetW, sheetH, MarginMm, HasRegMarks);
             Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
         }
-        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
+        catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
         finally { Mouse.OverrideCursor = null; }
     }
 
         // SVG per layer (artwork / kiss-cut / die-cut / registration-marks): dibaca CorelDRAW sebagai layer.
     void ExportSvg_Click(object s, RoutedEventArgs e)
     {
-        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
-        if (sheets.Any(x => x.Any(p => p.Bad)) &&
-            MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!ReadyToExport()) return;
         var dlg = new SaveFileDialog { Filter = "SVG|*.svg", FileName = "layout.svg" };
         if (dlg.ShowDialog() != true) return;
         Mouse.OverrideCursor = Cursors.Wait;
@@ -644,7 +691,7 @@ public partial class MainWindow : Window
             var files = ExportSvg.Svg(dlg.FileName, sheets, sheetW, sheetH, MarginMm, HasRegMarks);
             Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
         }
-        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
+        catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
         finally { Mouse.OverrideCursor = null; }
     }
 
@@ -669,6 +716,7 @@ public partial class MainWindow : Window
         LangId.IsChecked = code == "id";
         LangEn.IsChecked = code == "en";
         Lang.Apply(code);
+        List.Items.Refresh(); // penanda garis di daftar desain ditulis sekali saat barisnya dibuat
         Redraw(sheets.Count > 0 ? Summary() : "");
     }
 
@@ -891,6 +939,23 @@ public partial class MainWindow : Window
         View.ReleaseMouseCapture();
         UpdateCursor();
         e.Handled = true;
+    }
+
+    // Capture hilang saat menggeser (Alt+Tab, dialog): tanpa ini tampilan terus mengikuti kursor walau tombol sudah dilepas.
+    // Hanya capture milik View sendiri: tarikan stiker yang kalah oleh tombol tengah juga melapor lewat sini, dan saat itu geser baru mulai.
+    void View_Lost(object s, MouseEventArgs e)
+    {
+        if (!panning || e.OriginalSource != View) return;
+        panning = false;
+        UpdateCursor();
+    }
+
+    // Alt+Tab saat Spasi ditahan: lepas tombolnya tidak pernah sampai ke jendela ini, jadi mode geser dilepas di sini.
+    void Window_Deactivated(object s, EventArgs e)
+    {
+        if (!space) return;
+        space = false;
+        UpdateCursor();
     }
 
     // ---- Keyboard, gaya Photoshop ----
@@ -1268,6 +1333,12 @@ public partial class MainWindow : Window
                 foreach (var item in stack.Children.OfType<MenuItem>())
                 {
                     item.DataContext = btn.DataContext;
+                    // Vektor (PDF/AI/CDR) tidak dirapikan: menunya mati dan tooltipnya menjelaskan alasannya.
+                    if ((string)item.Tag == "Clean" && btn.DataContext is Sticker st)
+                    {
+                        item.IsEnabled = st.CanClean;
+                        item.ToolTip = Lang.T(st.CanClean ? "CleanTip" : "CleanVector");
+                    }
                     // HAPUS dulu event listener yang mungkin menumpuk dari klik sebelumnya
                     item.Click -= MenuAction_Click;
                     // Pasang event listener yang baru
@@ -1283,6 +1354,8 @@ public partial class MainWindow : Window
     {
         if (sender is not MenuItem item) return;
         if (item.DataContext is not Sticker st) return;
+        // Tutup menu dulu: Rapikan dan editor garis membuka jendela dialog, dan menu tidak boleh tertinggal di atasnya.
+        if (item.Parent is StackPanel { Parent: Border { Parent: Popup popup } }) popup.IsOpen = false;
         string action = item.Tag?.ToString() ?? "";
         if (action == "Clean")
         {
@@ -1293,11 +1366,6 @@ public partial class MainWindow : Window
             // Kita buat Button dummy karena CutItem_Click butuh sender ber-DataContext
             var dummyBtn = new Button { DataContext = st };
             CutItem_Click(dummyBtn, e);
-        }
-        // Tutup popup setelah diklik
-        if (item.Parent is ItemsControl ic && ic.Parent is Border b && b.Parent is Popup popup)
-        {
-            popup.IsOpen = false;
         }
     }
 }

@@ -201,6 +201,8 @@ public static class Lang
         ["TooBig"] = ("{0} lebih besar dari kertas", "{0} larger than the paper"),
         ["Overlap"] = ("{0} tumpang tindih/terlalu dekat/keluar margin", "{0} overlapping/too close/outside margin"),
         ["Saved"] = ("Tersimpan: {0}", "Saved: {0}"),
+        ["SaveFail"] = ("File tidak bisa disimpan. Tutup file itu bila sedang dibuka di program lain, periksa ruang disk dan izin folder, lalu coba lagi.", "The file could not be saved. Close it if it is open in another program, check the disk space and folder permissions, then try again."),
+        ["BadNumber"] = ("\"{0}\" tidak bisa dipakai. Isi angka minimal {1}.", "\"{0}\" cannot be used. Enter a number of at least {1}."),
         ["ExportBad"] = ("Ada stiker tumpang tindih/terlalu dekat/keluar margin. Tetap export?", "Some stickers overlap, are too close, or exceed the margin. Export anyway?"),
         ["PdfRaster"] = ("{0}: PDF ditempel sebagai gambar, bukan vektor ({1}).", "{0}: PDF placed as an image, not vector ({1})."),
 

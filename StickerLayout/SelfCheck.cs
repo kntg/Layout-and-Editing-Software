@@ -1225,6 +1225,11 @@ public static class SelfCheck
             log.Add($"PDF diganti lalu dihapus setelah dimuat: muat ulang {reload.ArtW:F1} mm dan export tetap dari salinan ({first.ArtW:F1} mm); "
                 + $"tambah ulang memakai isi baru ({readd.ArtW:F1} mm)");
 
+            var foundBad = FoundErrors(dir, kiss, die);
+            Check(foundBad.Count == 0, "temuan 2026-11-05: " + string.Join("; ", foundBad));
+            log.Add("file gambar diganti lalu dihapus: muat ulang tetap memakai gambar saat dimuat; foto bertanda orientasi EXIF 1-8 tegak di layar, file export, dan sesudah muat ulang; pratinjau JPG tanpa bingkai merah; "
+                + "kotak lebar menerima koma dan titik; export ke file terkunci memberi pesan untuk operator");
+
             // Penuhi lembar (Compact): stiker bertambah bergiliran, jumlah lembar tetap, tidak ada tabrakan atau keluar margin,
             // dan setelah penuh tidak ada lagi yang muat.
             var fs = sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList()).ToList();
@@ -1422,6 +1427,133 @@ public static class SelfCheck
         var c = new byte[4];
         bmp.CopyPixels(new Int32Rect((int)(page.X * pxMm), (int)(page.Y * pxMm), 1, 1), c, 4, 0);
         return Color.FromRgb(c[2], c[1], c[0]);
+    }
+
+    // Temuan 2026-11-05. File gambar diganti lalu dihapus setelah dimuat: muat ulang tetap memakai gambar saat dimuat, SVG digambar ulang
+    // hanya bila filenya masih sama. Foto bertanda orientasi EXIF tegak di layar, di file export, dan sesudah muat ulang.
+    // Pratinjau JPG untuk customer tanpa bingkai merah.
+    static List<string> FoundErrors(string dir, Cut kiss, Cut die)
+    {
+        var bad = new List<string>();
+        static Sticker Resized(Sticker st, double w) { st.WidthMm = w; return Loader.Reload(st, st.LoadedKiss, st.LoadedDie, st.LoadedBleed); }
+        // Empat warna, supaya putaran dan cermin terlihat: merah, hijau; biru, gelap.
+        static BitmapSource Quads(int w, int h)
+        {
+            var px = new byte[w * 3 * h];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    (byte B, byte G, byte R) c = (x < w / 2, y < h / 2) switch { (true, true) => (30, 30, 220), (false, true) => (30, 200, 30), (true, false) => (220, 30, 30), _ => (40, 40, 40) };
+                    (px[(y * w + x) * 3], px[(y * w + x) * 3 + 1], px[(y * w + x) * 3 + 2]) = c;
+                }
+            return BitmapSource.Create(w, h, 96, 96, PixelFormats.Bgr24, null, px, w * 3);
+        }
+        static char Hue(Color c) => c.R > 150 && c.G < 100 && c.B < 100 ? 'R' : c.G > 150 && c.R < 100 ? 'G' : c.B > 150 && c.R < 100 ? 'B' : c.R < 90 && c.G < 90 && c.B < 90 ? 'K' : '?';
+        static string Hues(BitmapSource b)
+        {
+            var f = new FormatConvertedBitmap(b, PixelFormats.Bgra32, null, 0);
+            char One(double x, double y)
+            {
+                var c = new byte[4];
+                f.CopyPixels(new Int32Rect((int)(x * f.PixelWidth), (int)(y * f.PixelHeight), 1, 1), c, 4, 0);
+                return Hue(Color.FromRgb(c[2], c[1], c[0]));
+            }
+            return $"{One(.25, .25)}{One(.75, .25)}{One(.25, .75)}{One(.75, .75)}";
+        }
+
+        foreach (var name in new[] { "circle.png", "star.jpg", "badge.svg" })
+        {
+            var f = Path.Combine(dir, "sumber-" + name);
+            File.Copy(Path.Combine(dir, name), f, true);
+            try
+            {
+                var loaded = Loader.LoadAll(f, 40, kiss, die)[0];
+                double ratio = loaded.ArtH / loaded.ArtW;
+                if (name.EndsWith(".svg") && Resized(Loader.LoadAll(f, 40, kiss, die)[0], 80).PxW < 1.5 * loaded.PxW)
+                    bad.Add("SVG yang filenya masih sama tidak digambar ulang pada lebar baru");
+                if (name.EndsWith(".svg")) File.WriteAllText(f, "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"100\"><rect width=\"400\" height=\"100\" fill=\"#0a0\"/></svg>");
+                else Save(Quads(400, 100), f);
+                File.SetLastWriteTimeUtc(f, DateTime.UtcNow.AddMinutes(1));
+                var changed = Resized(loaded, 60);
+                var readded = Loader.LoadAll(f, 40, kiss, die)[0];
+                File.Delete(f);
+                var gone = Resized(changed, 70);
+                if (Math.Abs(changed.ArtH / changed.ArtW - ratio) > 0.01 || Math.Abs(gone.ArtH / gone.ArtW - ratio) > 0.01)
+                    bad.Add($"{name}: perbandingan sisi {ratio:F2}, sesudah file diganti {changed.ArtH / changed.ArtW:F2}, sesudah dihapus {gone.ArtH / gone.ArtW:F2}");
+                if (Math.Abs(readded.ArtH / readded.ArtW - 0.25) > 0.01) bad.Add($"{name}: tambah ulang harus memakai isi baru, perbandingan sisi {readded.ArtH / readded.ArtW:F2}");
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { bad.Add($"{name}: {ex.Message}"); }
+            finally { File.Delete(f); }
+        }
+
+        string[] upright = ["RGBK", "GRKB", "KBGR", "BKRG", "RBGK", "BRKG", "KGBR", "GKRB"];
+        for (ushort o = 1; o <= 8; o++)
+        {
+            var md = new BitmapMetadata("jpg");
+            md.SetQuery("/app1/ifd/{ushort=274}", o);
+            var enc = new JpegBitmapEncoder { QualityLevel = 95 };
+            enc.Frames.Add(BitmapFrame.Create(Quads(240, 120), null, md, null));
+            var f = Path.Combine(dir, $"foto-exif-{o}.jpg");
+            using (var fs = File.Create(f)) enc.Save(fs);
+            var st = Loader.LoadAll(f, 40, kiss, die)[0];
+            double wantH = o <= 4 ? 20 : 80;
+            string want = upright[o - 1];
+            var raster = BitmapDecoder.Create(new MemoryStream(st.Raster), BitmapCreateOptions.None, BitmapCacheOption.OnLoad).Frames[0];
+            var again = Resized(st, 60);
+            File.Delete(f);
+            if (Math.Abs(st.ArtH - wantH) > 0.1 || Hues(st.Preview) != want || Hues(raster) != want || Math.Abs(again.ArtH - wantH * 1.5) > 0.1 || Hues(again.Preview) != want)
+                bad.Add($"orientasi {o}: {st.ArtW:F0} x {st.ArtH:F0} mm, layar {Hues(st.Preview)}, gambar export {Hues(raster)}, sesudah muat ulang {again.ArtH:F0} mm {Hues(again.Preview)}; harapan tinggi {wantH:F0} mm, {want}");
+            if (o == 6)
+            {
+                var pdf = Path.Combine(dir, "foto-exif.pdf");
+                var pl = new Placed { S = st, X = 20, Y = 20 };
+                Export.Pdf(pdf, [[pl]], A4W, [A4H]);
+                var page = RenderPage(pdf, 0, 4);
+                File.Delete(pdf);
+                char Cell(double x, double y) => Hue(At(page, pl, st.ArtW * x * 72 / 25.4, st.ArtH * y * 72 / 25.4, 4));
+                string got = $"{Cell(.25, .25)}{Cell(.75, .25)}{Cell(.25, .75)}{Cell(.75, .75)}";
+                if (got != want) bad.Add($"orientasi 6 di PDF: {got}, harapan {want}");
+            }
+        }
+
+        var framed = new Placed { S = Loader.Load("uji.png", 0, 40, kiss, die, edited: Loader.Png(Quads(240, 180))), X = 30, Y = 30 };
+        int RedPixels(bool isBad)
+        {
+            framed.Bad = isBad;
+            var f = Export.Preview(Path.Combine(dir, "pratinjau-merah.jpg"), [[framed]], A4W, [A4H], Margin)[0];
+            var b = new FormatConvertedBitmap(BitmapDecoder.Create(new MemoryStream(File.ReadAllBytes(f)), BitmapCreateOptions.None, BitmapCacheOption.OnLoad).Frames[0], PixelFormats.Bgr24, null, 0);
+            var px = new byte[b.PixelWidth * 3 * b.PixelHeight];
+            b.CopyPixels(px, b.PixelWidth * 3, 0);
+            File.Delete(f);
+            int n = 0;
+            for (int i = 0; i + 2 < px.Length; i += 3) if (px[i + 2] > 220 && px[i + 1] < 50 && px[i] < 50) n++;
+            return n;
+        }
+        int off = RedPixels(false), on = RedPixels(true);
+        if (on != off) bad.Add($"pratinjau JPG menampilkan bingkai merah: piksel merah {off} menjadi {on}");
+
+        // Kotak lebar desain: koma dan titik sama-sama desimal; teks yang tidak terbaca dan angka bukan positif tidak mengubah lebar.
+        foreach (var (text, want) in new (string, object)[] { ("62.5", 62.5), ("62,5", 62.5), ("62,50", 62.5), ("1,5", 1.5), ("abc", DependencyProperty.UnsetValue), ("", DependencyProperty.UnsetValue), ("0", DependencyProperty.UnsetValue), ("-3", DependencyProperty.UnsetValue) })
+        {
+            var got = MmText.I.ConvertBack(text, typeof(double), null!, CultureInfo.InvariantCulture);
+            if (!Equals(got, want)) bad.Add($"kotak lebar '{text}' terbaca {got}");
+        }
+        if (new Sticker { ArtH = 62.5 }.HText != "× 62.5 mm") bad.Add($"tinggi di daftar desain memakai tanda desimal lain: {new Sticker { ArtH = 62.5 }.HText}");
+
+        // Export ke file yang masih terbuka di program lain: pesan untuk operator, di semua jenis export.
+        var locked = Path.Combine(dir, "terkunci.pdf");
+        using (new FileStream(locked, FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+            foreach (var (kind, save) in new (string, Action)[]
+            {
+                ("PDF", () => Export.Pdf(locked, [[framed]], A4W, [A4H])),
+                ("JPG", () => Export.Preview(locked, [[framed]], A4W, [A4H], Margin)),
+                ("SVG", () => ExportSvg.Svg(locked, [[framed]], A4W, [A4H], Margin)),
+                ("Print Ticket", () => Export.Ticket(locked, "A4", [[framed]], A4W, [A4H], Margin, [])),
+            })
+                try { save(); bad.Add($"export {kind} ke file terkunci tidak gagal"); }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { if (MainWindow.SaveFail(ex) != Lang.T("SaveFail")) bad.Add($"export {kind} ke file terkunci: pesan teknis '{ex.Message}'"); }
+        File.Delete(locked);
+        return bad;
     }
 
     static void Save(BitmapSource b, string path, BitmapEncoder? enc = null)
