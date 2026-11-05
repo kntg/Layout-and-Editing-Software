@@ -108,7 +108,7 @@ public static class SelfCheck
                 $"D6: 149,6 dpi tampil {DpiOf(1496).DpiText}, merah {DpiOf(1496).LowDpi}; 149,4 dpi tampil {DpiOf(1494).DpiText}, merah {DpiOf(1494).LowDpi}");
             log.Add($"dpi: circle 40 mm = {circle.Dpi:0} dpi, 80 mm = {wide.Dpi:0} dpi (rendah); 149,6 dpi = {DpiOf(1496).DpiText} tidak merah");
 
-            // Skenario uji garis potong S1-S9 dan S11-S22 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
+            // Skenario uji garis potong S1-S9 dan S11-S23 (docs/UJI-GARIS-POTONG.md). S10 dan bagian CorelDRAW di S8 diuji operator.
             // Skenario stabilitas dan performa P1-P5 (docs/UJI-STABILITAS.md). P6-P10 diuji pengembang/operator.
             var fails = new List<string>();
             void Report(string id, string title, bool ok, string detail)

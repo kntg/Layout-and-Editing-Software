@@ -126,6 +126,7 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | Delete | Hapus stiker yang dipilih (di editor: hapus titik yang dipilih) |
 | Panah, Shift+panah | Geser stiker yang dipilih 1 mm / 10 mm |
 | Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
+| Ctrl+D | Duplikat stiker yang dipilih di kanan atau bawahnya. Bila beberapa stiker terpilih: hanya yang terakhir disentuh |
 | Ctrl+klik | Tambah atau lepas stiker dari pilihan |
 | Alt + seret stiker | Salin stiker ke titik lepas, juga ke lembar lain |
 | Esc saat menarik | Batalkan tarikan, atur ukuran, atau kotak pilih |
@@ -193,7 +194,7 @@ Langkah:
 
 - [Kebutuhan aplikasi](docs/kebutuhan-aplikasi.md) (dulu bernama PRD): tujuan, fitur, keputusan, batasan, daftar uji untuk operator, dan cara menjalankan (§11).
 - [Catatan riset](docs/RESEARCH.md): riset pendukung keputusan.
-- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S22 dan hasilnya.
+- [Skenario uji garis potong](docs/UJI-GARIS-POTONG.md): skenario S1–S23 dan hasilnya.
 - [Skenario uji stabilitas](docs/UJI-STABILITAS.md): skenario P1–P10 (proses pembantu CDR, kerja paralel, memori) dan hasilnya.
 - [Uji alur lengkap](docs/pengujian/uji-alur-lengkap.md): semua kasus uji dari file masuk sampai potong di Graphtec, dengan status PASS/FAIL/BLOCKED/NOT RUN dan buktinya. Lembar isian: [lembar hasil uji (CSV)](docs/pengujian/lembar-hasil-uji-alur-lengkap.csv).
 - [Data uji](Printech-TestData/README.md): file uji dengan hasil benar yang sudah diketahui, skrip validasi, dan skrip uji tampilan.

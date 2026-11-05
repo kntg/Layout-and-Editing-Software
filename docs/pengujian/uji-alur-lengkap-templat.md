@@ -17,7 +17,7 @@ Bagian 4 berisi hasil pemeriksaan sebelum perbaikan D1/D2, hasil sesudahnya, dan
 
 | Jenis | Isi | Cara menjalankan | Sudah dijalankan |
 | --- | --- | --- | --- |
-| Pemeriksaan otomatis | Pemeriksaan bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S22, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
+| Pemeriksaan otomatis | Pemeriksaan bawaan aplikasi ([SelfCheck.cs](../../StickerLayout/SelfCheck.cs)): skenario S1–S9, S11–S23, P1–P5, dan pemeriksaan tambahan | `StickerLayout.exe --selfcheck <folder>`. Exit code 0 dan baris terakhir `OK` berarti lulus | Ya |
 | Validasi data uji | Mesin Printech dijalankan pada data uji (`Printech-TestData`), lalu hasilnya dinilai dengan bentuk file asli (`validasi.ps1` + `validasi.py`), ditambah pengecekan bahwa file asli tidak berubah (`cek-original.ps1`) | Lihat [panduan data uji](../../Printech-TestData/README.md) | Ya |
 | Uji tampilan | Pengujian lewat jendela aplikasi di PC pengembang. Sebagian sudah dijalankan oleh skrip yang mengoperasikan aplikasi sendiri lewat mouse, keyboard, dan kontrol jendela: uji semua file input, uji file khusus, uji tata letak, uji urungkan, dan uji editor garis potong (skrip `ui-*.ps1` di `Printech-TestData`, dijalankan dengan Windows PowerShell 5.1) | Langkah per kasus uji, atau skrip | Ya (2026-10-19) |
 | Operator dan mesin | CorelDRAW, Cutting Master 5, printer Develop, Graphtec | PC operator di AP 55 | Tidak (BLOCKED, di luar cakupan prototipe) |
@@ -177,6 +177,10 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 **Pilih banyak, pindah antar-lembar, zoom, dan bahan (2026-11-04):** pindah stiker antar-lembar dan pemeriksaan jarak antar stiker (kebutuhan aplikasi F34) digabung dengan pilih banyak dari Jonathan serta halaman sambutan dan menu Lainnya dari Yansen (F35–F37). Pemeriksaan otomatis S21 dan S22 lulus (EDIT-21, EDIT-22). Uji dengan mouse sungguhan menemukan dua masalah sebelum masuk `main`, dan keduanya sudah diperbaiki: klik di luar lembar tidak lagi melepas pilihan sejak lembar ditengahkan, dan zoom in masih memindahkan lembar ke baris lain. Hasil akhir pada kode yang sama: uji tata letak (`ui-edit-layout.ps1`) 10/10, ditambah skrip sekali pakai: pindah antar-lembar 14/14, pilih banyak 14/14, atur ukuran 11/11, salin-tempel 11/11, dan zoom 1/1. Pada atur ukuran, angka saat menarik diperiksa dari piksel kotaknya dan tangkapan layar, karena skrip tidak selalu bisa membaca teksnya. Bukti uji mouse tidak disimpan.
 
+**Sisa temuan (2026-11-04):** panel kiri halaman sambutan disembunyikan sampai tombolnya berfungsi, tanda registrasi ikut urungkan, dan jumlah lembar per baris mengikuti lebar jendela. Uji lewat kontrol jendela, tanpa mouse, pada versi sebelum dan sesudah: 0 dari 3 menjadi 3 dari 3. Sesudah push, uji dengan mouse sungguhan pada kode yang sama: uji tata letak (`ui-edit-layout.ps1`) 10/10, ditambah skrip sekali pakai: pindah antar-lembar 14/14, pilih banyak 15/15 termasuk teks pilihan versi English, atur ukuran 11/11, salin-tempel 11/11, dan zoom 1/1. Bukti tidak disimpan.
+
+**Salin dengan Alt + seret dan batal dengan Esc (2026-11-05):** fitur baru atas permintaan user (kebutuhan aplikasi F38). Keadaan selama stiker ditarik kini ada di satu tempat, dan isi lembar serta posisi stiker baru berubah saat dilepas. Pemeriksaan otomatis S23 lulus (EDIT-23). Uji dengan mouse sungguhan pada kode yang di-push: Alt + seret dan Esc 15/15, dan semua uji mouse di atas diulang dengan hasil yang sama. Ctrl+D dari Jonathan (F39) masuk sesudahnya. Pada kode yang menyertakannya, semua uji mouse di atas diulang dengan hasil yang sama, ditambah 7 langkah Ctrl+D: sebelum ini Ctrl+D belum punya uji. Bukti uji mouse tidak disimpan.
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
@@ -221,7 +225,7 @@ Lembar kerja yang sama, untuk diisi saat menguji: [lembar hasil uji (CSV)](lemba
 - [Kebutuhan aplikasi](../kebutuhan-aplikasi.md) F1–F33: format input, pemangkasan, garis kiss/die, kertas, margin, susun banyak lembar, edit, export CMYK murni, bahasa, dpi 150, preview 2000 piksel, Rapikan, garis dengan sedikit titik, bleed paling besar sama dengan jarak, indikator dan target bahan, tempel otomatis, Print Ticket, penuhi lembar, urungkan, editor garis potong, smart select, desain kotak, preset bentuk, warna border, tanda registrasi, export SVG, pilihan susun Hemat dan Rapi, duplikat kanvas, salin-tempel stiker, atur ukuran di kanvas.
 - Kebutuhan aplikasi §6 (keputusan): penjaga jarak offset − 0,3 mm, die membungkus kiss, grid 1 mm, proses pembantu CDR 30 detik.
 - Kebutuhan aplikasi §8 (batasan): hanya garis luar dan lubang asli yang tetap terbuka (donat) yang dipotong; SVG menjadi gambar (tanpa peringatan), dan PDF yang diputar menjadi gambar dengan peringatan.
-- [Skenario uji garis potong](../UJI-GARIS-POTONG.md) S1–S22, [skenario uji stabilitas](../UJI-STABILITAS.md) P1–P10, dan daftar uji operator di kebutuhan aplikasi §10 butir 1–18.
+- [Skenario uji garis potong](../UJI-GARIS-POTONG.md) S1–S23, [skenario uji stabilitas](../UJI-STABILITAS.md) P1–P10, dan daftar uji operator di kebutuhan aplikasi §10 butir 1–18.
 - Spesifikasi leader:
   - bagian 2: memori ±120 MB, tampilan tetap responsif;
   - bagian 3: CMYK murni (DeviceCMYK), bleed;
