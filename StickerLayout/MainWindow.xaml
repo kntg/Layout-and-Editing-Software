@@ -167,7 +167,7 @@
                                     </StackPanel>
                                 </Expander.Header>
                                 <StackPanel>
-                                    <ListBox x:Name="List" Style="{StaticResource Plain}" MaxHeight="340">
+                                    <ListBox x:Name="List" SelectionChanged="List_SelectionChanged" Style="{StaticResource Plain}" MaxHeight="340">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid>
@@ -216,7 +216,7 @@
                                                             </Grid.ColumnDefinitions>
                                                             <TextBox Width="50" Style="{StaticResource Num}" Text="{Binding WidthMm, Converter={x:Static local:MmText.I}}" ToolTip="{DynamicResource WidthTip}"/>
                                                             <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip="{Binding HText}" Text="{Binding HText}" Style="{StaticResource Small}" Margin="5,0,6,0"/>
-                                                            <TextBox Grid.Column="2" Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource QtyTip}"/>
+                                                            <TextBox Grid.Column="2" Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" LostFocus="ListCopies_LostFocus" ToolTip="{DynamicResource QtyTip}"/>
                                                             <TextBlock Grid.Column="3" Text="pcs" Style="{StaticResource Small}" Margin="5,0,0,0"/>
                                                         </Grid>
                                                     </StackPanel>
@@ -278,38 +278,72 @@
                                         <TextBlock Text="{DynamicResource SecSel}" FontWeight="SemiBold" Margin="9,0,0,0"/>
                                     </StackPanel>
                                 </Expander.Header>
-                                <Grid>
-                                    <TextBlock x:Name="SelNone" Text="{DynamicResource SelNone}" Style="{StaticResource Label}" TextWrapping="Wrap"/>
-                                    <Grid x:Name="SelInfo" Visibility="Collapsed">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                        <Border Width="52" Height="52" CornerRadius="3" Background="{StaticResource Checker}" BorderBrush="{StaticResource Line}" BorderThickness="1" VerticalAlignment="Top">
-                                            <Image x:Name="SelThumb" Stretch="Uniform" Margin="4"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock x:Name="SelName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                            <Grid Margin="0,6,0,0">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-                                                <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3"/>
-                                                <TextBlock x:Name="SelSize" Grid.Column="1" Typography.NumeralAlignment="Tabular"/>
-                                                <TextBlock Grid.Row="1" Text="{DynamicResource SelRot}" Style="{StaticResource Label}" Margin="0,0,12,3"/>
-                                                <TextBlock x:Name="SelRot" Grid.Row="1" Grid.Column="1"/>
-                                                <TextBlock Grid.Row="2" Text="{DynamicResource SelPos}" Style="{StaticResource Label}" Margin="0,0,12,0"/>
-                                                <TextBlock x:Name="SelPos" Grid.Row="2" Grid.Column="1" Typography.NumeralAlignment="Tabular"/>
-                                            </Grid>
-                                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                <Button Click="Rotate_Click" Padding="8,2" ToolTip="R" AutomationProperties.Name="{DynamicResource RotSel}">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE7AD;" FontSize="12"/>
-                                                        <TextBlock Text="90°" Margin="6,0,0,0"/>
-                                                    </StackPanel>
-                                                </Button>
-                                                <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" Click="DeletePlaced_Click" Margin="6,0,0,0" Width="28" Height="28"
-                                                        ToolTip="{DynamicResource DelSel}" AutomationProperties.Name="{DynamicResource DelSel}"/>
-                                            </StackPanel>
+                                <Grid x:Name="SelInfo" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                    <Border Width="52" Height="52" CornerRadius="3" Background="{StaticResource Checker}" BorderBrush="{StaticResource Line}" BorderThickness="1" VerticalAlignment="Top">
+                                        <Image x:Name="SelThumb" Stretch="Uniform" Margin="4"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <TextBlock x:Name="SelName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="60"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            
+                                            <!-- Baris 0: Ukuran (Bisa Diedit) -->
+                                            <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelSize_Changed" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
+                                            <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+
+                                            <!-- Baris 1: Jumlah (Bisa Diedit) -->
+                                            <TextBlock Grid.Row="1" Text="{DynamicResource QtyTip}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="SelCopiesBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelCopies_Changed" ToolTip="{DynamicResource QtyTip}" Margin="0,0,0,3"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="pcs" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+
+                                            <!-- Baris 2: Rotasi -->
+                                            <TextBlock Grid.Row="2" Text="{DynamicResource SelRot}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SelRot" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,3" VerticalAlignment="Center"/>
+
+                                            <!-- Baris 3: Posisi -->
+                                            <TextBlock Grid.Row="3" Text="{DynamicResource SelPos}" Style="{StaticResource Label}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SelPos" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,0" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        
+                                        <!-- Area Tombol Aksi -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <Button Click="Rotate_Click" Padding="8,2" ToolTip="R" AutomationProperties.Name="{DynamicResource RotSel}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE7AD;" FontSize="12"/>
+                                                    <TextBlock Text="90°" Margin="6,0,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                            
+                                            <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" Click="DeletePlaced_Click" Margin="6,0,0,0" Width="28" Height="28"
+                                                    ToolTip="{DynamicResource DelSel}" AutomationProperties.Name="{DynamicResource DelSel}"/>
+                                            
+                                            <!-- Tombol Clean (Rapikan) -->
+                                            <Button Content="&#xE75C;" Click="CleanSel_Click" Margin="6,0,0,0" Width="28" Height="28" 
+                                                    ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="{DynamicResource Clean}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
+                                                        <Setter Property="ToolTip" Value="{DynamicResource CleanTip}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanClean}" Value="False">
+                                                                <Setter Property="ToolTip" Value="{DynamicResource CleanVector}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            
+                                            <!-- Tombol Cut (Garis Potong) -->
+                                            <Button Style="{StaticResource IconBtn}" Content="&#xE70F;" Click="CutSel_Click" Margin="6,0,0,0" Width="28" Height="28"
+                                                    ToolTip="{DynamicResource CutTip}" AutomationProperties.Name="{DynamicResource CutEdit}"/>
                                         </StackPanel>
+                                    </StackPanel>
                                     </Grid>
-                                </Grid>
                             </Expander>
 
                             <Expander Style="{StaticResource Panel}">

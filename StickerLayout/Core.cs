@@ -1031,6 +1031,7 @@ public static class Nest
     // dijaga) dan tetap di dalam margin. Memakai grid hunian yang sama dengan susun otomatis. false = tidak ada tempat.
     public static bool Snap(List<Placed> ps, Placed p, double cw, double ch, double margin, double gap, bool marks = false)
     {
+        if (p == null || p.S == null) return false; // <--- TAMBAHKAN INI
         var occ = Occupancy(ps.Where(q => q != p), cw, ch, margin, CellsOf(gap), KeepOut(cw, ch, margin, marks, Printed(p.S)));
         int cols = occ.GetLength(0), rows = occ.GetLength(1);
         var f = FootOf(p.S, p.Rot);
@@ -1234,7 +1235,9 @@ public static class Nest
     // Ukuran disimpan per desain, jadi semua salinan ikut berganti. Posisinya tetap; yang jadi bertabrakan ditandai Check.
     public static void SwapDesign(IEnumerable<List<Placed>> sheets, Sticker old, Sticker n)
     {
-        foreach (var p in sheets.SelectMany(x => x)) if (p.S == old) p.S = n;
+        if (old == null || n == null) return;
+        foreach (var p in sheets.SelectMany(x => x)) 
+            if (p.S == old) p.S = n;
     }
 
     // Duplikat kanvas: isi, posisi, dan rotasi sama persis, termasuk hasil edit. Tepat setelah lembar asal, jadi tampil di sampingnya.

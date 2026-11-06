@@ -41,6 +41,10 @@ public partial class MainWindow : Window
     string status = "";
     bool bandActive = false;
 
+    bool syncingList;
+
+    bool syncingSel;
+
     public MainWindow(string[] files)
     {
         startFiles = files;
@@ -71,6 +75,10 @@ public partial class MainWindow : Window
 
     void Redraw(string? msg = null)
     {
+        // ===== PENGAMAN GLOBAL =====
+        sels.RemoveWhere(p => p.S == null);
+        if (sel != null && sel.S == null) sel = null;
+        // ===========================
         if (msg != null) status = msg;
         Status.Text = status;
         Status.ToolTip = status == "" ? null : status;
@@ -133,16 +141,53 @@ public partial class MainWindow : Window
         WarnText.Text = string.Join("   ", warn);
         WarnPill.Visibility = warn.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        SelNone.Visibility = sel == null ? Visibility.Visible : Visibility.Collapsed;
         SelInfo.Visibility = sel == null ? Visibility.Collapsed : Visibility.Visible;
-        if (sel != null)
+        
+        if (sel != null && SelSizeBox != null && SelCopiesBox != null) // Tambahkan pengecekan
         {
             var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
             SelThumb.Source = sel.S.Preview;
             SelName.Text = sels.Count > 1 ? Lang.T("NSelected", sels.Count) : sel.S.Name;
-            SelSize.Text = $"{F(aw)} × {F(ah)} mm";
+
+            // BLOKIR event TextChanged saat mengisi nilai
+            syncingSel = true;
+            SelSizeBox.Text = F(sel.S.WidthMm);
+            SelCopiesBox.Text = sel.S.Copies.ToString();
+            syncingSel = false;
+
             SelRot.Text = $"{sel.Rot}°";
             SelPos.Text = $"X {F(sel.X)}   Y {F(sel.Y)} mm";
+
+            // Sinkronkan ListBox panel kanan dengan pengaman
+            if (sels.Count <= 1 && items.Contains(sel.S))
+            {
+                if (List.SelectedItem != sel.S)
+                {
+                    syncingList = true;
+                    List.SelectedItem = sel.S;
+                    List.ScrollIntoView(sel.S);
+                    syncingList = false;
+                }
+            }
+            else
+            {
+                if (List.SelectedItem != null)
+                {
+                    syncingList = true;
+                    List.SelectedItem = null;
+                    syncingList = false;
+                }
+            }
+        }
+        else
+        {
+            // Jika tidak ada yang dipilih, kosongkan ListBox
+            if (List.SelectedItem != null)
+            {
+                syncingList = true;
+                List.SelectedItem = null;
+                syncingList = false;
+            }
         }
     }
 
@@ -421,9 +466,17 @@ public partial class MainWindow : Window
     // Ganti desain dengan hasil muat ulangnya; jumlah salinan dan nama tetap.
     void Replace(Sticker old, Sticker n)
     {
+        if (old == null || n == null) return; // Pagar pengaman
+
         n.Copies = old.Copies;
         n.Name = old.Name;
-        items[items.IndexOf(old)] = n;
+        
+        int idx = items.IndexOf(old);
+        if (idx >= 0) 
+        {
+            items[idx] = n; // Hanya ganti jika old masih ada di items
+        }
+        
         clip = [.. clip.Select(c => c.S == old ? (n, c.Rot, c.X, c.Y, c.Sheet) : c)];
     }
 
@@ -1091,32 +1144,78 @@ public partial class MainWindow : Window
     // pindah ke posisi kosong terdekat seperti saat digeser; salinan lain yang jadi bertabrakan ditandai merah.
     void EndResize()
     {
-        bool changed = sizeTip != null && Math.Abs(sizeW - sel!.S.ArtW) >= 0.05, fits;
+        // 1. Pagar Pengaman Awal
+        if (sel == null || sel.S == null)
+        {
+            (sizing, sizeTip) = (-1, null);
+            Sheets.ReleaseMouseCapture();
+            Redraw();
+            return;
+        }
+
+        bool changed = sizeTip != null && Math.Abs(sizeW - sel.S.ArtW) >= 0.05;
+        bool fits = true;
+        
         (sizing, sizeTip) = (-1, null);
         Sheets.ReleaseMouseCapture();
+        
         if (!changed) { Redraw(); return; }
-        var old = sel!.S;
+        
+        var old = sel.S;
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
             old.WidthMm = sizeW;
             var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed);
+            
+            if (n == null) throw new Exception("Gagal memuat ulang desain.");
+
             Replace(old, n);
             Nest.SwapDesign(sheets, old, n);
-            (sel.X, sel.Y) = (sizeBox.X, sizeBox.Y);
-            fits = Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
-            if (!fits) Nest.KeepInside(sel, sheetW, sheetH[selSheet], MarginMm);
+            
+            if (sel != null && (sel.S == old || sel.S == null)) sel.S = n;
+
+            // PENGAMAN: Pastikan sel tidak null tepat sebelum mengakses X dan Y
+            if (sel != null) 
+            {
+                (sel.X, sel.Y) = (sizeBox.X, sizeBox.Y);
+            }
+            
+            if (selSheet >= 0 && selSheet < sheets.Count)
+            {
+                // Bersihkan data kotor
+                sheets[selSheet].RemoveAll(p => p.S == null);
+
+                if (sheets[selSheet].Contains(sel))
+                {
+                    fits = Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
+                    if (!fits) Nest.KeepInside(sel, sheetW, sheetH[selSheet], MarginMm);
+                }
+                else
+                {
+                    fits = false;
+                }
+            }
         }
         catch (Exception ex)
         {
-            old.WidthMm = old.LoadedW;
-            MessageBox.Show(ex.Message, App.Brand);
+            if (old != null) old.WidthMm = old.LoadedW;
+            MessageBox.Show($"Error di EndResize:\n{ex.Message}\n{ex.StackTrace}", App.Brand);
             Redraw();
             return;
         }
         finally { Mouse.OverrideCursor = null; }
+        
         List.Items.Refresh();
         CheckAll();
+        
+        // 3. Pagar Pengaman Akhir
+        if (sel == null || sel.S == null)
+        {
+            Redraw();
+            return;
+        }
+        
         var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
         Redraw(Lang.T(fits ? "Resized" : "ResizedNoRoom", sel.S.Name, F(aw), F(ah)) + "  " + Summary());
         Commit();
@@ -1149,9 +1248,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (hit != null)
+                if (hit != null)
         {
-            // Ctrl+klik: tambah/buang dari pilihan. Klik stiker yang sudah terpilih: pertahankan grup (bisa seret bersama).
             if (ctrl) Toggle(hit);
             else if (!sels.Contains(hit)) SelectOne(hit);
             else sel = hit;
@@ -1162,7 +1260,9 @@ public partial class MainWindow : Window
                 drag = new DragState(sels, selSheet);
                 Sheets.CaptureMouse();
             }
-            Redraw();
+            
+            // Pastikan Redraw dipanggil setelah sel di-set
+            Redraw(); 
             return;
         }
 
@@ -1199,7 +1299,14 @@ public partial class MainWindow : Window
 
     void Sheets_Move(object s, MouseEventArgs e)
     {
-        if (sizing >= 0) { SizeTo(e.GetPosition(canvases[selSheet]) - sizeGrab); return; }
+        // Pengecekan validasi sebelum mengakses canvases
+        if (sizing >= 0)
+        {
+            if (selSheet >= 0 && selSheet < canvases.Count)
+                SizeTo(e.GetPosition(canvases[selSheet]) - sizeGrab);
+            return;
+        }
+        
         if (band == null && drag == null) return;
         if (selSheet < 0 || selSheet >= canvases.Count) return;
         
@@ -1398,6 +1505,92 @@ public partial class MainWindow : Window
             // Kita buat Button dummy karena CutItem_Click butuh sender ber-DataContext
             var dummyBtn = new Button { DataContext = st };
             CutItem_Click(dummyBtn, e);
+        }
+    }
+    void CleanSel_Click(object s, RoutedEventArgs e)
+    {
+        if (sel?.S is Sticker st) Clean(st);
+    }
+
+    void CutSel_Click(object s, RoutedEventArgs e)
+    {
+        if (sel?.S is Sticker st)
+        {
+            // Panggil CutItem_Click dengan dummy button agar membaca DataContext
+            var dummyBtn = new Button { DataContext = st };
+            CutItem_Click(dummyBtn, e);
+        }
+    }
+
+    // Menangani perubahan ukuran dari panel Selection
+    void SelSize_Changed(object s, TextChangedEventArgs e)
+    {
+        if (restoring || syncingList || syncingSel || sel == null) return; // Tambah syncingSel
+        if (MmText.Parse(SelSizeBox.Text) is { } newWidth && newWidth > 0 && Math.Abs(sel.S.WidthMm - newWidth) > 0.05)
+        {
+            sel.S.WidthMm = newWidth;
+            syncingList = true;
+            List.Items.Refresh();
+            Redraw();
+            syncingList = false;
+        }
+    }
+
+    void SelCopies_Changed(object s, TextChangedEventArgs e)
+    {
+        if (restoring || syncingList || syncingSel || sel == null) return; // Tambah syncingSel
+        if (int.TryParse(SelCopiesBox.Text, out int newCopies) && newCopies > 0 && sel.S.Copies != newCopies)
+        {
+            sel.S.Copies = newCopies;
+            syncingList = true;
+            List.Items.Refresh();
+            Redraw();
+            syncingList = false;
+        }
+    }
+    
+    void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (syncingList || restoring) return; // Abaikan jika sedang sinkronisasi
+
+        if (List.SelectedItem is Sticker st)
+        {
+            // Jika desain ini sudah ada di dalam sels (multi-select), jangan ganggu.
+            if (sels.Any(p => p.S == st)) return;
+
+            // Cari salinan pertama dari desain ini di kanvas
+            var target = sheets.SelectMany(x => x).FirstOrDefault(p => p.S == st);
+            
+            if (target != null)
+            {
+                SelectOne(target);
+                selSheet = sheets.FindIndex(sh => sh.Contains(target));
+                Redraw();
+            }
+            else
+            {
+                ClearSel();
+                Redraw();
+            }
+        }
+        else if (List.SelectedItem == null)
+        {
+            if (sels.Count > 0) { ClearSel(); Redraw(); }
+        }
+    }
+
+     void ListCopies_LostFocus(object s, RoutedEventArgs e)
+    {
+        if (sel != null) Redraw(); 
+    }
+
+    void SelSize_LostFocus(object s, RoutedEventArgs e)
+    {
+        if (sel == null) return;
+        if (MmText.Parse(SelSizeBox.Text) is { } newWidth && newWidth > 0 && Math.Abs(sel.S.WidthMm - newWidth) > 0.05)
+        {
+            sel.S.WidthMm = newWidth;
+            Arrange();
         }
     }
 }
