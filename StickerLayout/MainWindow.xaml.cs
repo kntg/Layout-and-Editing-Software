@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     bool panning, space, altUsed; // altUsed: Alt dipakai saat menarik, jadi melepasnya tidak membuka menu
     Tool tool = Tool.Move;
     string status = "";
+    bool bandActive = false;
 
     public MainWindow(string[] files)
     {
@@ -1163,16 +1164,20 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Klik ruang kosong: mulai kotak seret-pilih (rubber-band) pada lembar ini.
+                // Klik ruang kosong: mulai kotak seret-pilih (rubber-band) pada lembar ini.
         bool had = sels.Count > 0;
-        // Titik awal diukur terhadap kanvas yang sedang hidup (sheet) SEBELUM Redraw.
-        // Setelah Redraw kanvas dibangun ulang dan belum di-layout, GetPosition terhadapnya
-        // mengembalikan offset salah → margin kotak seret aneh. Satuan kanvas = mm, sama di
-        // kanvas lama dan baru, jadi nilai bandFrom tetap valid setelah rebuild.
+        
         bandFrom = e.GetPosition(sheet);
+
         if (!ctrl) ClearSel();
-        if (had) Redraw();   // bersihkan sorotan pilihan lama sebelum menambah kotak seret
+        
+        // Panggil Redraw() untuk membersihkan seleksi lama (handles & frame)
+        if (had) Redraw();
+
+        // Kita tangkap referensi canvas yang BARU dibuat oleh Redraw()
         if (selSheet < 0 || selSheet >= canvases.Count) return;
+        var activeCanvas = canvases[selSheet];
+
         band = new System.Windows.Shapes.Rectangle
         {
             Width = 0, Height = 0,
@@ -1181,10 +1186,13 @@ public partial class MainWindow : Window
         };
         Canvas.SetLeft(band, bandFrom.X);
         Canvas.SetTop(band, bandFrom.Y);
-        // Kotak BELUM ditambah ke kanvas di sini. Rectangle tanpa ukuran nyata meregang penuh
-        // (tampak kotak seluruh lembar saat klik-tahan tanpa geser). Baru ditambah di Sheets_Move
-        // setelah kursor benar-benar bergerak, jadi awalnya selalu tepat di titik klik.
-        Sheets.CaptureMouse();
+        
+        // Kita gunakan Dispatcher untuk menunda penangkapan mouse (CaptureMouse)
+        // sampai WPF selesai melakukan layout pada Canvas yang baru dibuat oleh Redraw().
+        Dispatcher.BeginInvoke(new Action(() => 
+        {
+            if (band != null) Sheets.CaptureMouse();
+        }), DispatcherPriority.Loaded);
     }
 
     void Sheets_Move(object s, MouseEventArgs e)
@@ -1192,18 +1200,26 @@ public partial class MainWindow : Window
         if (sizing >= 0) { SizeTo(e.GetPosition(canvases[selSheet]) - sizeGrab); return; }
         if (band == null && drag == null) return;
         if (selSheet < 0 || selSheet >= canvases.Count) return;
+        
         var c = canvases[selSheet];
-        var pt = e.GetPosition(c);
 
         if (band != null)
         {
+            var pt = e.GetPosition(c);
+            
+            double dx = Math.Abs(pt.X - bandFrom.X);
+            double dy = Math.Abs(pt.Y - bandFrom.Y);
+
+            // Threshold: Jangan buat kotak jika pergeseran kurang dari 3 mm
+            if (band.Parent == null && dx < 3 && dy < 3) return; 
+
             double x = Math.Min(pt.X, bandFrom.X), y = Math.Min(pt.Y, bandFrom.Y);
             Canvas.SetLeft(band, x);
             Canvas.SetTop(band, y);
-            band.Width = Math.Abs(pt.X - bandFrom.X);
-            band.Height = Math.Abs(pt.Y - bandFrom.Y);
-            // Tambah ke kanvas pada gerak pertama (lihat Sheets_Down): sebelum ini kotak punya
-            // ukuran nyata, jadi tidak pernah meregang penuh.
+            band.Width = dx;
+            band.Height = dy;
+            
+            // Masukkan band ke canvas yang aktif
             if (band.Parent == null && !c.Children.Contains(band)) c.Children.Add(band);
             return;
         }
@@ -1235,13 +1251,20 @@ public partial class MainWindow : Window
         if (band != null)
         {
             var box = new Rect(Canvas.GetLeft(band), Canvas.GetTop(band), band.Width, band.Height);
-            if (selSheet >= 0 && selSheet < canvases.Count) canvases[selSheet].Children.Remove(band);
+            
+            // Hapus band dari canvas yang aktif (jika ada)
+            if (selSheet >= 0 && selSheet < canvases.Count) 
+                canvases[selSheet].Children.Remove(band);
+                
             band = null;
             Sheets.ReleaseMouseCapture();
+            
             if (selSheet < 0 || selSheet >= sheets.Count) { Redraw(); return; }
+            
             // Pilih stiker yang kotak batasnya beririsan dengan kotak seret.
             foreach (var p in sheets[selSheet])
                 if (box.IntersectsWith(new Rect(p.X, p.Y, p.BW, p.BH))) sels.Add(p);
+                
             sel = sels.LastOrDefault();
             Redraw();
             return;
