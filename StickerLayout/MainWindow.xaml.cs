@@ -952,9 +952,11 @@ public partial class MainWindow : Window
         UpdateCursor();
     }
 
-    // Alt+Tab saat Spasi ditahan: lepas tombolnya tidak pernah sampai ke jendela ini, jadi mode geser dilepas di sini.
+    // Alt+Tab saat Spasi atau Alt ditahan: lepas tombolnya tidak pernah sampai ke jendela ini. Mode geser dilepas di sini, dan Alt berikutnya
+    // tidak lagi ditahan, jadi menu tetap terbuka dengan Alt seperti biasa.
     void Window_Deactivated(object s, EventArgs e)
     {
+        altUsed = false;
         if (!space) return;
         space = false;
         UpdateCursor();

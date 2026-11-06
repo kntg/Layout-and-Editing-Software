@@ -1231,6 +1231,11 @@ public static class SelfCheck
                 + "kotak lebar menerima koma dan titik; export ke file terkunci memberi pesan untuk operator; "
                 + "gambar dan garis margin di dalam jendela tepat di posisi datanya; dilepas di lembar lain tepat di grid pada 4 rotasi");
 
+            var moveBad = IntegrityErrors(dir, kiss, die);
+            Check(moveBad.Count == 0, "pindah, salin, dan duplikat: " + string.Join("; ", moveBad));
+            log.Add("pindah, salin dengan Alt, dan duplikat: data desain tetap (gambar, PDF, bleed, garis potong, garis manual, bentuk, border, offset), "
+                + "salinan memakai desain dan rotasi yang sama, penempatan sah di grid, tanda merah mengikuti pemeriksaan, desain yang diganti berlaku untuk semua salinannya");
+
             // Penuhi lembar (Compact): stiker bertambah bergiliran, jumlah lembar tetap, tidak ada tabrakan atau keluar margin,
             // dan setelah penuh tidak ada lagi yang muat.
             var fs = sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList()).ToList();
@@ -1598,6 +1603,96 @@ public static class SelfCheck
             if (new DragState([crowded], 0) { ToSheet = 1, Offset = new Vector(60.3, 80.4) }.Drop(crowdBook, [A4H, A4H], A4W, Margin, Gap) == null || Nest.Check(crowdBook[1], A4W, A4H, Margin, false, Gap) != 0)
                 bad.Add($"dilepas di atas stiker lain, rotasi {rot}: posisi {crowded.X},{crowded.Y}");
         }
+        return bad;
+    }
+
+    // Pindah, salin (Alt + seret), dan duplikat tidak mengubah data desain (2026-11-06): salinan memakai Sticker yang sama, rotasi ikut,
+    // posisi sah di grid, tanda merah mengikuti pemeriksaan, dan desain yang diganti (atur ukuran) berlaku untuk semua penempatannya.
+    static List<string> IntegrityErrors(string dir, Cut kiss, Cut die)
+    {
+        var bad = new List<string>();
+        string circle = Path.Combine(dir, "circle.png");
+        var plain = Loader.LoadAll(circle, 20, kiss, die)[0];
+        Sticker[] designs =
+        [
+            plain,
+            Loader.LoadAll(circle, 20, kiss, die, 1)[0],
+            Loader.Load(circle, 0, 20, kiss, die, shape: CutShape.Star, border: new Cmyk(0, 1, 1, 0), dieShape: CutShape.Rect),
+            Loader.Load(circle, 0, 20, kiss, die, manualKiss: Curves.Simplify(plain.Kiss, plain.Off, 0.2), manualDie: Curves.Simplify(plain.Die, plain.Off, 0.2)),
+            Loader.Load(Path.Combine(dir, "logo.pdf"), 0, 20, kiss, die),
+        ];
+        // Data yang tidak boleh berubah: gambar, PDF, bleed, garis potong, garis manual, bentuk, border, offset, ukuran, dan grid jejak.
+        static object[] Print(Sticker s) => [s.Raster, s.Pdf ?? "", s.BleedPng ?? (object)"", s.BleedRect, s.Kiss, s.Die, s.KissGeo ?? (object)"", s.DieGeo ?? (object)"",
+            s.ManualKiss ?? (object)"", s.ManualDie ?? (object)"", s.Shape, s.DieShape, s.Border ?? (object)"", s.LoadedBleed, s.LoadedKiss.Off, s.LoadedDie.Off,
+            s.ArtW, s.ArtH, s.W, s.H, s.Off, s.Full, s.Preview, s.Grid, s.AreaMm2];
+        var prints = designs.Select(Print).ToList();
+        if (designs[1].BleedPng == null || designs[2].Border == null || designs[3].ManualKiss == null || designs[4].Pdf == null) bad.Add("desain uji tidak lengkap");
+        foreach (var d in designs) d.Copies = 1;
+        var book = Nest.Run(designs, A4W, A4H, Margin, Gap, out int big);
+        book.Add([]);
+        List<double> hs = [A4H, A4H];
+        if (big != 0 || book.Count != 2 || book[0].Count != designs.Length) { bad.Add($"susun awal: {book[0].Count} stiker, tidak muat {big}"); return bad; }
+        var orig = designs.Select(d => book[0].First(p => p.S == d)).ToList();
+        if (!Nest.Turn(book[0], orig[1], A4W, A4H, Margin, Gap) || !Nest.Turn(book[0], orig[3], A4W, A4H, Margin, Gap) || !Nest.Turn(book[0], orig[3], A4W, A4H, Margin, Gap))
+            bad.Add("putar sebelum uji tidak punya tempat");
+        var rot = orig.Select(p => p.Rot).ToList();
+
+        for (int i = 0; i < designs.Length; i++)
+        {
+            var p = orig[i];
+            var (x, y) = (p.X, p.Y);
+            if (new DragState([p], 0) { ToSheet = 1, Offset = new Vector(3, 5) }.Drop(book, hs, A4W, Margin, Gap) == null || !book[1].Contains(p))
+                bad.Add($"desain {i + 1}: pindah ke lembar 2 gagal");
+            if (new DragState([p], 1) { ToSheet = 0, Offset = new Vector(x - p.X, y - p.Y) }.Drop(book, hs, A4W, Margin, Gap) == null || !book[0].Contains(p) || (p.X, p.Y) != (x, y))
+                bad.Add($"desain {i + 1}: pindah kembali ke lembar 1 tidak ke posisi asalnya");
+            var toB = new DragState([p], 0) { ToSheet = 1, Copy = true, Offset = new Vector(0, 140) }.Drop(book, hs, A4W, Margin, Gap);
+            var inGap = new DragState([p], 0) { Copy = true, Offset = new Vector(0, 140) }.Drop(book, hs, A4W, Margin, Gap);
+            var dup = Nest.PasteAll(book, hs, [(p.S, p.Rot, p.X, p.Y, 0)], A4W, Margin, Gap);
+            foreach (var (kind, made, sheet) in new[] { ("salin ke lembar 2", toB, 1), ("salin di celah", inGap, 0), ("duplikat", dup, 0) })
+                if (made is not [var one] || one == p || one.S != designs[i] || one.Rot != p.Rot || !book[sheet].Contains(one))
+                    bad.Add($"desain {i + 1}, {kind}: salinan tidak memakai desain, rotasi, atau lembar yang benar");
+            if (p.Rot != rot[i] || !book[0].Contains(p) || (p.X, p.Y) != (x, y)) bad.Add($"desain {i + 1}: stiker asal berubah sesudah disalin");
+        }
+
+        for (int i = 0; i < designs.Length; i++)
+            if (!Print(designs[i]).SequenceEqual(prints[i])) bad.Add($"desain {i + 1}: data desain berubah");
+        var all = book.SelectMany(x => x).ToList();
+        if (all.Count != designs.Length * 4 || book[1].Count != designs.Length || all.Any(p => !designs.Contains(p.S))) bad.Add($"jumlah penempatan {all.Count}, harapan {designs.Length * 4}");
+        for (int i = 0; i < book.Count; i++)
+            if (Nest.Check(book[i], A4W, A4H, Margin, false, Gap) != 0) bad.Add($"lembar {i + 1}: {book[i].Count(p => p.Bad)} stiker bertanda merah");
+        foreach (var p in all)
+        {
+            var box = Nest.Xf(p).TransformBounds(new Rect(0, 0, p.S.W, p.S.H));
+            if (p.Rot % 90 != 0 || Math.Abs(box.X - p.X) + Math.Abs(box.Y - p.Y) + Math.Abs(box.Width - p.BW) + Math.Abs(box.Height - p.BH) > 0.001
+                || Math.Abs((p.X - Margin) / Nest.Cell - Math.Round((p.X - Margin) / Nest.Cell)) > 1e-6)
+                bad.Add($"rotasi {p.Rot}: kotak di {box}, harapan {p.X},{p.Y} {p.BW}x{p.BH} di grid");
+        }
+        if (!rot.Contains(90) || !rot.Contains(180) && !rot.Contains(270)) bad.Add($"rotasi uji kurang beragam: {string.Join(",", rot)}");
+
+        // Gambar dan PDF tetap terhubung: export tanpa peringatan.
+        var pdf = Path.Combine(dir, "integritas.pdf");
+        var warn = Export.Pdf(pdf, book, A4W, hs);
+        File.Delete(pdf);
+        if (warn.Count != 0 || !File.Exists(designs[4].Pdf)) bad.Add($"export sesudah pindah dan salin: {string.Join(" ", warn)}");
+
+        // Tanda merah mengikuti pemeriksaan: keluar margin jadi merah, sesudah ditarik ke tempat sah hilang.
+        var stray = orig[0];
+        var (sx, sy) = (stray.X, stray.Y);
+        stray.Y = -stray.BH - 10; // di atas lembar, jauh dari stiker lain: hanya stiker ini yang keluar margin
+        int flagged = Nest.Check(book[0], A4W, A4H, Margin, false, Gap);
+        bool red = stray.Bad;
+        var back = new DragState([stray], 0) { Offset = new Vector(sx - stray.X, sy - stray.Y) }.Drop(book, hs, A4W, Margin, Gap);
+        Nest.Check(book[0], A4W, A4H, Margin, false, Gap);
+        if (flagged != 1 || !red || back == null || stray.Bad) bad.Add($"tanda merah: keluar margin {red} ({flagged} stiker), sesudah ditarik kembali {stray.Bad}");
+
+        // Desain diganti (atur ukuran): semua penempatannya, termasuk salinan, memakai desain baru, dan tanda merah dihitung ulang.
+        plain.WidthMm = 26;
+        var bigger = Loader.Reload(plain, plain.LoadedKiss, plain.LoadedDie, plain.LoadedBleed);
+        Nest.SwapDesign(book, plain, bigger);
+        int marked = Nest.Check(book[0], A4W, A4H, Margin, false, Gap) + Nest.Check(book[1], A4W, A4H, Margin, false, Gap);
+        all = book.SelectMany(x => x).ToList();
+        if (all.Count(p => p.S == bigger) != 4 || all.Any(p => p.S == plain) || all.Count(p => p.Bad) != marked)
+            bad.Add($"desain diganti: {all.Count(p => p.S == bigger)} dari 4 penempatan memakai desain baru, tanda merah {all.Count(p => p.Bad)} dari {marked}");
         return bad;
     }
 
