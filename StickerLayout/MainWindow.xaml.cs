@@ -39,7 +39,6 @@ public partial class MainWindow : Window
     bool panning, space, altUsed; // altUsed: Alt dipakai saat menarik, jadi melepasnya tidak membuka menu
     Tool tool = Tool.Move;
     string status = "";
-    bool bandActive = false;
 
     bool syncingList;
 
@@ -1186,7 +1185,7 @@ public partial class MainWindow : Window
                 // Bersihkan data kotor
                 sheets[selSheet].RemoveAll(p => p.S == null);
 
-                if (sheets[selSheet].Contains(sel))
+                if (sel != null && sheets[selSheet].Contains(sel))
                 {
                     fits = Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
                     if (!fits) Nest.KeepInside(sel, sheetW, sheetH[selSheet], MarginMm);
