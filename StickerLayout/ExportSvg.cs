@@ -87,7 +87,7 @@ public static class ExportSvg
         var href = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
 
         sb.AppendLine(CultureInfo.InvariantCulture,
-            $"""    <g transform="{xf}">{border}<clipPath id="art{n}"><path d="{D(s.ArtClip)}" clip-rule="evenodd"/></clipPath><g clip-path="url(#art{n})"><image xlink:href="{href}" x="{F(r.X)}" y="{F(r.Y)}" width="{F(r.Width)}" height="{F(r.Height)}"/></g></g>""");
+            $"""    <g transform="{xf}">{border}<clipPath id="art{n}"><path d="{D(s.ArtClip)}" clip-rule="evenodd"/></clipPath><g clip-path="url(#art{n})"><image xlink:href="{href}" x="{F(r.X)}" y="{F(r.Y)}" width="{F(r.Width)}" height="{F(r.Height)}" preserveAspectRatio="none"/></g></g>""");
     }
 
     static void CutPath(StringBuilder sb, Placed p, Geometry geo)

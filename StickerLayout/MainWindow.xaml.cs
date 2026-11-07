@@ -30,7 +30,7 @@ public partial class MainWindow : Window
     Point bandFrom;                        // titik awal rubber-band (koordinat kanvas lembar)
     List<(Sticker S, int Rot, double X, double Y, int Sheet)> clip = []; // stiker yang disalin; kosong dengan clipSheet terisi = kanvas
     int selSheet, tooBig, clipSheet = -1, sizing = -1, wrapCols = 1; // sizing: titik pojok yang sedang ditarik
-    double sizeW;
+    double sizeW, sizeH;
     Rect sizeBox;
     Vector sizeGrab;
     Border? sizeTip;
@@ -148,11 +148,13 @@ public partial class MainWindow : Window
         {
             var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
             SelThumb.Source = sel.S.Preview;
+            SelThumb.LayoutTransform = new ScaleTransform(1, sel.S.StretchY); // rasio bebas: gambar kecil ikut diregangkan
             SelName.Text = sels.Count > 1 ? Lang.T("NSelected", sels.Count) : sel.S.Name;
 
             // BLOKIR event TextChanged saat mengisi nilai
             syncingSel = true;
             SelSizeBox.Text = F(sel.S.WidthMm);
+            SelHeightBox.Text = F(sel.S.ArtH);
             SelCopiesBox.Text = sel.S.Copies.ToString();
             syncingSel = false;
 
@@ -425,7 +427,8 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border, dieShape: it.DieShape));
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border, dieShape: it.DieShape,
+                stretchY: it.StretchY));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -442,7 +445,7 @@ public partial class MainWindow : Window
         try
         {
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
-            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, loadedPdf: it.Pdf);
+            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, loadedPdf: it.Pdf, stretchY: it.StretchY);
             w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape) { Owner = this };
 
             var workArea = SystemParameters.WorkArea;
@@ -462,7 +465,7 @@ public partial class MainWindow : Window
         try
         {
             Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, bleed: BleedMm, loadedPdf: it.Pdf,
-                manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape));
+                manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape, stretchY: it.StretchY));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -494,7 +497,7 @@ public partial class MainWindow : Window
     {
         CancelDrag(); // file CDR bisa selesai dimuat saat stiker sedang ditarik
         // Ctrl+L atau menu saat kursor masih di kotak lebar desain: angka yang baru diketik ikut dipakai.
-        (FocusManager.GetFocusedElement(this) as TextBox)?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        CommitTyping();
         wrapCols = 1;
         if (items.Count == 0) { Redraw(Lang.T("NestFirst")); return; }
         if (!CutsValid()) return;
@@ -677,6 +680,7 @@ public partial class MainWindow : Window
     // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK.
     void Ticket_Click(object s, RoutedEventArgs e)
     {
+        CommitTyping();
         if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
         if (!NumbersValid()) return;
         var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "print-ticket.pdf" };
@@ -697,9 +701,20 @@ public partial class MainWindow : Window
     void DeletePlaced_Click(object s, RoutedEventArgs e) => DeleteSel();
     void Exit_Click(object s, RoutedEventArgs e) => Close();
 
+    // Ctrl+L, Ctrl+E, atau menu saat kursor masih di kotak isian: angka yang baru diketik ikut dipakai. Kotak lebar di daftar desain memakai binding;
+    // kotak lebar dan tinggi di panel Pilihan baru berlaku saat ditinggalkan, jadi diterapkan di sini (temuan tinjauan rasio bebas 2026-11-07).
+    void CommitTyping()
+    {
+        var box = FocusManager.GetFocusedElement(this) as TextBox;
+        box?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        if (box == SelSizeBox) SelSize_LostFocus(box, new RoutedEventArgs());
+        else if (box == SelHeightBox) SelHeight_LostFocus(box, new RoutedEventArgs());
+    }
+
     // Sebelum file keluar: sudah ada susunan, angka terbaca, dan operator tahu bila ada stiker bertanda merah.
     bool ReadyToExport()
     {
+        CommitTyping();
         if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return false; }
         return NumbersValid() && (!sheets.Any(x => x.Any(p => p.Bad))
             || MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes);
@@ -1136,10 +1151,9 @@ public partial class MainWindow : Window
             };
             c.Children.Add(sizeTip);
         }
-        (sizeW, sizeBox) = Nest.ResizeTo(p, sizing, pt.X, pt.Y, sheetW, sheetH[selSheet], MarginMm);
-        foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == p) el.RenderTransform = Nest.Xf(p, sizeBox.Width / p.BW, sizeBox.X, sizeBox.Y);
-        double h = p.S.ArtH * sizeW / p.S.ArtW;
-        var (aw, ah) = p.Rot % 180 == 0 ? (sizeW, h) : (h, sizeW);
+        (sizeW, sizeH, sizeBox) = Nest.ResizeTo(p, sizing, pt.X, pt.Y, sheetW, sheetH[selSheet], MarginMm, LockRatio.IsChecked != true);
+        foreach (var el in c.Children.OfType<FrameworkElement>()) if (el.Tag == p) el.RenderTransform = Nest.Xf(p, sizeBox.Width / p.BW, sizeBox.Height / p.BH, sizeBox.X, sizeBox.Y);
+        var (aw, ah) = p.Rot % 180 == 0 ? (sizeW, sizeH) : (sizeH, sizeW);
         ((TextBlock)sizeTip.Child).Text = $"{F(aw)} × {F(ah)} mm";
         sizeTip.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(sizeTip, Math.Clamp(pt.X + 12 * unzoom.ScaleX, 0, Math.Max(0, c.Width - sizeTip.DesiredSize.Width * unzoom.ScaleX)));
@@ -1149,18 +1163,19 @@ public partial class MainWindow : Window
     // Mouse dilepas: ukuran hanya berlaku untuk stiker ini (ResizeSel).
     void EndResize()
     {
-        bool changed = sizeTip != null && sel?.S != null && Math.Abs(sizeW - sel.S.ArtW) >= 0.05;
+        bool changed = sizeTip != null && sel?.S != null && (Math.Abs(sizeW - sel.S.ArtW) >= 0.05 || Math.Abs(sizeH - sel.S.ArtH) >= 0.05);
         (sizing, sizeTip) = (-1, null);
         Sheets.ReleaseMouseCapture();
         if (!changed) { Redraw(); return; }
-        var box = sizeBox;
-        ResizeSel([sel!], sizeW, _ => box.TopLeft);
+        var (box, w, h) = (sizeBox, sizeW, sizeH);
+        ResizeSel([sel!], _ => (w, h), _ => box.TopLeft);
     }
 
     // Ubah lebar artwork stiker terpilih saja (keputusan user 2026-11-07): stiker lain dengan desain sama tidak ikut, karena desainnya dipisah menjadi baris
     // baru (Nest.Split). Garis potong dihitung ulang dengan offset, Halus, dan bleed yang dimuat, walau panel sudah diubah. Tiap stiker ditaruh di at(p), lalu
     // pindah ke posisi kosong terdekat seperti saat digeser. Tanpa posisi kosong ukuran baru tetap berlaku, stiker dijaga di dalam area cetak dan ditandai merah.
-    void ResizeSel(List<Placed> picked, double width, Func<Placed, Point> at)
+    // size: lebar dan tinggi artwork baru per desain; tinggi yang mengikuti proporsi sekarang berarti rasio tidak berubah.
+    void ResizeSel(List<Placed> picked, Func<Sticker, (double W, double H)> size, Func<Placed, Point> at)
     {
         bool split = false, fits = true, done = false;
         Mouse.OverrideCursor = Cursors.Wait;
@@ -1169,7 +1184,8 @@ public partial class MainWindow : Window
             foreach (var g in picked.GroupBy(p => p.S).ToList())
             {
                 var old = g.Key;
-                var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed, width);
+                var (w, h) = size(old);
+                var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed, w, h);
                 if (Nest.Split(items, sheets, [.. g], old, n)) split = true;
                 else { Replace(old, n); Nest.SwapDesign(sheets, old, n); }
                 foreach (var p in g)
@@ -1326,7 +1342,7 @@ public partial class MainWindow : Window
         TrackDrag();
         foreach (var cv in SelCanvases()) // hanya tampilan yang bergeser: X dan Y stiker baru berubah saat dilepas
             foreach (var el in cv.Children.OfType<FrameworkElement>())
-                if (el.Tag is Placed p && sels.Contains(p)) el.RenderTransform = Nest.Xf(p, 1, p.X + off.X, p.Y + off.Y);
+                if (el.Tag is Placed p && sels.Contains(p)) el.RenderTransform = Nest.Xf(p, 1, 1, p.X + off.X, p.Y + off.Y);
     }
 
     void Sheets_Up(object s, MouseButtonEventArgs e)
@@ -1545,11 +1561,21 @@ public partial class MainWindow : Window
         if (sel != null) Redraw(); 
     }
 
-    // Lebar di panel Pilihan: hanya stiker terpilih yang berubah, seperti titik pojok (keputusan user 2026-11-07). Pojok kiri-atas tetap.
+    // Lebar dan tinggi di panel Pilihan: hanya stiker terpilih yang berubah, seperti titik pojok (keputusan user 2026-11-07). Pojok kiri-atas tetap.
+    // Kunci rasio menyala: sisi lainnya ikut sebanding. Dilepas (rasio bebas): sisi lainnya tetap.
     void SelSize_LostFocus(object s, RoutedEventArgs e)
     {
         if (sel == null || MmText.Parse(SelSizeBox.Text) is not { } w || w <= 0 || Math.Abs(w - sel.S.WidthMm) < 0.05) return;
+        bool free = LockRatio.IsChecked != true;
         var picked = sels.Where(p => Math.Abs(p.S.ArtW - w) >= 0.05).ToList();
-        if (picked.Count > 0) ResizeSel(picked, w, p => new Point(p.X, p.Y));
+        if (picked.Count > 0) ResizeSel(picked, d => (w, free ? d.ArtH : d.ArtH * w / d.ArtW), p => new Point(p.X, p.Y));
+    }
+
+    void SelHeight_LostFocus(object s, RoutedEventArgs e)
+    {
+        if (sel == null || SelHeightBox.Text == F(sel.S.ArtH) || MmText.Parse(SelHeightBox.Text) is not { } h || h <= 0 || Math.Abs(h - sel.S.ArtH) < 0.05) return; // teks tidak diubah: tinggi tampil dibulatkan
+        bool free = LockRatio.IsChecked != true;
+        var picked = sels.Where(p => Math.Abs(p.S.ArtH - h) >= 0.05).ToList();
+        if (picked.Count > 0) ResizeSel(picked, d => (free ? d.ArtW : d.ArtW * h / d.ArtH, h), p => new Point(p.X, p.Y));
     }
 }

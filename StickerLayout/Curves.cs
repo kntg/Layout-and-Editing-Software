@@ -83,11 +83,12 @@ public static class Curves
         return a.Length > 1e-9 && b.Length > 1e-9 && Math.Abs(Vector.CrossProduct(a, b)) < 1e-6 * a.Length * b.Length && a * b < 0;
     }
 
-    // Lebar desain berubah: garis diskala bersama artwork.
-    public static List<Node[]>? Scale(List<Node[]>? lines, double k)
+    // Ukuran desain berubah: garis diskala bersama artwork, ky untuk arah tegak bila rasio bebas (2026-11-07). Skala per sumbu menjaga handle yang segaris.
+    public static List<Node[]>? Scale(List<Node[]>? lines, double k, double? ky = null)
     {
-        static Point S(Point q, double k) => new(q.X * k, q.Y * k);
-        return lines?.Select(c => c.Select(n => n with { P = S(n.P, k), In = S(n.In, k), Out = S(n.Out, k) }).ToArray()).ToList();
+        double kh = ky ?? k;
+        Point S(Point q) => new(q.X * k, q.Y * kh);
+        return lines?.Select(c => c.Select(n => n with { P = S(n.P), In = S(n.In), Out = S(n.Out) }).ToArray()).ToList();
     }
 
     // Kurva -> garis bertitik dengan toleransi eps mm (slider Simplify): kurva dipecah rapat (0,01 mm), lalu disederhanakan

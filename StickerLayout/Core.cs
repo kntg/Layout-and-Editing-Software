@@ -55,6 +55,7 @@ public class Sticker
     public Cut LoadedKiss = null!, LoadedDie = null!;
     public double W, H;                          // kotak (mm), kelipatan Nest.Cell
     public double Off, ArtW, ArtH;               // posisi & ukuran artwork di dalam kotak (mm)
+    public double StretchY { get; set; } = 1;    // rasio bebas (2026-11-07): tinggi artwork dibagi tinggi menurut proporsi file; 1 = asli. Hanya diisi Loader.Load
     public Rect Full;                            // seluruh sumber (halaman PDF / gambar penuh) dalam koordinat kotak (mm)
     public byte[]? BleedPng;                     // raster + bleed (warna tepi diperluas) untuk export; null = tanpa bleed
     public BitmapSource? BleedView;              // salinan kecil BleedPng untuk layar
@@ -66,7 +67,7 @@ public class Sticker
     // Resolusi cetak untuk desain yang ditempel sebagai gambar. Target riset 300 ppi; 150 = batas kasar,
     // sesuaikan setelah melihat hasil cetak Develop.
     public const double MinDpi = 150;
-    public double? Dpi => Pdf == null && WidthMm > 0 ? PxW * 25.4 / WidthMm : null;
+    public double? Dpi => Pdf == null && WidthMm > 0 ? PxW * 25.4 / WidthMm / Math.Max(1, StretchY) : null; // ditinggikan: dpi tegak lebih kecil
     public string DpiText => Dpi is { } d ? $"{d:0} dpi" : "";
     // Pembulatan sama dengan DpiText (D6): angka yang tampil dan warna merahnya selalu cocok.
     public bool LowDpi => Dpi is { } d && Math.Round(d, MidpointRounding.AwayFromZero) < MinDpi;
@@ -181,18 +182,20 @@ public static partial class Loader
     // loadedPdf: PDF yang dipakai saat desain pertama dimuat (muat ulang saat Susun): isi desain tidak berubah diam-diam
     // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: garis dari editor garis potong, dipakai apa adanya
     // (offset dan Halus tidak mengubahnya).
-    // Muat ulang desain pada lebar it.WidthMm, atau widthMm bila diberikan (it tidak diubah). Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala
-    // bersama artwork. Bentuk preset dihitung ulang.
-    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed, double? widthMm = null)
+    // Muat ulang desain pada lebar it.WidthMm, atau widthMm bila diberikan (it tidak diubah). heightMm (rasio bebas, 2026-11-07): tinggi artwork baru; tanpa
+    // tinggi, regangan yang sudah ada tetap dipakai. Garis manual tidak ikut offset/Halus; ukuran berubah: garis diskala bersama artwork per sumbu.
+    // Bentuk preset dihitung ulang.
+    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed, double? widthMm = null, double? heightMm = null)
     {
-        double w = widthMm ?? it.WidthMm, k = w / it.LoadedW;
+        double w = widthMm ?? it.WidthMm, k = w / it.LoadedW, ky = heightMm is { } h ? h / it.ArtH : k;
         return Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf,
-            manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape);
+            manualKiss: Curves.Scale(it.ManualKiss, k, ky), manualDie: Curves.Scale(it.ManualDie, k, ky), shape: it.Shape, border: it.Border, dieShape: it.DieShape,
+            stretchY: it.StretchY * ky / k, heightMm: heightMm);
     }
 
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
         string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null,
-        CutShape dieShape = CutShape.Auto)
+        CutShape dieShape = CutShape.Auto, double stretchY = 1, double? heightMm = null)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -211,7 +214,7 @@ public static partial class Loader
             var svg = ext == ".svg" ? path : Libcdr.ToSvg(path)?.ElementAtOrDefault(page) ?? throw new InvalidDataException(Lang.T("BadCdr"));
             s.SvgStamp = Stamp(path);
             // File rusak: pesan untuk operator (D9), pesan teknis tetap di InnerException.
-            try { full = RenderSvg(svg, widthMm, out nat); }
+            try { full = RenderSvg(svg, widthMm * Math.Max(1, stretchY), out nat); } // tinggi diregangkan: digambar lebih rapat supaya tetap tajam
             catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T(ext == ".cdr" ? "BadCdr" : "BadSvg"), ex); }
             s.Raster = Png(full);
             media = new Rect(0, 0, full.PixelWidth, full.PixelHeight);
@@ -247,6 +250,8 @@ public static partial class Loader
 
         if (widthMm <= 0) widthMm = Math.Round(bb.Width * nat, 1);
         double k = widthMm / bb.Width;           // mm per px
+        // Tinggi diminta (rasio bebas): regangan dari kotak isi gambar ini. SVG digambar ulang pada resolusi lain, jadi kotak isinya bisa bergeser satu piksel.
+        if (heightMm is { } hm) stretchY = hm / (bb.Height * k);
         s.WidthMm = s.LoadedW = widthMm;
         s.LoadedKiss = kiss;
         s.LoadedDie = die;
@@ -256,7 +261,8 @@ public static partial class Loader
         s.Border = border;
         bool bled = bleed > 0 && s.Pdf == null && border == null;
         s.ArtW = widthMm;
-        s.ArtH = bb.Height * k;
+        s.ArtH = bb.Height * k * stretchY;
+        s.StretchY = stretchY;
 
         var small = new TransformedBitmap(crop, new ScaleTransform(s.ArtW * PxMm / bb.Width, s.ArtH * PxMm / bb.Height));
         var mask = Silhouette(small, out int mw, out int mh);
@@ -322,7 +328,8 @@ public static partial class Loader
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (outer[x, y]) { s.Grid[x / cp, y / cp] = true; n++; }
         foreach (bool c in s.Grid) if (c) s.Area++;
         s.AreaMm2 = n / (PxMm * PxMm);
-        s.Full = new Rect(s.Off + (media.X - bb.X) * k, s.Off + (media.Y - bb.Y) * k, media.Width * k, media.Height * k);
+        double ky = k * stretchY; // arah tegak, ikut regangan
+        s.Full = new Rect(s.Off + (media.X - bb.X) * k, s.Off + (media.Y - bb.Y) * ky, media.Width * k, media.Height * ky);
         if (bled)
         {
             var b = kiss.On ? kiss : die; // bleed diukur dari garis kiss; tanpa kiss dari garis die
@@ -1319,19 +1326,25 @@ public static class Nest
 
     const double MinSide = 5; // sisi artwork terkecil saat ukuran diatur di kanvas (mm)
 
-    // Atur ukuran di kanvas: titik pojok (0 kiri atas, 1 kanan atas, 2 kanan bawah, 3 kiri bawah) ditarik ke (mx, my). Pojok seberangnya diam
-    // dan proporsi artwork tetap; jarak garis potong ke artwork tidak ikut berskala. Sisi terkecil MinSide, kecuali memang sudah lebih kecil;
-    // kotak paling besar area cetak. Mengembalikan lebar artwork baru (0,1 mm) dan kotak stiker di lembar.
-    public static (double Width, Rect Box) ResizeTo(Placed p, int corner, double mx, double my, double cw, double ch, double margin)
+    // Atur ukuran di kanvas: titik pojok (0 kiri atas, 1 kanan atas, 2 kanan bawah, 3 kiri bawah) ditarik ke (mx, my). Pojok seberangnya diam; jarak garis
+    // potong ke artwork tidak ikut berskala. Rasio terkunci: satu faktor untuk kedua sisi. free (kunci rasio dilepas, 2026-11-07): sisi mendatar dan tegak
+    // mengikuti tarikannya sendiri-sendiri. Sisi terkecil MinSide, kecuali memang sudah lebih kecil; kotak paling besar area cetak, per sisi.
+    // Mengembalikan lebar dan tinggi artwork baru (sumbu artwork, 0,1 mm) dan kotak stiker di lembar.
+    public static (double Width, double Height, Rect Box) ResizeTo(Placed p, int corner, double mx, double my, double cw, double ch, double margin, bool free = false)
     {
-        var (aw, ah) = p.Rot % 180 == 0 ? (p.S.ArtW, p.S.ArtH) : (p.S.ArtH, p.S.ArtW);
+        bool turned = p.Rot % 180 != 0;
+        var (aw, ah) = turned ? (p.S.ArtH, p.S.ArtW) : (p.S.ArtW, p.S.ArtH); // sisi artwork mendatar dan tegak di lembar
         double padX = p.BW - aw, padY = p.BH - ah, room = 2 * (margin + Printed(p.S));
         bool right = corner is 1 or 2, down = corner is 2 or 3;
         double ax = right ? p.X : p.X + p.BW, ay = down ? p.Y : p.Y + p.BH;
-        double k = Math.Max(((right ? mx - ax : ax - mx) - padX) / aw, ((down ? my - ay : ay - my) - padY) / ah);
-        k = Math.Max(Math.Min(1, MinSide / Math.Min(aw, ah)), Math.Min(Math.Min((cw - room - padX) / aw, (ch - room - padY) / ah), k));
-        double width = Math.Round(p.S.ArtW * k, 1), bw = aw * width / p.S.ArtW + padX, bh = ah * width / p.S.ArtW + padY;
-        return (width, new Rect(right ? ax : ax - bw, down ? ay : ay - bh, bw, bh));
+        double kx = ((right ? mx - ax : ax - mx) - padX) / aw, ky = ((down ? my - ay : ay - my) - padY) / ah;
+        static double Fit(double k, double side, double most) => Math.Max(Math.Min(1, MinSide / side), Math.Min(most / side, k));
+        if (free) (kx, ky) = (Fit(kx, aw, cw - room - padX), Fit(ky, ah, ch - room - padY));
+        else kx = ky = Math.Max(Math.Min(1, MinSide / Math.Min(aw, ah)), Math.Min(Math.Min((cw - room - padX) / aw, (ch - room - padY) / ah), Math.Max(kx, ky)));
+        var (kw, kh) = turned ? (ky, kx) : (kx, ky); // faktor lebar dan tinggi artwork
+        double width = Math.Round(p.S.ArtW * kw, 1), height = free ? Math.Round(p.S.ArtH * kh, 1) : p.S.ArtH * width / p.S.ArtW;
+        double bw = (turned ? height : width) + padX, bh = (turned ? width : height) + padY;
+        return (width, height, new Rect(right ? ax : ax - bw, down ? ay : ay - bh, bw, bh));
     }
 
     // Desain diganti (Rapikan, Edit garis potong, atau atur ukuran tanpa stiker lain yang memakai desainnya): semua salinannya ikut. Posisinya tetap;
@@ -1439,11 +1452,12 @@ public static class Nest
         return new TransformGroup { Children = { new RotateTransform(p.Rot), new TranslateTransform(p.X + tx, p.Y + ty) } };
     }
 
-    // Pratinjau saat ukuran diatur: stiker diskala k dengan pojok kiri atas kotaknya di (x, y).
-    public static Transform Xf(Placed p, double k, double x, double y)
+    // Pratinjau saat ukuran diatur: stiker diskala kx mendatar dan ky tegak (arah di lembar), dengan pojok kiri atas kotaknya di (x, y).
+    public static Transform Xf(Placed p, double kx, double ky, double x, double y)
     {
         var (tx, ty) = p.T;
-        return new TransformGroup { Children = { new ScaleTransform(k, k), new RotateTransform(p.Rot), new TranslateTransform(x + tx * k, y + ty * k) } };
+        var (sx, sy) = p.Rot % 180 == 0 ? (kx, ky) : (ky, kx); // skala di sumbu kotak stiker, sebelum diputar
+        return new TransformGroup { Children = { new ScaleTransform(sx, sy), new RotateTransform(p.Rot), new TranslateTransform(x + tx * kx, y + ty * ky) } };
     }
 
     static readonly Brush KissBrush = Frozen("#EC008C"), DieBrush = Frozen("#00AEEF");
