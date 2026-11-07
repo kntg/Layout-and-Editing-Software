@@ -9,8 +9,8 @@ if (-not (Test-Path $exe)) { throw "exe tidak ada: $exe (jalankan dotnet build -
 
 function Run([string]$name, [string]$dir, [int]$expect) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    $p = Start-Process $exe -ArgumentList "--selfcheck", "`"$dir`"" -Wait -PassThru
-    $log = Join-Path $dir "selfcheck.txt"
+    $p = Start-Process $exe -ArgumentList "--selfcheck", "`"$dir`"" -WorkingDirectory $Repo -Wait -PassThru
+    $log = Join-Path $(if ([IO.Path]::IsPathRooted($dir)) { $dir } else { Join-Path $Repo $dir }) "selfcheck.txt"
     $lines = if (Test-Path $log) { @(Get-Content $log) } else { @() }
     $last = if ($lines.Count) { $lines[-1] } else { "(selfcheck.txt tidak ada)" }
     $sc = @($lines | Select-String '^(S|P)\d+ ')
@@ -26,8 +26,8 @@ $results = @()
 # 1. Folder baru (self-check membuat sampel sendiri).
 $t = Join-Path $Work "sc-baru"; Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue
 $results += Run "folder baru" $t 0
-# 2. Folder samples di repo (perintah di PRD §11).
-$results += Run "folder samples (repo)" (Join-Path $Repo "samples") 0
+# 2. Folder samples di repo, ditulis relatif seperti perintah di README ("--selfcheck samples" dari folder repo).
+$results += Run "folder samples (repo, path relatif)" "samples" 0
 # 3. Uji negatif: logo.pdf diganti PDF lain berukuran beda -> satu Check gagal.
 $t = Join-Path $Work "sc-rusak"; Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $t | Out-Null
 python -I -c "import fitz,sys; d=fitz.open(); p=d.new_page(width=300,height=300); p.draw_rect(fitz.Rect(50,50,250,250), color=None, fill=(0,0,1)); d.save(sys.argv[1])" (Join-Path $t "logo.pdf")

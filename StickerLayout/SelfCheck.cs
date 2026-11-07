@@ -25,6 +25,7 @@ public static class SelfCheck
         var log = new List<string>();
         try
         {
+            dir = Path.GetFullPath(dir); // folder relatif ("--selfcheck samples" di README): new Uri butuh path lengkap
             Directory.CreateDirectory(dir);
             Samples(dir);
             Cut kiss = new(true, 2, 1), die = new(true, 4, 2);
