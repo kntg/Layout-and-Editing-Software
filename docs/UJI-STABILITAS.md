@@ -17,7 +17,7 @@ Cara menjalankan:
 
 | Kode | Skenario | Syarat lulus | Cara | Hasil 2026-10-17 |
 | --- | --- | --- | --- | --- |
-| P1 | Tambah file CDR di PC tanpa CorelDRAW | Muncul pesan "CorelDRAW tidak terpasang"; aplikasi tidak tertutup sendiri (crash) | Otomatis + tampilan aplikasi | Lulus. Pemeriksaan otomatis: pesan muncul dalam 0,3 detik. Lewat tampilan aplikasi: pesan muncul 1,1 detik setelah file ditambahkan, dan aplikasi tetap responsif |
+| P1 | Tambah file CDR yang tidak terbaca libcdr di PC tanpa CorelDRAW | Muncul pesan "CDR ini tidak bisa dibaca tanpa CorelDRAW"; aplikasi tidak tertutup sendiri (crash) | Otomatis + tampilan aplikasi | Kriteria berubah 2026-11-06, karena libcdr dicoba lebih dulu. Pemeriksaan otomatis lulus: pesan muncul dalam ±2 detik (versi rilis, 2026-11-07). Lewat tampilan aplikasi belum dicoba ulang |
 | P2 | Proses pembantu melewati batas waktu | Proses dihentikan, muncul pesan batas waktu, dan tidak ada proses pembantu yang tersisa | Otomatis (batas diset 1 ms) | Lulus: dihentikan dalam 20–36 ms, 0 proses tersisa |
 | P3 | Susun otomatis paralel dijalankan 5 kali | Hasilnya sama persis setiap kali | Otomatis | Lulus: 5 kali, 1 hasil. Saat cara paralel diterapkan (grid 2 mm), jumlah lembar dan pemakaian bahan sama persis dengan versi berurutan |
 | P4 | Hapus latar paralel dibandingkan dengan versi berurutan | Kikis tepi 1–3 piksel dan gambar tampilan sama persis sampai ke tiap bit | Otomatis | Lulus |
@@ -38,7 +38,7 @@ Cara menjalankan:
    - Bila CorelDRAW tidak merespons, setelah ±30 detik harus muncul pesan "CorelDRAW tidak merespons".
    - Tutup dialog di CorelDRAW, lalu tambahkan file itu lagi.
 4. **P10:**
-   - Pilih tiga file CDR sekaligus. Selama proses, baris status menampilkan "Membuka … di CorelDRAW".
+   - Pilih tiga file CDR sekaligus. Selama proses, baris status menampilkan "Membaca …", lalu "Membuka … di CorelDRAW" bila libcdr gagal membaca file itu.
    - Setelah semua masuk, ubah offset kiss lalu klik Susun. Teks "Membuka … di CorelDRAW" tidak boleh muncul lagi.
 5. Catat hasil setiap skenario: lulus atau gagal, waktu, dan catatan.
 

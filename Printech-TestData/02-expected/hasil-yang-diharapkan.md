@@ -11,7 +11,7 @@ Validasi otomatis yang lebih teliti untuk garis potong dan susun otomatis (jarak
 | PDF satu halaman | `pdf-single-page.pdf` | Artwork dan ukurannya | Vektor 60,0 × 30,0 mm. Garis kiss 64 × 34 mm. | Panel Desain, export |
 | PDF beberapa halaman | `pdf-multi-page.pdf`, `pdf-irregular-shapes.pdf` | Setiap halaman jadi desain terpisah | 3 desain (`p1`–`p3`) dan 4 desain (`p1`–`p4`), ukuran per halaman sesuai tabel di bawah | Panel Desain |
 | AI dan SVG | `ai-compatible.ai`, `svg-vector.svg` | Garis luar, ukuran, dan artwork terbaca benar | 50,0 × 25,0 mm, 1 garis kiss dan 1 garis die. Lingkaran putih di dalam SVG tidak dipotong. | Panel Desain, export |
-| CDR yang benar | `cdr-normal.cdr` (dibuat operator, lihat [cdr-normal.BACA.txt](../01-input/cdr-normal.BACA.txt)) | Konversi berhasil; aplikasi utama tidak terhenti | Sama dengan `pdf-single-page.pdf` | Operator di PC dengan CorelDRAW ([skenario uji stabilitas](../../docs/UJI-STABILITAS.md), langkah P7) |
+| CDR yang benar | `cdr-normal.cdr` (dibuat operator, lihat [cdr-normal.BACA.txt](../01-input/cdr-normal.BACA.txt)) | Terbuka tanpa CorelDRAW lewat libcdr; aplikasi utama tidak terhenti | Ukuran sama dengan `pdf-single-page.pdf`, ditempel sebagai gambar RGB dengan peringatan | Panel Desain |
 | CDR rusak atau proses macet | `invalid-file.cdr`; proses macet: [skenario uji stabilitas](../../docs/UJI-STABILITAS.md) langkah P9 | Kegagalan tertangani, termasuk batas waktu CDR 30 detik | Dialog "Gagal memuat" dengan pesan yang jelas; file lain tetap masuk; aplikasi tidak tertutup sendiri (crash). Bila macet: setelah 30 detik muncul `CorelDRAW tidak merespons dalam 30 detik. …`; proses pembantu yang mengonversi CDR dihentikan; CorelDRAW tidak ditutup paksa. | Lewat aplikasi; pemeriksaan otomatis P1–P2 (jalur batas waktu); operator langkah P9 |
 | PNG transparan dan JPG | `png-transparent.png`, `jpg-low-resolution.jpg`, `png-rough-edge.png` | Batas artwork, pemangkasan, bagian transparan, garis potong | PNG transparan: dipangkas sampai batas isinya. Lubang transparan Ø 10 mm tetap terbuka setelah offset kiss 2 + halus 1, jadi ada garis kiss di dalam lubang (2 garis); die 4 + halus 2 menutup lubang (1 garis). Ini aturan stiker donat dari masukan leader 2026-10-21. JPG (tanpa bagian transparan): seluruh gambar dipakai, latar putih tidak dibuang, dan garis mengelilingi kotak gambar (masukan leader 2026-10-21). | Panel Desain, validasi otomatis bagian A |
 | Gambar di bawah 150 dpi | `jpg-low-resolution.jpg` (±122), `png-147dpi.png` (147), `png-152dpi.png` (152) | Peringatan resolusi sesuai spesifikasi: merah bila di bawah 150 dpi | ±122 dan 147 merah; 152 tidak merah | Panel Desain, peringatan |
@@ -61,7 +61,7 @@ Ukuran garis potong = lebar × tinggi kotak terluar garis. Garis kiss = artwork 
 | `pdf-oversize.pdf` | 1; tidak muat di A3+ | vektor | 310,0 × 310,0 | tidak tampil | 314 × 314 | 318 × 318 |
 | `pdf-rotated.pdf` | 1; halaman diputar 90° (/Rotate 90), isinya sama dengan `pdf-single-page.pdf` | gambar (diubah menjadi gambar ±254 dpi), dengan peringatan | 30,0 × 60,0 | 254 (tidak merah) | 34 × 64 | 38 × 68 |
 | `ai-compatible.ai` | 1: `ai-compatible.ai` | vektor | 50,0 × 25,0 | tidak tampil | 54 × 29 | 58 × 33 |
-| `cdr-normal.cdr` | 1: `cdr-normal.cdr` | vektor | 60,0 × 30,0 (sama dengan `pdf-single-page.pdf`) | tidak tampil | 64 × 34 | 68 × 38 |
+| `cdr-normal.cdr` | 1: `cdr-normal.cdr` | gambar RGB (libcdr) | 60,0 × 30,0 (sama dengan `pdf-single-page.pdf`) | ±305 dpi | 64 × 34 | 68 × 38 |
 | `png-transparent.png` | 1 | gambar | 50,0 × 25,0 | 406 (tidak merah) | 54 × 29 | 58 × 33 |
 | `png-rough-edge.png` | 1 (logo bertepi bergelombang) | gambar | 50,0 × 48,9 | 366 (tidak merah) | 54,0 × 52,9 | 58,0 × 56,9 |
 | `png-147dpi.png` | 1 | gambar | 50,0 × 50,0 | 147, **merah** | 54 × 54 | 58 × 58 |
@@ -95,10 +95,10 @@ Batas selisih yang diterima:
   - muncul dialog "Gagal memuat";
   - aplikasi tidak crash, dan file lain yang ditambahkan bersamaan tetap masuk.
 
-  Isi pesannya bergantung pada CorelDRAW:
-  - PC tanpa CorelDRAW: `invalid-file.cdr: CorelDRAW tidak terpasang. Export file CDR ke PDF dulu, lalu tambahkan PDF-nya.`
+  libcdr menolak file ini lebih dulu, lalu Printech mencoba CorelDRAW. Isi pesannya bergantung pada CorelDRAW:
+  - PC tanpa CorelDRAW: `invalid-file.cdr: CDR ini tidak bisa dibaca tanpa CorelDRAW (mungkin versinya terlalu baru, rusak, atau terkunci). Export CDR ke PDF di CorelDRAW, lalu tambahkan PDF-nya.`
   - PC dengan CorelDRAW: `CorelDRAW gagal membuat PDF. …`, atau setelah 30 detik `CorelDRAW tidak merespons dalam 30 detik. …`.
-- **`cdr-normal.cdr`:** di PC tanpa CorelDRAW, hasilnya sama dengan `invalid-file.cdr`. File ini dibuat operator; lihat [cdr-normal.BACA.txt](../01-input/cdr-normal.BACA.txt).
+- **`cdr-normal.cdr`:** terbuka tanpa CorelDRAW lewat libcdr, seperti di tabel di atas. File ini dibuat operator; lihat [cdr-normal.BACA.txt](../01-input/cdr-normal.BACA.txt).
 - **Hanya tujuh file pertama** (`pdf-single-page.pdf`, `pdf-multi-page.pdf`, `ai-compatible.ai`, `png-transparent.png`, `jpg-low-resolution.jpg`, `svg-vector.svg`, `invalid-file.cdr`) ditambahkan sekaligus:
   - 8 desain;
   - status "8 stiker di 1 lembar.";

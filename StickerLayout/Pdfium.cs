@@ -25,6 +25,10 @@ public sealed class Pdfium : IDisposable
     [DllImport(Dll)] static extern IntPtr FPDFBitmap_GetBuffer(IntPtr bitmap);
     [DllImport(Dll)] static extern int FPDFBitmap_GetStride(IntPtr bitmap);
     [DllImport(Dll)] static extern void FPDFBitmap_Destroy(IntPtr bitmap);
+    [DllImport(Dll)] static extern IntPtr FPDFText_LoadPage(IntPtr page);
+    [DllImport(Dll)] static extern void FPDFText_ClosePage(IntPtr textPage);
+    [DllImport(Dll)] static extern int FPDFText_CountChars(IntPtr textPage);
+    [DllImport(Dll, CharSet = CharSet.Unicode)] static extern int FPDFText_GetText(IntPtr textPage, int start, int count, [Out] char[] result);
 
     static Pdfium() => FPDF_InitLibrary();
 
@@ -75,6 +79,26 @@ public sealed class Pdfium : IDisposable
             finally { FPDFBitmap_Destroy(bmp); }
         }
         finally { FPDF_ClosePage(p); }
+    }
+
+    // Teks yang tertulis di halaman, misalnya halaman pengganti dari Illustrator. Kosong bila halaman tidak berisi teks.
+    public string Text(int page)
+    {
+        var p = Page(page);
+        var t = FPDFText_LoadPage(p);
+        try
+        {
+            int n = t == IntPtr.Zero ? 0 : FPDFText_CountChars(t);
+            if (n <= 0) return "";
+            var buf = new char[n + 1];
+            int got = FPDFText_GetText(t, 0, n, buf); // termasuk karakter penutup
+            return new string(buf, 0, Math.Clamp(got - 1, 0, n));
+        }
+        finally
+        {
+            if (t != IntPtr.Zero) FPDFText_ClosePage(t);
+            FPDF_ClosePage(p);
+        }
     }
 
     IntPtr Page(int i)

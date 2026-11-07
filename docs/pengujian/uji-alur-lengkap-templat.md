@@ -181,21 +181,23 @@ Repo ini tidak punya proyek uji unit (xUnit/NUnit) dan tidak punya pemeriksaan o
 
 **Salin dengan Alt + seret dan batal dengan Esc (2026-11-05):** fitur baru atas permintaan user (kebutuhan aplikasi F38). Keadaan selama stiker ditarik kini ada di satu tempat, dan isi lembar serta posisi stiker baru berubah saat dilepas. Pemeriksaan otomatis S23 lulus (EDIT-23). Uji dengan mouse sungguhan pada kode yang di-push: Alt + seret dan Esc 15/15, dan semua uji mouse di atas diulang dengan hasil yang sama. Ctrl+D dari Jonathan (F39) masuk sesudahnya. Pada kode yang menyertakannya, semua uji mouse di atas diulang dengan hasil yang sama, ditambah 7 langkah Ctrl+D: sebelum ini Ctrl+D belum punya uji. Bukti uji mouse tidak disimpan.
 
+**CDR tanpa CorelDRAW dan AI tanpa PDF-compatible (2026-11-07):** keputusan user 2026-11-06, disetujui leader (kebutuhan aplikasi F1 dan §6). CDR dibaca lewat libcdr lebih dulu; CorelDRAW hanya cadangan. Kriteria IMP-05, IMP-06, dan skenario uji stabilitas P1 diubah mengikuti pesan baru. IMP-06 menjadi NOT RUN karena uji tampilannya belum diulang dengan pesan baru; logikanya lulus di pemeriksaan otomatis P1. Pemeriksaan otomatis juga membuka contoh CDR dari uji LibreOffice dan menolak AI yang disimpan tanpa PDF-compatible.
+
 ## 5. Matriks format
 
 | Aspek | PDF | AI (PDF-compatible) | CDR | PNG | JPG | SVG |
 | --- | --- | --- | --- | --- | --- | --- |
-| Dimuat, ukuran benar | IMP-01, IMP-02: PASS | IMP-03: PASS | IMP-05: BLOCKED | IMP-10: PASS | IMP-11: PASS | IMP-12: PASS |
-| Banyak halaman jadi desain terpisah | IMP-02: PASS | Dicek sekali 2026-11-01, bukti tidak disimpan: salinan PDF 3 halaman berekstensi .ai jadi 3 desain vektor (bukan file Illustrator asli) | BLOCKED | — | — | — |
-| Di PDF export | Vektor, warna CMYK utuh (EXP-04: PASS). Halaman yang diputar (/Rotate) jadi gambar + peringatan (IMP-16: PASS) | Vektor (EXP-04: PASS) | Vektor bila konversi berhasil (BLOCKED) | Gambar | Gambar | Gambar ±300 dpi (batasan di kebutuhan aplikasi) |
-| dpi dan peringatan resolusi | Tidak tampil (vektor) | Tidak tampil | Tidak tampil | IMP-13: PASS | IMP-13: PASS | ±305 dpi |
-| File rusak atau gagal | IMP-17: PASS (PDF terenkripsi jadi gambar + peringatan, D8 diperbaiki) | IMP-04: PASS | IMP-06: PASS; IMP-08: BLOCKED | IMP-21: PASS | IMP-21: PASS | IMP-21: PASS |
+| Dimuat, ukuran benar | IMP-01, IMP-02: PASS | IMP-03: PASS | IMP-05: BLOCKED (belum ada `cdr-normal.cdr`). Contoh CDR dari uji LibreOffice terbuka lewat libcdr di pemeriksaan otomatis | IMP-10: PASS | IMP-11: PASS | IMP-12: PASS |
+| Banyak halaman jadi desain terpisah | IMP-02: PASS | Dicek sekali 2026-11-01, bukti tidak disimpan: salinan PDF 3 halaman berekstensi .ai jadi 3 desain vektor (bukan file Illustrator asli) | Satu desain per halaman lewat libcdr; dicek di pemeriksaan otomatis dengan keluaran libcdr buatan sendiri | — | — | — |
+| Di PDF export | Vektor, warna CMYK utuh (EXP-04: PASS). Halaman yang diputar (/Rotate) jadi gambar + peringatan (IMP-16: PASS) | Vektor (EXP-04: PASS) | Gambar RGB ±300 dpi lewat libcdr; vektor hanya bila dibuka lewat CorelDRAW (BLOCKED) | Gambar | Gambar | Gambar ±300 dpi (batasan di kebutuhan aplikasi) |
+| dpi dan peringatan resolusi | Tidak tampil (vektor) | Tidak tampil | ±305 dpi bila dibuka lewat libcdr | IMP-13: PASS | IMP-13: PASS | ±305 dpi |
+| File rusak atau gagal | IMP-17: PASS (PDF terenkripsi jadi gambar + peringatan, D8 diperbaiki) | IMP-04: PASS | IMP-06: NOT RUN (pesan berubah 2026-11-06; P1 lulus); IMP-08: BLOCKED | IMP-21: PASS | IMP-21: PASS | IMP-21: PASS |
 | Latar warna muda (abu 242, pink pastel) | — | — | — | IMP-23: PASS (sebelumnya hilang, D10) | Aturan sama, belum ada file uji | — |
 | Latar putih | IMP-18: PASS (kotak dipertahankan) | Sama dengan PDF | — | Ada transparansi: putih dihitung artwork | Dipakai utuh, tidak dibuang (IMP-11) | — |
 
 ## 6. Kasus uji
 
-Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-12, CUT-19, NEST-11, EDIT-01 sampai EDIT-08, EDIT-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28; IMP-22 per 2026-10-31; NEST-12 dan NEST-13 per 2026-11-02; NEST-12, NEST-13, dan NEST-14 per 2026-11-03.
+Total {{TOTAL}} kasus: PASS {{PASS}}, FAIL {{FAIL}}, BLOCKED {{BLOCKED}}, NOT RUN {{NOT_RUN}}. Status per 2026-10-19; IMP-10, IMP-11, IMP-17, IMP-18, IMP-23, CUT-07, CUT-14, NEST-10, EDIT-12, EDIT-13, EDIT-14, HW-15, dan PERF-01 per 2026-10-21; EDIT-16 dan HW-16 per 2026-10-22; IMP-19, CUT-10, CUT-14, CUT-15, CUT-16, CUT-17, EDIT-13, EDIT-14, EDIT-15, EDIT-17, EDIT-18, EDIT-19, CUT-18, HW-15, HW-17, dan HW-18 per 2026-10-23; IMP-19, CUT-12, CUT-19, NEST-11, EDIT-01 sampai EDIT-08, EDIT-11, EDIT-12, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-26; CUT-03, CUT-05, CUT-10, CUT-18, CUT-19, EDIT-14, EDIT-16, EDIT-18, dan EDIT-20 per 2026-10-27; CUT-13, IMP-04, IMP-21, dan NEST-11 per 2026-10-28; IMP-22 per 2026-10-31; NEST-12 dan NEST-13 per 2026-11-02; NEST-12, NEST-13, dan NEST-14 per 2026-11-03; IMP-05 dan IMP-06 per 2026-11-07.
 
 Kolom Sumber menunjukkan asal syaratnya:
 

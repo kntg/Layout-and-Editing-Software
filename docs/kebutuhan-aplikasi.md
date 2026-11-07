@@ -10,7 +10,7 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 
 **Cakupan prototipe** (2026-10-17): automasi layout saja, yaitu memasukkan file, garis potong otomatis, susun otomatis, dan export PDF/preview JPG. Estimasi pengerjaan 2 minggu. Dokumentasi disimpan di repo GitHub ini.
 
-**Tujuan utama: mempercepat proses** (konfirmasi 2026-10-14). Saat ini Photoshop dipakai hanya untuk merapikan gambar, bukan untuk layout, dan pekerjaan itu memakan banyak waktu. Printech tidak bertujuan mengurangi pemakaian Adobe.
+**Tujuan utama: mempercepat proses** (konfirmasi 2026-10-14). Saat ini Photoshop dipakai hanya untuk merapikan gambar, bukan untuk layout, dan pekerjaan itu memakan banyak waktu. Sejak 2026-11-06 (keputusan user, disetujui leader), Printech juga ditujukan untuk persiapan produksi tanpa CorelDRAW dan Illustrator: membuka file customer, layout, garis potong, dan export. Membuat atau mengedit artwork tetap di aplikasi desain, dan pengiriman pekerjaan ke printer dan mesin potong tetap di luar cakupan.
 
 **Cakupan:** stiker saja (kiss-cut dan die-cut). Nametag, kartu, dan dokumen tidak termasuk.
 
@@ -40,7 +40,7 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 
 | Kode | Kebutuhan | Status (versi 2) |
 | ---- | ----------- | ----------- |
-| F1 | File yang bisa dimasukkan: PDF, AI (yang disimpan PDF-compatible), CDR (lewat CorelDRAW yang terpasang; dikerjakan proses pembantu terpisah yang dihentikan setelah 30 detik bila CorelDRAW tidak merespons), PNG, JPG, dan SVG. PDF beberapa halaman = satu desain per halaman | Ada. Jalur CDR belum diuji |
+| F1 | File yang bisa dimasukkan: PDF, AI (yang disimpan PDF-compatible), CDR, PNG, JPG, dan SVG. PDF beberapa halaman = satu desain per halaman. CDR dibuka tanpa CorelDRAW lewat alat libcdr yang ikut di folder Printech (sejak 2026-11-06): satu desain per halaman, ukuran asli, ditempel sebagai gambar RGB ±300 dpi. Bila libcdr gagal, CDR dibuka lewat CorelDRAW yang terpasang, di proses pembantu terpisah yang dihentikan setelah 30 detik bila CorelDRAW tidak merespons. AI yang disimpan tanpa PDF-compatible ditolak dengan pesan untuk menyimpan ulang (2026-11-06) | Ada. CDR lewat libcdr diuji dengan contoh dari uji LibreOffice |
 | F2 | Gambar otomatis dipangkas sampai batas artwork (pinggiran transparan dibuang). Latar gambar tanpa bagian transparan tidak dibuang otomatis. PDF memakai ukuran aslinya. Lebar dan jumlah bisa diatur per desain | Ada |
 | F3 | Garis kiss-cut dan die-cut, masing-masing dengan offset dan Halus (penghalus) sendiri. Lubang asli artwork yang tetap terbuka setelah offset (stiker donat) mendapat garis dalam pada kiss dan die (2026-10-21) | Ada |
 | F4 | Kertas: pilihan A0–A6, **A3+ 320×480 (bawaan)**, SRA3, SRA4, ukuran bebas (custom), dan tombol putar orientasi | Ada |
@@ -140,7 +140,7 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
   - PDF menulis warnanya sebagai CMYK murni (perintah `k`), digambar di bawah artwork.
   - Bila warna border dipakai, bleed tidak lagi memperluas warna tepi gambar (perluasan itu akan menutupi border).
   - Tanpa bleed, jarak antar stiker minimal 1 mm supaya perpanjangan warna tidak masuk ke stiker tetangga.
-- **Rapikan gambar hanya untuk gambar (raster)** (PNG, JPG, SVG, dan PDF yang gagal dibaca sebagai vektor). File vektor (PDF/AI/CDR) tetap dirapikan di CorelDRAW supaya warna CMYK dan vektornya utuh. Rapikan hanya mengubah transparansi, tidak menggambar ulang piksel.
+- **Rapikan gambar hanya untuk gambar (raster)** (PNG, JPG, SVG, CDR yang dibuka tanpa CorelDRAW, dan PDF yang gagal dibaca sebagai vektor). File vektor (PDF/AI, dan CDR yang dibuka lewat CorelDRAW) tetap dirapikan di CorelDRAW supaya warna CMYK dan vektornya utuh. Rapikan hanya mengubah transparansi, tidak menggambar ulang piksel.
 - **Pengurangan titik garis potong (2026-10-16).** Cara RDP tidak dipakai untuk garis otomatis (editor garis potong memakai pencocokan kurva Bezier sejak 2026-10-23, lihat di atas). Potrace sudah menghasilkan kurva Bezier yang dioptimalkan; RDP hanya bekerja pada garis lurus, jadi kurva harus dipecah dulu. Hasil ukur: teks butuh 117 titik garis lurus untuk ketelitian 0,1 mm, sedangkan Bezier cukup 72 titik. Yang dipakai:
   - Pengaturan Potrace: `AlphaMax` 1,3334 (tidak ada sudut tajam, pisau tidak berbelok mendadak) dan `OptTolerance` 1 piksel = 0,17 mm (lebih banyak potongan kurva digabung).
   - Penghalusan bentuk sebelum dijadikan kurva: gambar dikaburkan sebesar nilai Halus (sigma; 3 kali box blur, mendekati Gaussian), lalu dipisah lagi menjadi isi dan bukan isi (threshold). Lekukan kecil hilang. Halus 1–2 mm paling efektif; di atas 2 mm jumlah titik bisa naik lagi.
@@ -151,14 +151,15 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
   - Hasil di aplikasi (kiss 2/1 mm, die 4/2 mm), titik kiss/die sebelum → sesudah: rough.jpg 64/43 → 16/13 (−73%), lingkaran 11/10 → 3/4 (−67%), logo.pdf 21/15 → 8/7 (−58%), bintang 29/27 → 15/17 (−43%), badge 9/8 → 8/8. Sudut tajam 2 → 0. Sejak 2026-10-18 (penjaga dibulatkan ke atas, die minimal 1 piksel di luar kiss) rough.jpg 17/16. Muat per desain 20–70 ms, stiker 300 mm ±1 detik (versi rilis).
   - Skenario uji S1–S23 beserta hasilnya: [skenario uji garis potong](UJI-GARIS-POTONG.md).
 - **Stabilitas dan performa** (2026-10-17, spesifikasi leader bagian 2):
-  - CorelDRAW dikendalikan (lewat COM) dari proses pembantu (worker; aplikasi yang sama dengan argumen `--cdr2pdf`), bukan dari proses utama. Selama menunggu, tampilan tetap bisa dipakai. Lewat 30 detik, proses pembantu dihentikan dan operator mendapat pesan; Printech tetap jalan. CorelDRAW sendiri tidak dimatikan, supaya pekerjaan operator yang belum disimpan aman.
+  - CDR dibaca lebih dulu oleh alat libcdr (`cdr2xhtml.exe` dari MSYS2, di folder `libcdr`), juga di proses terpisah dengan batas 30 detik (sejak 2026-11-06). Kotak pesan Windows untuk DLL yang hilang atau alat yang crash dimatikan, jadi kegagalannya langsung diteruskan ke CorelDRAW atau ke pesan untuk operator.
+  - Bila libcdr gagal, CorelDRAW dikendalikan (lewat COM) dari proses pembantu (worker; aplikasi yang sama dengan argumen `--cdr2pdf`), bukan dari proses utama. Selama menunggu, tampilan tetap bisa dipakai. Lewat 30 detik, proses pembantu dihentikan dan operator mendapat pesan; Printech tetap jalan. CorelDRAW sendiri tidak dimatikan, supaya pekerjaan operator yang belum disimpan aman.
   - 3 percobaan susun otomatis dan hapus latar dihitung bersamaan (paralel, dengan `Parallel.For`). Spesifikasi menyebut `Parallel.ForEachAsync`, tetapi cara itu untuk pekerjaan yang banyak menunggu (baca/tulis file atau jaringan), sedangkan pekerjaan ini murni hitungan prosesor. Hasilnya sama persis sampai tiap bit dengan versi berurutan.
   - Hasil ukur (versi rilis, prosesor 12 thread): susun 130 stiker 57 → 43 ms. Gambar 4000×3000: hapus latar 119 → 97 ms (pengisian area atau flood fill tetap berurutan), kikis tepi 103 → 31 ms, tampilan 62 → 20 ms. Memori saat diam tidak berubah (total working set versi lama 148–152 MB, versi baru 148–153 MB, 4 kali ukur).
   - Hapus latar dan penghapus klik di jendela Rapikan dihitung di latar belakang, jadi jendela tetap merespons. Hanya pembaruan tampilan (±20–70 ms) yang berjalan di jalur utama tampilan.
   - Sejak 2026-10-19, file PDF/AI disalin ke folder sementara saat dimuat. Export dan Susun memakai salinan itu, jadi artwork tetap sama dengan dasar garis potong walau file asli diubah, dipindah, atau dihapus. Untuk memakai isi baru, tambahkan file itu lagi.
   - Sejak 2026-11-05, gambar PNG dan JPG juga tidak dibaca ulang dari file asli saat lebar atau garis potong berubah. Muat ulang memakai gambar yang sudah ada di memori, jadi file asli boleh diubah, dipindah, atau dihapus. SVG tetap digambar ulang supaya tajam selama filenya masih sama, dan dibaca dari folder aslinya karena gambar yang ditautkan SVG hanya terbaca dari sana (dicoba: dari folder lain gambar tautannya hilang). Bila filenya berubah atau hilang, SVG memakai gambar terakhir.
   - Foto bertanda orientasi (foto HP) ditegakkan saat dimuat, dan gambar tegak itu yang dipakai di layar, Rapikan, PDF, dan SVG (2026-11-05).
-  - Sejak 2026-10-19, hasil konversi CDR disimpan per versi file (waktu ubah + ukuran). CDR yang diedit lalu ditambah ulang dikonversi lagi.
+  - Sejak 2026-10-19, hasil konversi CDR disimpan per versi file (waktu ubah + ukuran); sejak 2026-11-06 termasuk hasil libcdr, juga yang gagal, supaya tidak dicoba ulang. CDR yang diedit lalu ditambah ulang dikonversi lagi.
   - Skenario uji P1–P10: [skenario uji stabilitas](UJI-STABILITAS.md).
 - **Persiapan cetak (prepress)** (2026-10-17, spesifikasi leader bagian 3):
   - Garis potong ditulis dengan warna CMYK murni (DeviceCMYK) lewat perintah `K`: kiss `0 1 0 0`, die `1 0 0 0`. Tidak ada perintah warna RGB, profil warna (ICC), atau profil output (OutputIntent), jadi tidak ada konversi ke sRGB. Perintah warna lain yang ada hanya `0 g`/`0 G` (abu-abu, DeviceGray), yang ditulis pustaka PDFsharp sebelum artwork vektor ditempel; itu bukan warna garis potong.
@@ -172,6 +173,11 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
   - Angka bahan dibatasi paling tinggi 100%, dan merah bila luas stiker melebihi area lembar (keputusan user 2026-11-04). Itu hanya terjadi bila stiker bertumpuk, jadi angka sebenarnya baru terbaca setelah disusun ulang. Print Ticket mengikuti aturan yang sama.
   - Zoom in tidak mengurangi jumlah lembar per baris, supaya titik di bawah kursor tetap di tempat, dan lembar yang melebihi tampilan digeser (keputusan user 2026-11-04). Zoom out menambah jumlah lembar per baris bila muat, sehingga lembar bisa berpindah baris. Pas layar, Susun otomatis, dan perubahan lebar jendela menghitungnya dari awal.
   - Pilihan bahan siap pakai (preset bahan) dihapus 2026-10-23: menurut user/leader tidak diperlukan, karena offset, Halus, margin, dan jarak diatur langsung. Nilai awalnya tetap dicatat di [catatan riset](RESEARCH.md) bagian 13 sebagai riwayat riset.
+- **CDR dan AI tanpa CorelDRAW atau Illustrator** (keputusan user 2026-11-06, disetujui leader):
+  - CDR dibaca lebih dulu oleh libcdr; CorelDRAW hanya cadangan bila libcdr gagal. libcdr mengubah semua warna (CMYK, Pantone, spot) menjadi RGB, dan artworknya ditempel sebagai gambar ±300 dpi. Ini diterima supaya CDR bisa dibuka di PC tanpa CorelDRAW.
+  - Hanya pustaka gratis, dan tidak ada program yang dipasang terpisah di PC operator: alat libcdr beserta DLL-nya (±42 MB) ikut di folder Printech dan masuk git. Asal, versi, sidik SHA256, dan lisensinya ada di `StickerLayout/libcdr/SUMBER.txt`.
+  - AI yang disimpan tanpa PDF-compatible hanya berisi halaman pengganti; isi aslinya data khusus Illustrator tanpa spesifikasi publik dan tanpa pembaca gratis yang andal. Printech menolaknya dengan pesan untuk menyimpan ulang dengan "Create PDF Compatible File" atau export ke PDF.
+  - Pustaka berbayar (misalnya Aspose.Imaging) tidak dipakai.
 - **Ditunda sampai ada kebutuhan nyata:** hapus latar foto dengan AI dan memperbesar gambar pecah. Untuk gambar pecah, cara tercepat tetap meminta file asli ke customer; angka dpi merah memberi tahu kapan perlu.
 - **Tidak dibangun:** sembunyikan salinan (hide copy), simpan proyek, dan mode nametag/kartu. Tanda registrasi buatan aplikasi awalnya tidak dibangun, lalu ditambahkan 2026-10-26 (F28).
 
@@ -183,10 +189,23 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 | BitmapToVector 1.16.3 | Potrace, pembuat kurva garis potong | GPL-3.0. Aman untuk pemakaian internal; jangan dibagikan ke luar perusahaan |
 | bblanchon.PDFium.Win32 157.0.8100 | Membuka dan menggambar PDF/AI (PDFium, versi Windows saja) | Apache-2.0 |
 | PDFsharp 6.2.4 | Menulis PDF | MIT |
+| libcdr 0.1.9 (alat `cdr2xhtml.exe` dari MSYS2) | Membaca CDR tanpa CorelDRAW | MPL-2.0 |
+| librevenge 0.0.6 | Antarmuka gambar yang dipakai libcdr | MPL-2.0 atau LGPL-2.1+ |
+| ICU 78.3 | Teks Unicode untuk libcdr | Unicode License v3 |
+| lcms2 2.20 | Konversi warna di libcdr | MIT |
+| zlib 1.3.2 | Membuka data terkompresi di CDR | zlib |
+| libgcc dan libstdc++ 16.2, winpthreads | Pustaka bawaan compiler untuk alat libcdr | GPL-3.0 dengan GCC Runtime Library Exception; winpthreads berlisensi bebas (MIT) |
 
 ## 8. Batasan yang diketahui
 
-- Jalur CDR (lewat CorelDRAW) belum diuji, karena CorelDRAW tidak terpasang di PC pengembangan.
+- Jalur CDR lewat CorelDRAW (kini hanya cadangan bila libcdr gagal) belum diuji, karena CorelDRAW tidak terpasang di PC pengembangan.
+- CDR yang dibuka tanpa CorelDRAW (libcdr, sejak 2026-11-06):
+  - semua warna menjadi RGB, termasuk hitam murni (K saja), jadi teks hitam bisa tercetak sebagai hitam empat warna;
+  - artwork ditempel sebagai gambar ±300 dpi, bukan vektor;
+  - PowerClip tidak dibaca, jadi isinya bisa tergambar tanpa potongan dan garis potongnya ikut terlalu besar. Lensa hanya transparansi isi, mesh fill hilang, dan huruf yang tidak terpasang diganti huruf lain;
+  - CorelDRAW versi baru (di atas 2021) belum terbukti terbaca. File seperti itu bisa gagal, lalu Printech mencoba CorelDRAW, atau terbuka dengan hasil keliru tanpa terdeteksi. Peringatan di baris status mengingatkan operator untuk memeriksa pratinjaunya;
+  - di repo baru ada satu contoh CDR asli (dari uji LibreOffice), jadi mutunya pada file sehari-hari belum terbukti.
+- Pemeriksaan AI tanpa PDF-compatible hanya mengenali kalimat bahasa Inggris dari Illustrator.
 - PDF yang diputar (/Rotate) atau tidak bisa dibaca pustaka PDFsharp akan ditempel sebagai gambar (±254 dpi, RGB). Termasuk PDF terenkripsi yang bisa dibuka tetapi gagal ditempel: saat dimuat, halaman dicoba ditempel seperti saat export (temuan D8, 2026-10-21). Aplikasi memberi peringatan di baris status sejak desain dimuat ("… PDF ditempel sebagai gambar"; sebelum 2026-10-18 hanya saat PDFsharp gagal ketika export).
 - SVG di-export sebagai gambar ±300 dpi.
 - Export SVG (F29): artwork selalu berupa gambar, bukan vektor. Desain PDF/AI memakai gambar tampilan layar (paling besar 1600 piksel, RGB), jadi stiker besar bisa kurang tajam. Warna border dan garis potong memakai RGB, karena SVG tidak punya CMYK. Export PDF tetap menjaga vektor dan CMYK.
@@ -232,7 +251,7 @@ Tahap sekarang: prototipe, lalu cek kualitas, lalu uji oleh operator. Status sia
 
 ## 10. Daftar uji untuk operator
 
-1. Tambahkan file CDR. Apakah CorelDRAW terbuka dan desainnya ikut masuk? Berapa detik prosesnya, dan apakah Printech tetap bisa dipakai selama menunggu?
+1. Tambahkan file CDR. Apakah desainnya masuk tanpa CorelDRAW, dan apakah warna dan bentuknya sama dengan file aslinya? Berapa detik prosesnya, dan apakah Printech tetap bisa dipakai selama menunggu?
 2. Tarik file dari Explorer ke jendela Printech. Coba alat Geser tampilan (H atau tahan Spasi), Zoom (Z), dan shortcut Ctrl+I, F4, R, Delete, serta panah.
 3. Export preview JPG, kirim ke WhatsApp. Apakah cukup jelas untuk konfirmasi ke customer?
 4. Masukkan foto yang diterima lewat WhatsApp. Apakah angka dpi merah muncul untuk file yang hasil cetaknya memang pecah?
@@ -303,6 +322,12 @@ Dicek dengan tangan saat sempat; cukup bagian yang berubah. Skrip yang memakai m
 - Ganti bahasa: penanda garis di daftar desain ikut berubah.
 - Zoom 400% pada stiker bergaris potong: gambar pas dengan garisnya, dan tetap tajam.
 
+**CDR dan AI (2026-11-07; logikanya sudah dibuktikan tanpa mouse dan keyboard, belum dicoba dengan tangan):**
+
+- Tambah file CDR: baris status menulis "Membaca …", lalu desainnya muncul tanpa CorelDRAW, dengan peringatan "CDR ditempel sebagai gambar RGB". Bandingkan warna dan bentuknya dengan file aslinya.
+- Ubah lebar desain CDR, lalu Susun otomatis: ukurannya berubah dan gambarnya tetap tajam.
+- Tambah AI yang disimpan tanpa PDF-compatible: muncul pesan untuk menyimpan ulang dengan "Create PDF Compatible File", dan tidak ada desain bertuliskan kalimat dari Illustrator.
+
 **Salin, pindah, dan urungkan (2026-11-06; logikanya sudah dibuktikan tanpa mouse dan keyboard, belum dicoba dengan tangan):**
 
 - Alt + seret dari lembar 1 ke lembar 2, lalu dari lembar 2 ke lembar 1: stiker asal tetap, salinannya terpilih di lembar tujuan. Ctrl+Z menghapus salinan, Ctrl+Y mengembalikannya.
@@ -325,9 +350,9 @@ Dicek dengan tangan saat sempat; cukup bagian yang berubah. Skrip yang memakai m
 
 - **Untuk presentasi prototipe:** Printech dijalankan dari laptop tim yang terpasang .NET 10 SDK ([README, bagian Untuk pengembang](../README.md#untuk-pengembang)). Zip untuk operator di bawah baru dipakai bila Printech dipasang di PC toko.
 - **Untuk operator (tanpa memasang .NET):**
-  1. Salin `Printech-win-x64.zip` (64 MB) ke PC operator.
+  1. Salin `Printech-win-x64.zip` (±80 MB, termasuk alat libcdr) ke PC operator.
   2. Klik kanan zip, pilih Properties, centang **Unblock**, lalu OK. Langkah ini mencegah peringatan Windows SmartScreen, karena aplikasinya belum ditandatangani.
-  3. Ekstrak (142 MB), lalu jalankan `Printech\StickerLayout.exe`. Bila SmartScreen tetap muncul: **More info**, lalu **Run anyway**.
+  3. Ekstrak (±189 MB), lalu jalankan `Printech\StickerLayout.exe`. Bila SmartScreen tetap muncul: **More info**, lalu **Run anyway**.
   4. Butuh Windows 10/11 64-bit (belum diuji di PC operator). Versi rilis: jendela muncul ±0,7 detik, memori ±124 MB.
 - **Membuat zip untuk operator:** `dotnet publish StickerLayout -c Release -r win-x64 --self-contained -o publish\Printech`, lalu zip folder `publish\Printech`. Folder `publish/` tidak ikut git.
 - **Menjalankan aplikasi:** `dotnet run --project StickerLayout` (perlu .NET 10). File juga bisa dibuka sebagai argumen, misalnya lewat "Open with" atau dengan menyeret file ke ikon aplikasi.

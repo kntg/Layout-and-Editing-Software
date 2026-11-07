@@ -137,6 +137,8 @@ public partial class MainWindow : Window
         if (low > 0) warn.Add(Lang.T("LowDpi", low));
         int ras = items.Count(i => i.PdfAsImage);
         if (ras > 0) warn.Add(Lang.T("PdfAsImage", ras));
+        int cdr = items.Count(i => i.CdrAsImage);
+        if (cdr > 0) warn.Add(Lang.T("CdrAsImage", cdr));
         WarnText.Text = string.Join("   ", warn);
         WarnPill.Visibility = warn.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -345,11 +347,16 @@ public partial class MainWindow : Window
             foreach (var f in files)
                 try
                 {
-                    // CDR: CorelDRAW bekerja di proses worker; UI tetap jalan selama menunggu.
+                    // CDR: libcdr dulu, CorelDRAW hanya cadangan. Keduanya bekerja di proses terpisah, jadi tampilan tetap jalan selama menunggu,
+                    // dan LoadAll sesudahnya memakai hasil yang sudah disimpan.
                     if (Path.GetExtension(f).Equals(".cdr", StringComparison.OrdinalIgnoreCase))
                     {
-                        Status.Text = Lang.T("CorelOpen", Path.GetFileName(f));
-                        await Task.Run(() => Corel.ToPdf(f));
+                        Status.Text = Lang.T("CdrOpen", Path.GetFileName(f));
+                        if (await Task.Run(() => Libcdr.ToSvg(f)) == null)
+                        {
+                            Status.Text = Lang.T("CorelOpen", Path.GetFileName(f));
+                            await Task.Run(() => Corel.ToPdf(f));
+                        }
                     }
                     foreach (var st in Loader.LoadAll(f, D(WidthBox, 50), Kiss, Die, BleedMm)) items.Add(st);
                 }

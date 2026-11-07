@@ -20,7 +20,8 @@ Isi README ini:
 
 1. **Tambah file.** Ada tiga cara: tarik file ke jendela, klik **Tambah file…** (Ctrl+O atau Ctrl+I), atau buka file lewat "Open with". File langsung disusun di lembar.
    - Format: PDF, AI (yang disimpan PDF-compatible), CDR, PNG, JPG, SVG. PDF dengan banyak halaman menjadi satu desain per halaman.
-   - CDR dibuka lewat CorelDRAW yang terpasang. Jendela Printech tidak macet selama menunggu.
+   - CDR dibuka tanpa CorelDRAW, lewat alat libcdr yang ikut di folder Printech. Warnanya menjadi RGB dan desainnya ditempel sebagai gambar, jadi periksa pratinjaunya sebelum cetak. Bila libcdr gagal, Printech memakai CorelDRAW yang terpasang. Jendela Printech tidak macet selama menunggu.
+   - AI yang disimpan tanpa PDF-compatible ditolak dengan pesan.
    - Bila aplikasi dibuka tanpa file, muncul halaman sambutan: tarik file ke kotaknya atau klik **Buka Folder**.
 2. **Atur desain** di panel **Desain**.
    - Setiap desain punya lebar artwork (mm) dan jumlah (pcs). Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
@@ -95,7 +96,7 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 - **Untuk:** desain berupa gambar, yaitu PNG, JPG, SVG, dan PDF yang ditempel sebagai gambar.
 - **Cara membuka:** **Lainnya** (ikon titik tiga) di baris desain, lalu **Rapikan gambar**; atau klik dua kali gambar kecil desainnya.
 - **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**.
-- **Catatan:** file vektor (PDF/AI/CDR) dirapikan di CorelDRAW supaya warnanya tetap utuh. Fitur ini dibekukan, tidak dikembangkan lagi.
+- **Catatan:** file vektor (PDF/AI, dan CDR yang dibuka lewat CorelDRAW) dirapikan di CorelDRAW supaya warnanya tetap utuh. Fitur ini dibekukan, tidak dikembangkan lagi.
 
 ### Tampilan dan bahasa
 
@@ -144,7 +145,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | "… tumpang tindih/terlalu dekat/keluar margin" | Ada stiker bertanda merah. Geser stikernya atau klik Susun otomatis. Export masih bisa setelah konfirmasi. |
 | "Tidak ada tempat…" | Stiker tidak muat di tujuan, jadi kembali ke posisi awal, atau putarannya dibatalkan. Hapus stiker lain, atau klik Susun otomatis. |
 | "… diubah menjadi …, tetapi tidak ada posisi kosong" | Ukuran baru berlaku, tetapi stiker bertabrakan dan ditandai merah. Klik Susun otomatis. |
-| "CorelDRAW tidak terpasang…" | Export CDR ke PDF dulu di PC yang ada CorelDRAW-nya, lalu tambahkan PDF-nya. |
+| "CDR ini tidak bisa dibaca tanpa CorelDRAW…" | libcdr tidak bisa membaca file itu, dan CorelDRAW tidak terpasang. Export CDR ke PDF di PC yang ada CorelDRAW-nya, lalu tambahkan PDF-nya. |
+| "… CDR ditempel sebagai gambar RGB…" | CDR dibuka tanpa CorelDRAW. Warna dan efeknya bisa beda dari CorelDRAW; periksa pratinjaunya sebelum cetak. |
 | "CorelDRAW tidak merespons dalam 30 detik…" | Cek jendela CorelDRAW, mungkin ada dialog yang terbuka. Atau export CDR ke PDF secara manual. |
 | "File AI ini tidak bisa dibaca…" | AI disimpan tanpa opsi PDF-compatible. Simpan ulang dari Illustrator dengan "Create PDF Compatible File", atau export ke PDF. |
 | "PDF tidak bisa dibuka: file rusak atau dilindungi password." | Minta file baru ke customer, atau buka password PDF-nya dulu. |
@@ -184,7 +186,7 @@ Belum dipakai: untuk presentasi, prototipe dijalankan dari laptop tim (lihat [Un
 Operator tidak perlu memasang .NET. Yang dibutuhkan:
 
 - Windows 10/11 64-bit.
-- CorelDRAW terpasang, hanya bila ingin menambahkan file CDR.
+- CorelDRAW tidak wajib. CDR dibuka lewat alat libcdr yang ikut di folder Printech; CorelDRAW hanya dipakai bila libcdr gagal membaca sebuah CDR.
 
 Langkah:
 
@@ -214,7 +216,7 @@ Langkah:
 | Uji tampilan (skrip `Printech-TestData/ui-*.ps1`) | Windows PowerShell 5.1 (bawaan Windows) |
 | Validasi, pembuat dokumen uji alur lengkap, uji negatif pemeriksaan otomatis | Python 3 dengan PyMuPDF, Pillow, NumPy, dan SciPy: `pip install pymupdf pillow numpy scipy` |
 | Pemeriksaan format dokumen Markdown | Node.js (`npx`) |
-| Menguji file CDR | CorelDRAW terpasang |
+| Menguji jalur cadangan CDR lewat CorelDRAW | CorelDRAW terpasang |
 
 Editor kode bebas; semua build lewat perintah `dotnet`. Pustaka yang dipakai (PDFium, PDFsharp, BitmapToVector/Potrace, SharpVectors) diunduh otomatis saat build pertama.
 
@@ -274,14 +276,15 @@ Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publi
 
 | Lokasi | Isi |
 | --- | --- |
-| `StickerLayout/Core.cs` | Mesin utama: memuat desain, garis potong otomatis (gambar bantu, penghalusan, Potrace), susun otomatis, dan proses pembantu CorelDRAW |
+| `StickerLayout/Core.cs` | Mesin utama: memuat desain, garis potong otomatis (gambar bantu, penghalusan, Potrace), susun otomatis, pembaca CDR lewat libcdr, dan proses pembantu CorelDRAW |
+| `StickerLayout/libcdr/` | Alat libcdr dari MSYS2 untuk membuka CDR tanpa CorelDRAW, beserta DLL dan teks lisensinya. Asal, versi, dan sidik SHA256-nya ada di `SUMBER.txt` |
 | `StickerLayout/Curves.cs`, `Shapes.cs`, `SmartSelect.cs` | Titik garis potong (lurus/kurva), preset bentuk dan desain kotak, smart select |
 | `StickerLayout/Export.cs`, `ExportSvg.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket, export SVG; membuka PDF/AI |
 | `StickerLayout/Cleanup.cs` | Rapikan gambar (hapus latar, penghapus klik, kikis tepi) |
 | `StickerLayout/MainWindow.*`, `CutEditWindow.*`, `CleanupWindow.*`, `RulerControl.cs`, `Theme.xaml` | Tampilan: jendela utama, editor garis potong, jendela Rapikan, penggaris, tema |
 | `StickerLayout/Strings.cs` | Teks tampilan dalam bahasa Indonesia dan English |
 | `StickerLayout/SelfCheck.cs` | Pemeriksaan otomatis bawaan (`StickerLayout.exe --selfcheck <folder>`) |
-| `samples/` | File contoh. Pemeriksaan otomatis juga menulis hasilnya di sini; hasil itu tidak ikut git |
+| `samples/` | File contoh, termasuk `cdr-libreoffice-fdo65220.cdr` (contoh uji CDR dari repo LibreOffice, MPL-2.0). Pemeriksaan otomatis juga menulis hasilnya di sini; hasil itu tidak ikut git |
 | `Printech-TestData/` | Data uji dengan hasil benar, skrip validasi dan uji tampilan, serta bukti uji |
 | `docs/` | Kebutuhan aplikasi, riset, skenario uji, uji alur lengkap (`docs/pengujian/`), dan spesifikasi fitur |
 

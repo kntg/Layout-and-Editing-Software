@@ -8,6 +8,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Xml;
+using System.Xml.Linq;
 using BitmapToVector;
 using PdfSharp.Pdf.IO;
 using SharpVectors.Converters;
@@ -45,8 +47,10 @@ public class Sticker
     // null = baca dari sumbernya (PDF lewat salinan saat dimuat).
     public byte[]? Frozen => Edited ?? (Pdf != null || SvgStamp is { } v && v == Loader.Stamp(Source) ? null : Raster);
     public bool CanClean => Pdf == null;         // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh
-    // PDF/AI/CDR yang tidak bisa ditempel vektor (halaman diputar, tidak terbaca PDFsharp): ditempel sebagai gambar RGB.
-    public bool PdfAsImage => Pdf == null && Path.GetExtension(Source).ToLowerInvariant() is ".pdf" or ".ai" or ".cdr";
+    // PDF/AI yang tidak bisa ditempel vektor (halaman diputar, tidak terbaca PDFsharp): ditempel sebagai gambar RGB.
+    public bool PdfAsImage => Pdf == null && Path.GetExtension(Source).ToLowerInvariant() is ".pdf" or ".ai";
+    // CDR yang dibuka tanpa CorelDRAW (libcdr), atau halaman dari CorelDRAW yang tidak bisa ditempel vektor: ditempel sebagai gambar RGB.
+    public bool CdrAsImage => Pdf == null && Path.GetExtension(Source).Equals(".cdr", StringComparison.OrdinalIgnoreCase);
     public double LoadedW, LoadedBleed;
     public Cut LoadedKiss = null!, LoadedDie = null!;
     public double W, H;                          // kotak (mm), kelipatan Nest.Cell
@@ -129,18 +133,29 @@ public static partial class Loader
     public static List<Sticker> LoadAll(string path, double defWidthMm, Cut kiss, Cut die, double bleed = 0)
     {
         var pdf = PdfOf(path);
-        int pages = 1;
+        // CDR yang dibaca libcdr: satu SVG per halaman (PdfOf memakai CorelDRAW hanya bila libcdr gagal).
+        var cdrPages = pdf == null && Path.GetExtension(path).Equals(".cdr", StringComparison.OrdinalIgnoreCase) ? Libcdr.ToSvg(path) : null;
+        int pages = cdrPages?.Length ?? 1;
         if (pdf != null)
-            using (var r = new Pdfium(pdf)) pages = r.Pages;
+            using (var r = new Pdfium(pdf))
+            {
+                pages = r.Pages;
+                // AI dari Illustrator yang disimpan tanpa PDF-compatible: PDF-nya hanya satu halaman pengganti, isi aslinya data khusus Illustrator
+                // yang tidak bisa dibaca. Ditolak supaya tidak dimuat sebagai desain bertuliskan kalimat itu.
+                // ponytail: hanya mengenali kalimat bahasa Inggris dari Illustrator; tambah kalimat lain bila ada Illustrator berbahasa lain.
+                if (Path.GetExtension(path).Equals(".ai", StringComparison.OrdinalIgnoreCase) && pages > 0
+                    && string.Join(' ', r.Text(0).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Contains("saved without PDF Content", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(Lang.T("BadAi"));
+            }
         var res = new List<Sticker>();
-        for (int i = 0; i < pages; i++) res.Add(Load(path, i, pdf != null ? 0 : defWidthMm, kiss, die, pages > 1, bleed: bleed));
+        for (int i = 0; i < pages; i++) res.Add(Load(path, i, pdf != null || cdrPages != null ? 0 : defWidthMm, kiss, die, pages > 1, bleed: bleed));
         return res;
     }
 
     static string? PdfOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
         ".pdf" or ".ai" => Snapshot(path),
-        ".cdr" => Corel.ToPdf(path),
+        ".cdr" => Libcdr.ToSvg(path) == null ? Corel.ToPdf(path) : null, // libcdr dulu; CorelDRAW hanya cadangan (keputusan user 2026-11-06)
         _ => null,
     };
 
@@ -182,19 +197,21 @@ public static partial class Loader
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
         var pdf = edited == null ? loadedPdf ?? PdfOf(path) : null;
         BitmapSource full;
-        double nat = double.NaN;                 // mm per px pada ukuran asli (hanya PDF)
+        double nat = double.NaN;                 // mm per px pada ukuran asli (PDF dan halaman CDR)
         Rect media;                              // area yang digambar saat export, px relatif terhadap bitmap
         if (pdf != null)
         {
             (full, nat, media, bool vector) = RenderPdf(pdf, page);
             if (vector) s.Pdf = pdf;
         }
-        else if (edited == null && ext == ".svg")
+        else if (edited == null && ext is ".svg" or ".cdr")
         {
+            // CDR yang sampai di sini sudah dibaca libcdr, karena PdfOf memakai CorelDRAW bila libcdr gagal.
+            var svg = ext == ".svg" ? path : Libcdr.ToSvg(path)?.ElementAtOrDefault(page) ?? throw new InvalidDataException(Lang.T("BadCdr"));
             s.SvgStamp = Stamp(path);
             // File rusak: pesan untuk operator (D9), pesan teknis tetap di InnerException.
-            try { full = RenderSvg(path, widthMm); }
-            catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T("BadSvg"), ex); }
+            try { full = RenderSvg(svg, widthMm, out nat); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidDataException(Lang.T(ext == ".cdr" ? "BadCdr" : "BadSvg"), ex); }
             s.Raster = Png(full);
             media = new Rect(0, 0, full.PixelWidth, full.PixelHeight);
         }
@@ -461,12 +478,15 @@ public static partial class Loader
         return (bmp, 1 / pxMm, default, false);
     }
 
-    // SVG jarang dipakai: dirender ±300 dpi sesuai lebar target, lalu diperlakukan seperti PNG.
-    static BitmapSource RenderSvg(string path, double widthMm)
+    // SVG dirender ±300 dpi sesuai lebar target, lalu diperlakukan seperti PNG. widthMm 0 = ukuran asli (halaman CDR dari libcdr).
+    // nat = mm per px hasil render.
+    static BitmapSource RenderSvg(string path, double widthMm, out double nat)
     {
         var d = new FileSvgReader(new WpfDrawingSettings { IncludeRuntime = false, TextAsGeometry = true }).Read(path);
         var b = d.Bounds;
-        double k = Math.Min(widthMm * 12 / b.Width, 8000 / Math.Max(b.Width, b.Height));
+        const double DipMm = 25.4 / 96; // mm per satuan gambar WPF
+        double k = Math.Min((widthMm > 0 ? widthMm : b.Width * DipMm) * 12 / b.Width, 8000 / Math.Max(b.Width, b.Height));
+        nat = DipMm / k;
         var v = new DrawingVisual();
         using (var dc = v.RenderOpen())
         {
@@ -762,7 +782,7 @@ public static class Corel
         return p.ExitCode switch
         {
             0 when File.Exists(pdf) => (cache[cdr] = (pdf, v)).Pdf,
-            2 => throw new InvalidOperationException(Lang.T("NoCorel")),
+            2 => throw new InvalidOperationException(Lang.T("BadCdr")), // CorelDRAW tidak terpasang, dan libcdr sudah gagal lebih dulu
             _ => throw new InvalidOperationException(Lang.T("CorelFail", err.Result.Trim())),
         };
     }
@@ -782,6 +802,87 @@ public static class Corel
             return 0;
         }
         catch (Exception ex) { Console.Error.Write(ex.Message); return 1; }
+    }
+}
+
+// CDR tanpa CorelDRAW (keputusan user 2026-11-06, disetujui leader): alat libcdr dari MSYS2 (folder libcdr\ di samping exe; asal dan lisensi di
+// libcdr\SUMBER.txt) menulis satu SVG per halaman. Dijalankan di proses terpisah seperti CorelDRAW, jadi file yang membuat alatnya macet atau crash
+// tidak ikut menggantung Printech. libcdr dicoba lebih dulu; CorelDRAW hanya cadangan bila libcdr gagal.
+// ponytail: libcdr mengubah semua warna menjadi RGB, dan artworknya ditempel sebagai gambar ±300 dpi lewat jalur SVG. Tambah pengubah gambar WPF
+// ke PDF vektor bila hasil cetak kurang tajam.
+public static class Libcdr
+{
+    static readonly ConcurrentDictionary<string, (string[]? Pages, (DateTime, long) Stamp)> cache = new();
+    internal static string Tool => Path.Combine(AppContext.BaseDirectory, "libcdr", "cdr2xhtml.exe");
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern uint SetErrorMode(uint mode);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern uint GetErrorMode();
+
+    // DLL yang hilang atau alat yang crash langsung gagal tanpa kotak pesan Windows. Mode ini menurun ke proses alatnya.
+    static Libcdr() => SetErrorMode(GetErrorMode() | 0x0001 | 0x0002); // SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX
+
+    // File SVG per halaman, atau null bila libcdr tidak bisa membacanya: alat tidak ada, gagal, lewat batas waktu, keluarannya rusak, atau kosong.
+    // Hasil yang gagal juga disimpan, supaya pemanggilan berikutnya (LoadAll di thread tampilan) tidak menunggu lagi. CDR yang diedit dibaca ulang.
+    public static string[]? ToSvg(string cdr, int timeoutMs = Corel.TimeoutMs)
+    {
+        var v = Loader.Stamp(cdr);
+        if (cache.TryGetValue(cdr, out var done) && done.Stamp == v && (done.Pages?.All(File.Exists) ?? true)) return done.Pages;
+        string[]? pages = null;
+        if (File.Exists(Tool) && File.Exists(cdr))
+        {
+            Directory.CreateDirectory(App.Temp);
+            var name = Guid.NewGuid().ToString("N");
+            var copy = Path.Combine(App.Temp, name + ".cdr");
+            try
+            {
+                File.Copy(cdr, copy);
+                // Nama pendek di folder kerja: libcdr membuka nama file sebagai ANSI, jadi huruf di luar ASCII pada nama aslinya tidak terbaca.
+                var psi = new ProcessStartInfo(Tool)
+                {
+                    UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = App.Temp,
+                    RedirectStandardOutput = true, RedirectStandardError = true, StandardOutputEncoding = Encoding.UTF8,
+                };
+                psi.ArgumentList.Add(name + ".cdr");
+                using var p = Process.Start(psi)!;
+                var output = p.StandardOutput.ReadToEndAsync();
+                _ = p.StandardError.ReadToEndAsync(); // pesan alat tidak dipakai; tetap dibaca supaya prosesnya tidak tertahan
+                if (!p.WaitForExit(timeoutMs)) { p.Kill(); p.WaitForExit(); }
+                else if (p.ExitCode == 0) pages = Split(output.Result, Path.Combine(App.Temp, name));
+            }
+            catch (Exception e) when (e is not OutOfMemoryException) { pages = null; } // alat diblokir, keluaran rusak, dan sejenisnya: coba CorelDRAW
+            finally { try { File.Delete(copy); } catch (IOException) { } }
+        }
+        cache[cdr] = (pages, v);
+        return pages;
+    }
+
+    // Keluaran cdr2xhtml: XHTML berisi satu svg:svg per halaman, ukuran dalam inci dengan viewBox dalam point. Tiap halaman yang berisi gambar
+    // disimpan sebagai file SVG sendiri dan dipotong seukuran halaman: benda di luar halaman tidak ikut, sama seperti PublishToPDF di CorelDRAW.
+    // ponytail: keluaran dibaca utuh ke memori; CDR yang penuh gambar bisa besar.
+    internal static string[]? Split(string xhtml, string prefix)
+    {
+        XNamespace svg = "http://www.w3.org/2000/svg";
+        XDocument doc;
+        using (var r = XmlReader.Create(new StringReader(xhtml), new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, XmlResolver = null }))
+            doc = XDocument.Load(r);
+        string[] drawn = ["path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text", "image"];
+        var files = new List<string>();
+        foreach (var page in doc.Descendants(svg + "svg").Where(e => !e.Ancestors(svg + "svg").Any()).ToList())
+        {
+            if (!page.Descendants().Any(e => e.Name.Namespace == svg && drawn.Contains(e.Name.LocalName))) continue;
+            if (((string?)page.Attribute("viewBox"))?.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries) is [var x, var y, var w, var h])
+            {
+                var body = page.Nodes().ToList();
+                body.ForEach(n => n.Remove());
+                page.Add(new XElement(svg + "defs", new XElement(svg + "clipPath", new XAttribute("id", "halaman"),
+                        new XElement(svg + "rect", new XAttribute("x", x), new XAttribute("y", y), new XAttribute("width", w), new XAttribute("height", h)))),
+                    new XElement(svg + "g", new XAttribute("clip-path", "url(#halaman)"), body));
+            }
+            var file = $"{prefix}-p{files.Count + 1}.svg";
+            new XDocument(page).Save(file);
+            files.Add(file);
+        }
+        return files.Count > 0 ? [.. files] : null;
     }
 }
 

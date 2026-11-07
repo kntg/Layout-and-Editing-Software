@@ -1,0 +1,50 @@
+Alat libcdr untuk membuka CDR tanpa CorelDRAW
+==============================================
+
+Printech menjalankan cdr2xhtml.exe sebagai proses terpisah untuk membaca file CDR, lalu memakai CorelDRAW hanya bila
+alat ini gagal (keputusan 2026-11-06; kode: kelas Libcdr di StickerLayout/Core.cs). Alat ini menulis satu SVG per
+halaman, dan semua warna di dalamnya sudah diubah menjadi RGB.
+
+Semua exe dan DLL di folder ini diambil apa adanya, tanpa diubah, dari paket MSYS2 UCRT64 (https://www.msys2.org).
+Sidik SHA256 setiap paket dicocokkan dengan https://packages.msys2.org pada 2026-11-07. Folder ini hanya berisi
+cdr2xhtml.exe dan DLL yang dibutuhkannya (dicari dari tabel impor exe dan DLL).
+
+Paket MSYS2 (mingw-w64-ucrt-x86_64-...)   Versi                        Lisensi
+libcdr                                    0.1.9-1                      MPL-2.0
+librevenge                                0.0.6-1                      MPL-2.0 atau LGPL-2.1+
+icu                                       78.3-4                       Unicode License v3
+lcms2                                     2.20-1                       MIT
+zlib                                      1.3.2-3                      zlib
+libgcc                                    16.2.0-6                     GPL-3.0 dengan GCC Runtime Library Exception
+libstdc++                                 16.2.0-6                     GPL-3.0 dengan GCC Runtime Library Exception
+libwinpthread                             14.0.0.r598.ge3d18511f-1     lihat lisensi/libwinpthread/COPYING
+
+SHA256 paket (.pkg.tar.zst dari https://mirror.msys2.org/mingw/ucrt64/):
+libcdr         5a1616e3411914b50a04828449b42e1039e04ded8345aa1abd272e417b6f7e38
+librevenge     c614473fdacab65f941ed23ea29c5f13582dfc2355f07d3cf6079258589b192f
+icu            db9282bbd0a2e74c31d66af6bd89eb68d647a09f721eef4c661768588dca4324
+lcms2          4e1d12047e72c63832f2b50c2fc87c7ec9d2e5a8bd40ce6e820ccbeedf2e7b8f
+zlib           130e6ef04c654fc2150a177600aa5ed0035087665a893479d2c85ba7485d5704
+libgcc         80b2497f019977dd9528b1abc8621b1328a0115ab1f724047ccbb56bf323f11d
+libstdc++      33c5e58a85a538cf843a8672991cce591f0231d66da3b66a57629712d64be17f
+libwinpthread  c35d6be83d141c8cfbb61f1637dd4b53aac8f5562d766aa26d0741c40bad4e4d
+
+Kode sumber:
+- libcdr: https://github.com/LibreOffice/libcdr (rilis: https://dev-www.libreoffice.org/src/libcdr/)
+- librevenge: https://sourceforge.net/projects/libwpd/files/librevenge/
+- ICU: https://github.com/unicode-org/icu
+- lcms2: https://github.com/mm2/Little-CMS
+- zlib: https://zlib.net
+- libgcc dan libstdc++ (GCC): https://gcc.gnu.org
+- winpthreads (mingw-w64): https://www.mingw-w64.org
+- Resep pembuatan paket MSYS2: https://github.com/msys2/MINGW-packages
+
+Teks lisensi lengkap ada di folder lisensi/. Paket libcdr tidak menyertakan teks lisensinya, jadi
+lisensi/libcdr/COPYING.MPL diambil dari repo libcdr.
+
+Catatan keamanan: zlib 1.3.2 punya CVE-2026-85091 pada fungsi gzwrite (menulis file gzip). libcdr hanya membaca,
+jadi fungsi itu tidak dipakai. Perbarui paket bila MSYS2 menerbitkan zlib yang sudah diperbaiki.
+
+Cara memperbarui: unduh paket versi baru dari https://mirror.msys2.org/mingw/ucrt64/, cocokkan SHA256 dengan
+https://packages.msys2.org, bongkar dengan tar bawaan Windows, lalu salin cdr2xhtml.exe dan DLL yang dibutuhkannya ke
+folder ini. Perbarui tabel di atas, lalu jalankan pemeriksaan otomatis aplikasi.

@@ -583,9 +583,13 @@ public static class SelfCheck
             var cdrSw = Stopwatch.StartNew();
             if (Type.GetTypeFromProgID("CorelDRAW.Application") == null)
             {
+                // libcdr dicoba dulu, lalu CorelDRAW sebagai cadangan (keputusan user 2026-11-06): file yang tidak terbaca keduanya memberi satu pesan.
+                var badCdr = Path.Combine(dir, "rusak.cdr");
+                File.WriteAllText(badCdr, "bukan file CDR");
                 string msg = "tanpa error";
-                try { Corel.ToPdf(fakeCdr); } catch (InvalidOperationException ex) { msg = ex.Message; }
-                P(1, "CDR tanpa CorelDRAW: pesan jelas, aplikasi tidak crash", msg == Lang.T("NoCorel"), $"{cdrSw.ElapsedMilliseconds} ms: {msg}");
+                try { Loader.LoadAll(badCdr, 40, kiss, die); } catch (InvalidOperationException ex) { msg = ex.Message; }
+                File.Delete(badCdr);
+                P(1, "CDR yang tidak terbaca tanpa CorelDRAW: pesan jelas, aplikasi tidak crash", msg == Lang.T("BadCdr"), $"{cdrSw.ElapsedMilliseconds} ms: {msg}");
             }
             else P(1, "CDR tanpa CorelDRAW", true, "dilewati: CorelDRAW terpasang, uji manual P7");
 
@@ -1231,6 +1235,11 @@ public static class SelfCheck
                 + "kotak lebar menerima koma dan titik; export ke file terkunci memberi pesan untuk operator; "
                 + "gambar dan garis margin di dalam jendela tepat di posisi datanya; dilepas di lembar lain tepat di grid pada 4 rotasi");
 
+            var (importBad, importNote) = ImportErrors(dir, kiss, die);
+            Check(importBad.Count == 0, "CDR dan AI: " + string.Join("; ", importBad));
+            log.Add("AI tanpa PDF-compatible ditolak dengan pesan jelas; CDR dibuka lewat libcdr tanpa CorelDRAW: alat dan DLL termuat, halaman dipecah dan dipotong "
+                + "seukuran halaman, ukuran asli, batas waktu dihentikan; " + importNote);
+
             var moveBad = IntegrityErrors(dir, kiss, die);
             Check(moveBad.Count == 0, "pindah, salin, dan duplikat: " + string.Join("; ", moveBad));
             log.Add("pindah, salin dengan Alt, dan duplikat: data desain tetap (gambar, PDF, bleed, garis potong, garis manual, bentuk, border, offset), "
@@ -1604,6 +1613,114 @@ public static class SelfCheck
                 bad.Add($"dilepas di atas stiker lain, rotasi {rot}: posisi {crowded.X},{crowded.Y}");
         }
         return bad;
+    }
+
+    // CDR tanpa CorelDRAW dan AI tanpa PDF-compatible (keputusan user 2026-11-06). Dipanggil sesudah export PDF pertama: font Windows untuk PDFsharp sudah aktif.
+    static (List<string> Bad, string Note) ImportErrors(string dir, Cut kiss, Cut die)
+    {
+        var bad = new List<string>();
+
+        // AI dari Illustrator yang disimpan tanpa PDF-compatible: PDF sah berisi satu halaman pengganti. Harus ditolak, bukan dimuat sebagai desain.
+        var pgf = Path.Combine(dir, "pgf.ai");
+        using (var doc = new PdfDocument())
+        {
+            var page = doc.AddPage();
+            using (var g = XGraphics.FromPdfPage(page))
+            {
+                var font = new XFont("Arial", 10);
+                g.DrawString("This is an Adobe Illustrator File that was saved without", font, XBrushes.Black, new XPoint(40, 60));
+                g.DrawString("PDF Content. To Place or open this file in other applications, it should be re-saved from", font, XBrushes.Black, new XPoint(40, 74));
+                g.DrawString("Adobe Illustrator with the \"Create PDF Compatible File\" option turned on.", font, XBrushes.Black, new XPoint(40, 88));
+            }
+            doc.Save(pgf);
+        }
+        string got = "dimuat sebagai desain";
+        try { Loader.LoadAll(pgf, 40, kiss, die); }
+        catch (InvalidDataException ex) { got = ex.Message; }
+        File.Delete(pgf);
+        if (got != Lang.T("BadAi")) bad.Add($"AI tanpa PDF-compatible: {got}");
+
+        // Alat libcdr ikut di folder aplikasi, dan semua DLL-nya termuat: file yang bukan CDR ditolak dengan exit code 1.
+        // Kode lain berarti DLL hilang (-1073741515) atau exe rusak.
+        File.WriteAllText(Path.Combine(dir, "bukan.cdr"), "bukan file CDR");
+        int code = int.MinValue;
+        if (File.Exists(Libcdr.Tool))
+        {
+            var psi = new ProcessStartInfo(Libcdr.Tool) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = dir };
+            psi.ArgumentList.Add("bukan.cdr");
+            using var tool = Process.Start(psi)!;
+            var (o, e) = (tool.StandardOutput.ReadToEndAsync(), tool.StandardError.ReadToEndAsync());
+            if (!tool.WaitForExit(30000)) tool.Kill();
+            tool.WaitForExit();
+            code = tool.ExitCode;
+        }
+        if (code != 1) bad.Add(code == int.MinValue ? $"alat libcdr tidak ada: {Libcdr.Tool}" : $"alat libcdr: exit code {code}, harapan 1 (-1073741515 = DLL tidak ada)");
+
+        // File yang tidak terbaca dan batas waktu: null tanpa proses yang tertinggal, supaya CorelDRAW bisa dicoba.
+        if (Libcdr.ToSvg(Path.Combine(dir, "bukan.cdr")) != null) bad.Add("file yang bukan CDR tidak menghasilkan null");
+        File.Copy(Path.Combine(dir, "bukan.cdr"), Path.Combine(dir, "lambat.cdr"), true);
+        var before = Process.GetProcessesByName("cdr2xhtml").Length;
+        var slow = Libcdr.ToSvg(Path.Combine(dir, "lambat.cdr"), timeoutMs: 1);
+        Thread.Sleep(200);
+        int leftOver = Process.GetProcessesByName("cdr2xhtml").Length - before;
+        if (slow != null || leftOver > 0) bad.Add($"batas waktu libcdr: hasil {(slow == null ? "null" : "ada")}, proses tertinggal {leftOver}");
+        File.Delete(Path.Combine(dir, "bukan.cdr"));
+        File.Delete(Path.Combine(dir, "lambat.cdr"));
+
+        // Keluaran cdr2xhtml (format asli, ditulis tangan): halaman dipecah, halaman kosong dilewati, benda di luar halaman tidak ikut,
+        // dan ukuran halaman inci dengan viewBox dalam point menjadi ukuran asli dalam mm.
+        var bmp = new BmpBitmapEncoder();
+        bmp.Frames.Add(BitmapFrame.Create(BitmapSource.Create(4, 4, 96, 96, PixelFormats.Bgr24, null, Enumerable.Repeat((byte)90, 48).ToArray(), 12)));
+        var ms = new MemoryStream();
+        bmp.Save(ms);
+        string Page(string body) => $"<svg:svg version=\"1.1\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"2in\" height=\"1in\" viewBox=\"0 0 144 72\" >\n{body}\n</svg:svg>\n";
+        string Xhtml(params string[] pages) => "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            + "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n"
+            + "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n<body>\n"
+            + "<?import namespace=\"svg\" urn=\"http://www.w3.org/2000/svg\"?>\n<!-- \n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n -->\n"
+            + string.Join("<hr/>\n", pages) + "\n</body>\n</html>\n";
+        var fixture = Xhtml(
+            Page("<svg:path d=\" \nM0,0\nL144,0\nL144,72\nL0,72\nZ\" \nstyle=\"stroke: none; fill-rule: evenodd; fill: #0000ff; \"/>\n"
+                + "<svg:path d=\"M200,10 L260,10 L260,60 L200,60 Z\" style=\"stroke: none; fill: #ff0000; \"/>"),
+            Page($"<svg:image x=\"10\" y=\"10\" width=\"60\" height=\"40\" xlink:href=\"data:image/bmp;base64,{Convert.ToBase64String(ms.ToArray())}\"/>"),
+            Page(""));
+        var split = Libcdr.Split(fixture, Path.Combine(dir, "pecah-uji"));
+        if (split is not { Length: 2 }) bad.Add($"pecah halaman: {split?.Length.ToString() ?? "null"} halaman, harapan 2 (halaman kosong dilewati)");
+        else
+        {
+            try
+            {
+                var first = Loader.Load(split[0], 0, 0, kiss, die);
+                if (Math.Abs(first.ArtW - 50.8) > 0.3 || Math.Abs(first.ArtH - 25.4) > 0.3)
+                    bad.Add($"ukuran asli halaman 2 x 1 inci: {first.ArtW:F2} x {first.ArtH:F2} mm, harapan 50,8 x 25,4 tanpa benda di luar halaman");
+                Loader.Load(split[1], 0, 0, kiss, die);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { bad.Add($"halaman hasil pecah tidak termuat: {ex.Message}"); }
+            foreach (var f in split) File.Delete(f);
+        }
+        if (Libcdr.Split(Xhtml(Page("")), Path.Combine(dir, "pecah-kosong")) != null) bad.Add("dokumen tanpa gambar tidak menghasilkan null");
+
+        // CDR asli (contoh uji LibreOffice): terbuka tanpa CorelDRAW, ditandai sebagai gambar RGB, bisa diubah lebarnya, dan export tanpa peringatan.
+        string note = "contoh CDR tidak diuji";
+        var sample = Path.Combine(dir, "cdr-libreoffice-fdo65220.cdr");
+        if (!File.Exists(sample)) File.Copy(Path.Combine(AppContext.BaseDirectory, "samples", "cdr-libreoffice-fdo65220.cdr"), sample);
+        try
+        {
+            var designs = Loader.LoadAll(sample, 40, kiss, die);
+            var d = designs[0];
+            var (w0, h0) = (d.ArtW, d.ArtH);
+            d.WidthMm = Math.Round(w0 / 2, 1);
+            var half = Loader.Reload(d, d.LoadedKiss, d.LoadedDie, d.LoadedBleed);
+            var placed = designs.Select((x, i) => new Placed { S = x, X = Margin, Y = Margin }).ToList();
+            var pdf = Path.Combine(dir, "cdr-export.pdf");
+            var warn = Export.Pdf(pdf, [placed.Take(1).ToList()], 320, [480]);
+            File.Delete(pdf);
+            if (designs.Count < 1 || !designs.All(x => x.CdrAsImage && x.Pdf == null) || w0 < 100 || w0 > 210 || Math.Abs(half.ArtW - d.WidthMm) > 0.05 || warn.Count != 0)
+                bad.Add($"contoh CDR: {designs.Count} desain, gambar RGB {designs.All(x => x.CdrAsImage)}, {w0:F1} x {h0:F1} mm, lebar diubah jadi {half.ArtW:F1} mm, peringatan export {warn.Count}");
+            note = $"contoh CDR dari LibreOffice: {designs.Count} desain {w0:F1} x {h0:F1} mm, lebar bisa diubah, export tanpa peringatan";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { bad.Add($"contoh CDR tidak terbuka: {ex.Message}"); }
+        return (bad, note);
     }
 
     // Pindah, salin (Alt + seret), dan duplikat tidak mengubah data desain (2026-11-06): salinan memakai Sticker yang sama, rotasi ikut,
