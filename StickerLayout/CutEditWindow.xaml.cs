@@ -33,6 +33,8 @@ public partial class CutEditWindow : Window
     State? before;              // keadaan sebelum node/handle diseret atau node ditambah
     bool dragging, moved, ready, syncing;
     double scale = 1, ox, oy;
+    double userZoom = 1;        // Ctrl+scroll: faktor di atas skala pas-papan
+    double panX, panY;          // geseran papan supaya titik di bawah kursor tetap saat zoom
     List<Point> objs = [], holes = [];  // pilihan smart select: klik objek dan klik lubang (mm relatif artwork)
     Cmyk? border;               // warna border desain (null = kertas putih)
 
@@ -366,9 +368,13 @@ public partial class CutEditWindow : Window
     void Draw()
     {
         double bw = auto.ArtW + 2 * reach, bh = auto.ArtH + 2 * reach, pad = 28;
-        scale = Math.Max(1e-3, Math.Min((Board.ActualWidth - 2 * pad) / bw, (Board.ActualHeight - 2 * pad) / bh));
-        ox = (Board.ActualWidth - bw * scale) / 2;
-        oy = (Board.ActualHeight - bh * scale) / 2;
+        double fit = Math.Max(1e-3, Math.Min((Board.ActualWidth - 2 * pad) / bw, (Board.ActualHeight - 2 * pad) / bh));
+        scale = fit * userZoom;
+        // Batasi geseran: isi tidak boleh ditarik keluar dari papan. Lebih besar dari papan bisa digeser sampai tepinya; lebih kecil tetap di tengah.
+        panX = Clamp1(panX, bw * scale, Board.ActualWidth);
+        panY = Clamp1(panY, bh * scale, Board.ActualHeight);
+        ox = (Board.ActualWidth - bw * scale) / 2 + panX;
+        oy = (Board.ActualHeight - bh * scale) / 2 + panY;
         Place(ArtBg, Screen(new Point(0, 0)), auto.ArtW * scale, auto.ArtH * scale);
         // Pratinjau warna border: isi garis kiss (tanpa kiss: die); papan catur disembunyikan supaya bagian transparan terlihat berwarna.
         BorderPath.Data = border == null ? null : Geo(kiss.Count > 0 ? kiss : die, 0);
@@ -417,6 +423,13 @@ public partial class CutEditWindow : Window
         e.Height = Math.Max(0, h);
     }
 
+    // Geseran maksimum satu sumbu: setengah selisih ukuran isi dan papan, plus margin supaya tepi isi berhenti sebelum tepi papan.
+    static double Clamp1(double pan, double content, double board)
+    {
+        double max = Math.Max(0, (content - board) / 2) + 28;
+        return Math.Clamp(pan, -max, max);
+    }
+
     // r = 0: garis tertutup (lurus dan kurva) di layar; r > 0: kotak node berukuran 2r px.
     Geometry Geo(List<Node[]> lines, double r)
     {
@@ -439,7 +452,49 @@ public partial class CutEditWindow : Window
         return g;
     }
 
+    Point panFrom;      // posisi kursor saat mulai geser kanan
+    bool panning;
+
     void Board_Size(object s, SizeChangedEventArgs e) => Draw();
+
+    // Klik kanan tahan + seret: geser papan (kiri tetap untuk node/handle).
+    void Board_PanDown(object s, MouseButtonEventArgs e)
+    {
+        panFrom = e.GetPosition(Board);
+        panning = Board.CaptureMouse();
+    }
+
+    void Board_PanMove(object s, MouseEventArgs e)
+    {
+        if (!panning) return;
+        var p = e.GetPosition(Board);
+        panX += p.X - panFrom.X;
+        panY += p.Y - panFrom.Y;
+        panFrom = p;
+        Draw();
+    }
+
+    void Board_PanUp(object s, MouseButtonEventArgs e)
+    {
+        if (!panning) return;
+        Board.ReleaseMouseCapture();
+        panning = false;
+    }
+
+    // Ctrl+scroll: zoom 1x–8x di atas skala pas-papan, titik di bawah kursor tetap. Tanpa Ctrl biarkan lewat (scroll panel kiri).
+    void Board_Wheel(object s, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control) return;
+        var p = e.GetPosition(Board);
+        var mm = Mm(p); // titik desain di bawah kursor sebelum zoom
+        userZoom = Math.Clamp(userZoom * (e.Delta > 0 ? 1.1 : 1 / 1.1), 1, 8);
+        Draw();         // perbarui scale/ox/oy dengan zoom baru (panX/panY lama)
+        var now = Screen(mm);
+        panX += p.X - now.X;
+        panY += p.Y - now.Y;
+        Draw();
+        e.Handled = true;
+    }
 
     void Board_Down(object s, MouseButtonEventArgs e)
     {
@@ -448,7 +503,10 @@ public partial class CutEditWindow : Window
         if (dragging) Board.CaptureMouse();
     }
 
-    void Board_Move(object s, MouseEventArgs e) => DragTo(Mm(e.GetPosition(Board)));
+    void Board_Move(object s, MouseEventArgs e)
+    {
+        if (panning) Board_PanMove(s, e); else DragTo(Mm(e.GetPosition(Board)));
+    }
 
     void Board_Up(object s, MouseButtonEventArgs e)
     {

@@ -107,7 +107,8 @@
         </Border>
 
         <Canvas x:Name="Board" Background="{StaticResource Ink0}" ClipToBounds="True" Cursor="Cross" SizeChanged="Board_Size"
-                MouseLeftButtonDown="Board_Down" MouseMove="Board_Move" MouseLeftButtonUp="Board_Up">
+                MouseLeftButtonDown="Board_Down" MouseMove="Board_Move" MouseLeftButtonUp="Board_Up" PreviewMouseWheel="Board_Wheel"
+                MouseRightButtonDown="Board_PanDown" MouseRightButtonUp="Board_PanUp">
             <Path x:Name="BorderPath"/>
             <Rectangle x:Name="ArtBg" Fill="{StaticResource Checker}"/>
             <Image x:Name="Art" Stretch="Fill"/>

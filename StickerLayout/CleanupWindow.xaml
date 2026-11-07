@@ -65,11 +65,11 @@
             </StackPanel>
         </Border>
 
-        <Grid Background="{StaticResource Ink0}" ClipToBounds="True">
-            <Border Background="{StaticResource Checker}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="28">
-                <Image x:Name="View" Stretch="Uniform" Cursor="Cross" MouseLeftButtonDown="View_Down"
-                       AutomationProperties.Name="{DynamicResource CleanClick}"/>
-            </Border>
-        </Grid>
+        <Canvas x:Name="Board" Background="{StaticResource Ink0}" ClipToBounds="True" Cursor="Cross" SizeChanged="Board_Size"
+                MouseLeftButtonDown="View_Down" PreviewMouseWheel="View_Wheel"
+                MouseRightButtonDown="View_PanDown" MouseMove="View_PanMove" MouseRightButtonUp="View_PanUp">
+            <Rectangle x:Name="ViewBg" Fill="{StaticResource Checker}"/>
+            <Image x:Name="View" Stretch="Fill" AutomationProperties.Name="{DynamicResource CleanClick}"/>
+        </Canvas>
     </DockPanel>
 </Window>
