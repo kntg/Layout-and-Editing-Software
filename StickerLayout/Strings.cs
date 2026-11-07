@@ -75,6 +75,7 @@ public static class Lang
         ["Rows"] = ("Rapi", "Neat"),
         ["RowsTip"] = ("Susun per baris dan kolom, desain sama berkumpul: lebih rapi, bahan lebih boros.", "Arrange in rows and columns, same designs together: neater, uses more material."),
         ["Resized"] = ("{0} diubah menjadi {1} × {2} mm.", "{0} resized to {1} × {2} mm."),
+        ["ResizedSplit"] = ("Stiker lain dengan desain sama tidak berubah; ukuran ini menjadi baris baru di daftar desain.", "Other stickers with the same design are unchanged; this size is a new row in the design list."),
         ["ResizedNoRoom"] = ("{0} diubah menjadi {1} × {2} mm, tetapi tidak ada posisi kosong. Pakai Susun otomatis.", "{0} resized to {1} × {2} mm, but there is no free spot. Use Auto layout."),
         ["NStickers"] = ("{0} stiker", "{0} stickers"),
         ["NSelected"] = ("{0} stiker terpilih", "{0} stickers selected"),

@@ -955,7 +955,7 @@ public static class SelfCheck
                 string.Join("; ", copyBad.Distinct().Concat(copyLog)));
 
             // S20: atur ukuran di kanvas dan tepi kiri susun Rapi (permintaan user 2026-11-03). Pojok seberang diam, proporsi dan jarak garis
-            // potong tetap, batas 5 mm dan area cetak, semua salinan ikut; baris Rapi mulai dari tepi kiri tanpa menambah lembar.
+            // potong tetap, batas 5 mm dan area cetak, hanya stiker yang diubah (2026-11-07); baris Rapi mulai dari tepi kiri tanpa menambah lembar.
             var (sizeBad, sizeLog) = (new List<string>(), new List<string>());
             static bool About(double a, double b, double tol = 0.11) => Math.Abs(a - b) <= tol;
             var grip = new Placed { S = Box(40, 30), X = 50, Y = 60 };
@@ -1006,7 +1006,22 @@ public static class SelfCheck
             var (swapOld, swapNew) = (Box(40, 30), Box(60, 45));
             var swap = new List<List<Placed>> { new() { new() { S = swapOld, X = 20, Y = 20 }, new() { S = grip.S, X = 120, Y = 20 } }, new() { new() { S = swapOld, X = 30, Y = 30 } } };
             Nest.SwapDesign(swap, swapOld, swapNew);
-            if (swap.SelectMany(x => x).Count(p => p.S == swapNew) != 2 || swap[0][1].S != grip.S || swap[1][0].X != 30) sizeBad.Add("salinan lain tidak ikut berganti ukuran");
+            if (swap.SelectMany(x => x).Count(p => p.S == swapNew) != 2 || swap[0][1].S != grip.S || swap[1][0].X != 30) sizeBad.Add("ganti desain: salinan lain tidak ikut berganti");
+
+            // Atur ukuran satu stiker saja (keputusan user 2026-11-07), seperti EndResize: desain yang juga dipakai stiker lain dipisah menjadi baris baru
+            // di bawahnya, stiker lain tidak berubah. Tanpa stiker lain (semua yang memakai desain itu ikut diubah), desainnya sendiri yang diganti.
+            var solo = Loader.Load(cPath, 0, 40, kiss, die);
+            solo.Copies = 3;
+            var (soloA, soloB, soloC) = (new Placed { S = solo, X = 20, Y = 20 }, new Placed { S = solo, X = 80, Y = 20, Rot = 90 }, new Placed { S = solo, X = 20, Y = 20 });
+            var soloBook = new List<List<Placed>> { new() { soloA, soloB }, new() { soloC } };
+            var soloItems = new List<Sticker> { solo, grip.S };
+            var soloBig = Loader.Reload(solo, solo.LoadedKiss, solo.LoadedDie, solo.LoadedBleed, 60);
+            if (!Nest.Split(soloItems, soloBook, [soloA], solo, soloBig)) Nest.SwapDesign(soloBook, solo, soloBig);
+            if (soloA.S != soloBig || soloB.S != solo || soloC.S != solo || !About(solo.WidthMm, 40) || !About(soloBig.ArtW, 60)
+                || !soloItems.SequenceEqual([solo, soloBig, grip.S]) || (solo.Copies, soloBig.Copies) != (2, 1) || soloBig.Name != solo.Name)
+                sizeBad.Add($"atur ukuran satu stiker: stiker lain ikut berubah atau daftar desain salah ({soloItems.Count} baris, jumlah {solo.Copies} dan {soloBig.Copies})");
+            var soloAll = Loader.Reload(solo, solo.LoadedKiss, solo.LoadedDie, solo.LoadedBleed, 50);
+            if (Nest.Split(soloItems, soloBook, [soloB, soloC], solo, soloAll) || soloB.S != solo || soloItems.Count != 3) sizeBad.Add("semua stiker desain diubah: desainnya tetap dipisah");
 
             var evenPage = Nest.Rows([Box(40, 30, 5)], A4W, A4H, Margin, Gap, out _, true)[0];
             var evenRows = evenPage.GroupBy(p => p.Y).OrderBy(g => g.Key).ToList();
@@ -1026,7 +1041,7 @@ public static class SelfCheck
             if (regRun.Count != 2) sizeBad.Add($"Hemat dengan tanda registrasi: {regRun.Count} lembar, harapan 2");
             sizeLog.Add($"kotak 40 x 30 mm: paling kecil {minW:F1} mm, paling besar {maxW:F1} mm; lingkaran 40 -> 80 mm, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm; tepi kiri baris Rapi {evenRows[0].Min(p => p.X):F0} mm; "
                 + $"Hemat foto 178 x 100 mm: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar");
-            S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, proporsi dan jarak garis tetap, batas ukuran, semua salinan ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,
+            S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, proporsi dan jarak garis tetap, batas ukuran, stiker lain dengan desain sama tidak ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,
                 string.Join("; ", sizeBad.Distinct().Concat(sizeLog)));
 
             // S21: pindah stiker antar-lembar dan pemeriksaan jarak (audit 2026-11-03). Tidak ada tempat: stiker tidak berubah dan tidak tertinggal
@@ -1802,7 +1817,7 @@ public static class SelfCheck
         Nest.Check(book[0], A4W, A4H, Margin, false, Gap);
         if (flagged != 1 || !red || back == null || stray.Bad) bad.Add($"tanda merah: keluar margin {red} ({flagged} stiker), sesudah ditarik kembali {stray.Bad}");
 
-        // Desain diganti (atur ukuran): semua penempatannya, termasuk salinan, memakai desain baru, dan tanda merah dihitung ulang.
+        // Desain diganti (Rapikan, Edit garis potong): semua penempatannya, termasuk salinan, memakai desain baru, dan tanda merah dihitung ulang.
         plain.WidthMm = 26;
         var bigger = Loader.Reload(plain, plain.LoadedKiss, plain.LoadedDie, plain.LoadedBleed);
         Nest.SwapDesign(book, plain, bigger);

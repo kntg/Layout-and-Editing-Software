@@ -294,7 +294,7 @@
                                             
                                             <!-- Baris 0: Ukuran (Bisa Diedit) -->
                                             <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelSize_Changed" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
+                                            <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
                                             <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
                                             <!-- Baris 1: Jumlah (Bisa Diedit) -->

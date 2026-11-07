@@ -1146,84 +1146,51 @@ public partial class MainWindow : Window
         Canvas.SetTop(sizeTip, Math.Clamp(pt.Y + 12 * unzoom.ScaleX, 0, Math.Max(0, c.Height - sizeTip.DesiredSize.Height * unzoom.ScaleX)));
     }
 
-    // Mouse dilepas: ukuran berlaku untuk semua salinan desain. Offset, Halus, dan bleed tetap yang dimuat, walau panel sudah diubah. Stiker yang ditarik
-    // pindah ke posisi kosong terdekat seperti saat digeser; salinan lain yang jadi bertabrakan ditandai merah.
+    // Mouse dilepas: ukuran hanya berlaku untuk stiker ini (ResizeSel).
     void EndResize()
     {
-        // 1. Pagar Pengaman Awal
-        if (sel == null || sel.S == null)
-        {
-            (sizing, sizeTip) = (-1, null);
-            Sheets.ReleaseMouseCapture();
-            Redraw();
-            return;
-        }
-
-        bool changed = sizeTip != null && Math.Abs(sizeW - sel.S.ArtW) >= 0.05;
-        bool fits = true;
-        
+        bool changed = sizeTip != null && sel?.S != null && Math.Abs(sizeW - sel.S.ArtW) >= 0.05;
         (sizing, sizeTip) = (-1, null);
         Sheets.ReleaseMouseCapture();
-        
         if (!changed) { Redraw(); return; }
-        
-        var old = sel.S;
+        var box = sizeBox;
+        ResizeSel([sel!], sizeW, _ => box.TopLeft);
+    }
+
+    // Ubah lebar artwork stiker terpilih saja (keputusan user 2026-11-07): stiker lain dengan desain sama tidak ikut, karena desainnya dipisah menjadi baris
+    // baru (Nest.Split). Garis potong dihitung ulang dengan offset, Halus, dan bleed yang dimuat, walau panel sudah diubah. Tiap stiker ditaruh di at(p), lalu
+    // pindah ke posisi kosong terdekat seperti saat digeser. Tanpa posisi kosong ukuran baru tetap berlaku, stiker dijaga di dalam area cetak dan ditandai merah.
+    void ResizeSel(List<Placed> picked, double width, Func<Placed, Point> at)
+    {
+        bool split = false, fits = true, done = false;
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            old.WidthMm = sizeW;
-            var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed);
-            
-            if (n == null) throw new Exception("Gagal memuat ulang desain.");
-
-            Replace(old, n);
-            Nest.SwapDesign(sheets, old, n);
-            
-            if (sel != null && (sel.S == old || sel.S == null)) sel.S = n;
-
-            // PENGAMAN: Pastikan sel tidak null tepat sebelum mengakses X dan Y
-            if (sel != null) 
+            foreach (var g in picked.GroupBy(p => p.S).ToList())
             {
-                (sel.X, sel.Y) = (sizeBox.X, sizeBox.Y);
-            }
-            
-            if (selSheet >= 0 && selSheet < sheets.Count)
-            {
-                // Bersihkan data kotor
-                sheets[selSheet].RemoveAll(p => p.S == null);
-
-                if (sel != null && sheets[selSheet].Contains(sel))
+                var old = g.Key;
+                var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed, width);
+                if (Nest.Split(items, sheets, [.. g], old, n)) split = true;
+                else { Replace(old, n); Nest.SwapDesign(sheets, old, n); }
+                foreach (var p in g)
                 {
-                    fits = Nest.Snap(sheets[selSheet], sel, sheetW, sheetH[selSheet], MarginMm, GapMm, HasRegMarks);
-                    if (!fits) Nest.KeepInside(sel, sheetW, sheetH[selSheet], MarginMm);
-                }
-                else
-                {
+                    var pt = at(p);
+                    (p.X, p.Y) = (pt.X, pt.Y);
+                    int i = sheets.FindIndex(sh => sh.Contains(p));
+                    if (i < 0 || Nest.Snap(sheets[i], p, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks)) continue;
+                    Nest.KeepInside(p, sheetW, sheetH[i], MarginMm);
                     fits = false;
                 }
             }
+            done = true;
         }
-        catch (Exception ex)
-        {
-            if (old != null) old.WidthMm = old.LoadedW;
-            MessageBox.Show($"Error di EndResize:\n{ex.Message}\n{ex.StackTrace}", App.Brand);
-            Redraw();
-            return;
-        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { MessageBox.Show(ex.Message, App.Brand); }
         finally { Mouse.OverrideCursor = null; }
-        
         List.Items.Refresh();
         CheckAll();
-        
-        // 3. Pagar Pengaman Akhir
-        if (sel == null || sel.S == null)
-        {
-            Redraw();
-            return;
-        }
-        
-        var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
-        Redraw(Lang.T(fits ? "Resized" : "ResizedNoRoom", sel.S.Name, F(aw), F(ah)) + "  " + Summary());
+        var p0 = picked[0];
+        var (aw, ah) = p0.Rot % 180 == 0 ? (p0.S.ArtW, p0.S.ArtH) : (p0.S.ArtH, p0.S.ArtW);
+        Redraw((done ? Lang.T(fits ? "Resized" : "ResizedNoRoom", p0.S.Name, F(aw), F(ah)) + (split ? "  " + Lang.T("ResizedSplit") : "") + "  " : "") + Summary());
         Commit();
         FreeMemory();
     }
@@ -1240,6 +1207,8 @@ public partial class MainWindow : Window
             if (d is Canvas { Tag: int }) { sheet = (Canvas)d; break; }
         }
         View.Focus();
+        // Fokus pindah dari kotak isian yang menggambar ulang lembar (lebar di panel Pilihan): klik ini hanya menerapkan isiannya.
+        if (sheet != null && !canvases.Contains(sheet)) return;
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
 
         if (sheet == null) { ClearSel(); Redraw(); return; }
@@ -1528,20 +1497,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // Menangani perubahan ukuran dari panel Selection
-    void SelSize_Changed(object s, TextChangedEventArgs e)
-    {
-        if (restoring || syncingList || syncingSel || sel == null) return; // Tambah syncingSel
-        if (MmText.Parse(SelSizeBox.Text) is { } newWidth && newWidth > 0 && Math.Abs(sel.S.WidthMm - newWidth) > 0.05)
-        {
-            sel.S.WidthMm = newWidth;
-            syncingList = true;
-            List.Items.Refresh();
-            Redraw();
-            syncingList = false;
-        }
-    }
-
     void SelCopies_Changed(object s, TextChangedEventArgs e)
     {
         if (restoring || syncingList || syncingSel || sel == null) return; // Tambah syncingSel
@@ -1590,13 +1545,11 @@ public partial class MainWindow : Window
         if (sel != null) Redraw(); 
     }
 
+    // Lebar di panel Pilihan: hanya stiker terpilih yang berubah, seperti titik pojok (keputusan user 2026-11-07). Pojok kiri-atas tetap.
     void SelSize_LostFocus(object s, RoutedEventArgs e)
     {
-        if (sel == null) return;
-        if (MmText.Parse(SelSizeBox.Text) is { } newWidth && newWidth > 0 && Math.Abs(sel.S.WidthMm - newWidth) > 0.05)
-        {
-            sel.S.WidthMm = newWidth;
-            Arrange();
-        }
+        if (sel == null || MmText.Parse(SelSizeBox.Text) is not { } w || w <= 0 || Math.Abs(w - sel.S.WidthMm) < 0.05) return;
+        var picked = sels.Where(p => Math.Abs(p.S.ArtW - w) >= 0.05).ToList();
+        if (picked.Count > 0) ResizeSel(picked, w, p => new Point(p.X, p.Y));
     }
 }

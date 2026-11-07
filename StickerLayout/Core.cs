@@ -181,11 +181,12 @@ public static partial class Loader
     // loadedPdf: PDF yang dipakai saat desain pertama dimuat (muat ulang saat Susun): isi desain tidak berubah diam-diam
     // dan CorelDRAW tidak dibuka lagi. manualKiss/manualDie: garis dari editor garis potong, dipakai apa adanya
     // (offset dan Halus tidak mengubahnya).
-    // Muat ulang desain pada lebar it.WidthMm. Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala bersama artwork. Bentuk preset dihitung ulang.
-    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed)
+    // Muat ulang desain pada lebar it.WidthMm, atau widthMm bila diberikan (it tidak diubah). Garis manual tidak ikut offset/Halus; lebar berubah: garis diskala
+    // bersama artwork. Bentuk preset dihitung ulang.
+    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed, double? widthMm = null)
     {
-        double k = it.WidthMm / it.LoadedW;
-        return Load(it.Source, it.Page, it.WidthMm, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf,
+        double w = widthMm ?? it.WidthMm, k = w / it.LoadedW;
+        return Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf,
             manualKiss: Curves.Scale(it.ManualKiss, k), manualDie: Curves.Scale(it.ManualDie, k), shape: it.Shape, border: it.Border, dieShape: it.DieShape);
     }
 
@@ -1333,12 +1334,28 @@ public static class Nest
         return (width, new Rect(right ? ax : ax - bw, down ? ay : ay - bh, bw, bh));
     }
 
-    // Ukuran disimpan per desain, jadi semua salinan ikut berganti. Posisinya tetap; yang jadi bertabrakan ditandai Check.
+    // Desain diganti (Rapikan, Edit garis potong, atau atur ukuran tanpa stiker lain yang memakai desainnya): semua salinannya ikut. Posisinya tetap;
+    // yang jadi bertabrakan ditandai Check.
     public static void SwapDesign(IEnumerable<List<Placed>> sheets, Sticker old, Sticker n)
     {
         if (old == null || n == null) return;
         foreach (var p in sheets.SelectMany(x => x)) 
             if (p.S == old) p.S = n;
+    }
+
+    // Atur ukuran stiker terpilih saja (keputusan user 2026-11-07): bila desainnya juga dipakai stiker lain, stiker terpilih pindah ke desain n, yang menjadi
+    // baris baru tepat di bawah desain lama (nama sama, jumlah = stiker yang diubah). Stiker lain tidak berubah. false = tidak ada stiker lain; pemanggil
+    // mengganti desainnya (SwapDesign).
+    // ponytail: baris yang kembali ke lebar yang sama tidak digabung lagi; gabungkan bila daftar desain jadi ramai.
+    public static bool Split(IList<Sticker> items, IEnumerable<List<Placed>> sheets, ICollection<Placed> chosen, Sticker old, Sticker n)
+    {
+        var uses = sheets.SelectMany(x => x).Where(p => p.S == old).ToList();
+        var mine = uses.Where(chosen.Contains).ToList();
+        if (mine.Count == uses.Count) return false;
+        (n.Name, n.Copies, old.Copies) = (old.Name, mine.Count, Math.Max(0, old.Copies - mine.Count));
+        items.Insert(items.IndexOf(old) + 1, n);
+        foreach (var p in mine) p.S = n;
+        return true;
     }
 
     // Duplikat kanvas: isi, posisi, dan rotasi sama persis, termasuk hasil edit. Tepat setelah lembar asal, jadi tampil di sampingnya.
