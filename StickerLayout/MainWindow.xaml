@@ -178,7 +178,12 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Border Width="42" Height="42" CornerRadius="3" Background="{StaticResource Checker}" BorderBrush="{StaticResource Line}" BorderThickness="1"
                                                             MouseLeftButtonDown="Thumb_Down">
-                                                        <Image Source="{Binding Preview}" Stretch="Uniform" Margin="3"/>
+                                                        <!-- Viewbox: gambar kecil ikut rasio bebas (StretchY) dan tetap muat di kotaknya -->
+                                                        <Viewbox Margin="3">
+                                                            <Image Source="{Binding Preview}">
+                                                                <Image.LayoutTransform><ScaleTransform ScaleY="{Binding StretchY}"/></Image.LayoutTransform>
+                                                            </Image>
+                                                        </Viewbox>
                                                     </Border>
                                                     <StackPanel Grid.Column="1" Margin="9,0,4,0" VerticalAlignment="Center">
                                                         <DockPanel>
@@ -281,7 +286,7 @@
                                 <Grid x:Name="SelInfo" Visibility="Collapsed">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
                                     <Border Width="52" Height="52" CornerRadius="3" Background="{StaticResource Checker}" BorderBrush="{StaticResource Line}" BorderThickness="1" VerticalAlignment="Top">
-                                        <Image x:Name="SelThumb" Stretch="Uniform" Margin="4"/>
+                                        <Viewbox Margin="4"><Image x:Name="SelThumb"/></Viewbox>
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                         <TextBlock x:Name="SelName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
@@ -289,26 +294,34 @@
                                         <Grid Margin="0,6,0,0">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="60"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
-                                                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                             </Grid.RowDefinitions>
                                             
-                                            <!-- Baris 0: Ukuran (Bisa Diedit) -->
+                                            <!-- Baris 0: Lebar artwork (Bisa Diedit) -->
                                             <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
                                             <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
                                             <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
-                                            <!-- Baris 1: Jumlah (Bisa Diedit) -->
-                                            <TextBlock Grid.Row="1" Text="{DynamicResource QtyTip}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBox x:Name="SelCopiesBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelCopies_Changed" ToolTip="{DynamicResource QtyTip}" Margin="0,0,0,3"/>
-                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="pcs" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+                                            <!-- Baris 1: Tinggi artwork (rasio bebas, 2026-11-07) -->
+                                            <TextBlock Grid.Row="1" Text="{DynamicResource SelH}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="SelHeightBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelHeight_LostFocus" ToolTip="{DynamicResource HeightTip}" Margin="0,0,0,3"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
-                                            <!-- Baris 2: Rotasi -->
-                                            <TextBlock Grid.Row="2" Text="{DynamicResource SelRot}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="SelRot" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,3" VerticalAlignment="Center"/>
+                                            <!-- Baris 2: Kunci rasio. Bukan bagian dokumen: tidak ikut urungkan. -->
+                                            <CheckBox x:Name="LockRatio" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" IsChecked="True" Content="{DynamicResource LockRatio}" ToolTip="{DynamicResource LockRatioTip}" Margin="0,0,0,3"/>
 
-                                            <!-- Baris 3: Posisi -->
-                                            <TextBlock Grid.Row="3" Text="{DynamicResource SelPos}" Style="{StaticResource Label}" Margin="0,0,12,0" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="SelPos" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,0" VerticalAlignment="Center"/>
+                                            <!-- Baris 3: Jumlah (Bisa Diedit) -->
+                                            <TextBlock Grid.Row="3" Text="{DynamicResource QtyTip}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="SelCopiesBox" Grid.Row="3" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelCopies_Changed" ToolTip="{DynamicResource QtyTip}" Margin="0,0,0,3"/>
+                                            <TextBlock Grid.Row="3" Grid.Column="2" Text="pcs" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+
+                                            <!-- Baris 4: Rotasi -->
+                                            <TextBlock Grid.Row="4" Text="{DynamicResource SelRot}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SelRot" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,3" VerticalAlignment="Center"/>
+
+                                            <!-- Baris 5: Posisi -->
+                                            <TextBlock Grid.Row="5" Text="{DynamicResource SelPos}" Style="{StaticResource Label}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="SelPos" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,0" VerticalAlignment="Center"/>
                                         </Grid>
                                         
                                         <!-- Area Tombol Aksi -->

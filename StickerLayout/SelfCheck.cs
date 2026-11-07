@@ -955,34 +955,34 @@ public static class SelfCheck
             S(19, "duplikat kanvas dan tempel stiker: salinan kanvas sama persis, tempel ke kanan lalu ke bawah, segaris, tanpa tabrakan", copyBad.Count == 0,
                 string.Join("; ", copyBad.Distinct().Concat(copyLog)));
 
-            // S20: atur ukuran di kanvas dan tepi kiri susun Rapi (permintaan user 2026-11-03). Pojok seberang diam, proporsi dan jarak garis
+            // S20: atur ukuran di kanvas dan tepi kiri susun Rapi (permintaan user 2026-11-03). Pojok seberang diam, rasio terkunci atau bebas (2026-11-07), jarak garis
             // potong tetap, batas 5 mm dan area cetak, hanya stiker yang diubah (2026-11-07); baris Rapi mulai dari tepi kiri tanpa menambah lembar.
             var (sizeBad, sizeLog) = (new List<string>(), new List<string>());
             static bool About(double a, double b, double tol = 0.11) => Math.Abs(a - b) <= tol;
             var grip = new Placed { S = Box(40, 30), X = 50, Y = 60 };
             double gripX = grip.BW - grip.S.ArtW, gripY = grip.BH - grip.S.ArtH;
-            var (rbW, rb) = Nest.ResizeTo(grip, 2, grip.X + 80 + gripX, grip.Y, A4W, A4H, Margin);
+            var (rbW, _, rb) = Nest.ResizeTo(grip, 2, grip.X + 80 + gripX, grip.Y, A4W, A4H, Margin);
             if (!About(rbW, 80) || rb.X != grip.X || rb.Y != grip.Y || !About(rb.Width, 80 + gripX) || !About(rb.Height, 60 + gripY)) sizeBad.Add($"tarik kanan bawah: lebar {rbW:F1}, kotak {rb.Width:F1} x {rb.Height:F1}");
-            var (ltW, ltBox) = Nest.ResizeTo(grip, 0, grip.X + grip.BW - 20 - gripX, grip.Y + grip.BH - 15 - gripY, A4W, A4H, Margin);
+            var (ltW, _, ltBox) = Nest.ResizeTo(grip, 0, grip.X + grip.BW - 20 - gripX, grip.Y + grip.BH - 15 - gripY, A4W, A4H, Margin);
             if (!About(ltW, 20) || !About(ltBox.Right, grip.X + grip.BW) || !About(ltBox.Bottom, grip.Y + grip.BH)) sizeBad.Add($"tarik kiri atas: lebar {ltW:F1}, kanan bawah tidak diam");
-            var (rtW, rt) = Nest.ResizeTo(grip, 1, grip.X + 60 + gripX, grip.Y + grip.BH - 10, A4W, A4H, Margin);
+            var (rtW, _, rt) = Nest.ResizeTo(grip, 1, grip.X + 60 + gripX, grip.Y + grip.BH - 10, A4W, A4H, Margin);
             if (!About(rtW, 60) || rt.X != grip.X || !About(rt.Bottom, grip.Y + grip.BH)) sizeBad.Add($"tarik kanan atas: lebar {rtW:F1}, kiri bawah tidak diam");
-            var (lbW, lb) = Nest.ResizeTo(grip, 3, grip.X + grip.BW - 60 - gripX, grip.Y + 10, A4W, A4H, Margin);
+            var (lbW, _, lb) = Nest.ResizeTo(grip, 3, grip.X + grip.BW - 60 - gripX, grip.Y + 10, A4W, A4H, Margin);
             if (!About(lbW, 60) || !About(lb.Right, grip.X + grip.BW) || lb.Y != grip.Y) sizeBad.Add($"tarik kiri bawah: lebar {lbW:F1}, kanan atas tidak diam");
 
             var quarter = new Placed { S = Box(60, 30), Rot = 90, X = 50, Y = 60 };
             double quarterX = quarter.BW - quarter.S.ArtH, quarterY = quarter.BH - quarter.S.ArtW;
-            var (qW, qBox) = Nest.ResizeTo(quarter, 2, quarter.X, quarter.Y + 120 + quarterY, A4W, A4H, Margin);
+            var (qW, _, qBox) = Nest.ResizeTo(quarter, 2, quarter.X, quarter.Y + 120 + quarterY, A4W, A4H, Margin);
             if (!About(qW, 120) || !About(qBox.Width, 60 + quarterX) || !About(qBox.Height, 120 + quarterY)) sizeBad.Add($"stiker diputar: lebar {qW:F1}, kotak {qBox.Width:F1} x {qBox.Height:F1}");
 
-            var (minW, _) = Nest.ResizeTo(grip, 2, 0, 0, A4W, A4H, Margin);
+            var (minW, _, _) = Nest.ResizeTo(grip, 2, 0, 0, A4W, A4H, Margin);
             if (!About(minW, 6.7)) sizeBad.Add($"batas kecil: lebar {minW:F1} mm, harapan 6,7 (sisi pendek 5 mm)");
             var tiny = new Placed { S = Box(4, 3), X = 50, Y = 60 };
-            var (tinyW, _) = Nest.ResizeTo(tiny, 2, 0, 0, A4W, A4H, Margin);
+            var (tinyW, _, _) = Nest.ResizeTo(tiny, 2, 0, 0, A4W, A4H, Margin);
             if (!About(tinyW, tiny.S.ArtW)) sizeBad.Add($"desain yang sudah kecil ikut membesar: {tinyW:F1} mm");
-            var (maxW, maxBox) = Nest.ResizeTo(grip, 2, 5000, 5000, A4W, A4H, Margin);
+            var (maxW, _, maxBox) = Nest.ResizeTo(grip, 2, 5000, 5000, A4W, A4H, Margin);
             if (maxBox.Width > A4W - 2 * Margin + 0.11 || maxBox.Height > A4H - 2 * Margin + 0.11 || maxW <= 40) sizeBad.Add($"batas area cetak: kotak {maxBox.Width:F1} x {maxBox.Height:F1}");
-            var (oddW, _) = Nest.ResizeTo(grip, 2, grip.X + 33.33 + gripX, grip.Y, A4W, A4H, Margin);
+            var (oddW, _, _) = Nest.ResizeTo(grip, 2, grip.X + 33.33 + gripX, grip.Y, A4W, A4H, Margin);
             if (!About(oddW, 33.3, 1e-9)) sizeBad.Add($"lebar tidak dibulatkan ke 0,1 mm: {oddW}");
 
             var sizeCircle = Loader.Load(cPath, 0, 40, kiss, die);
@@ -1024,6 +1024,97 @@ public static class SelfCheck
             var soloAll = Loader.Reload(solo, solo.LoadedKiss, solo.LoadedDie, solo.LoadedBleed, 50);
             if (Nest.Split(soloItems, soloBook, [soloB, soloC], solo, soloAll) || soloB.S != solo || soloItems.Count != 3) sizeBad.Add("semua stiker desain diubah: desainnya tetap dipisah");
 
+            // Rasio bebas (keputusan user 2026-11-07): kunci rasio dilepas, lebar dan tinggi artwork diatur sendiri-sendiri. Pojok seberang diam, batas
+            // 5 mm dan area cetak per sisi; garis potong, bleed, dan border dihitung ulang dengan jarak mm yang sama; garis manual ikut diregangkan.
+            var (fW, fH, fBox) = Nest.ResizeTo(grip, 2, grip.X + 80 + gripX, grip.Y + 45 + gripY, A4W, A4H, Margin, true);
+            if (!About(fW, 80) || !About(fH, 45) || fBox.X != grip.X || fBox.Y != grip.Y || !About(fBox.Width, 80 + gripX) || !About(fBox.Height, 45 + gripY))
+                sizeBad.Add($"rasio bebas, tarik kanan bawah: {fW:F1} x {fH:F1} mm, kotak {fBox.Width:F1} x {fBox.Height:F1}");
+            var (fqW, fqH, fqBox) = Nest.ResizeTo(quarter, 2, quarter.X + 30 + quarterX, quarter.Y + 120 + quarterY, A4W, A4H, Margin, true);
+            if (!About(fqW, 120) || !About(fqH, 30) || !About(fqBox.Width, 30 + quarterX) || !About(fqBox.Height, 120 + quarterY))
+                sizeBad.Add($"rasio bebas, stiker diputar: {fqW:F1} x {fqH:F1} mm, kotak {fqBox.Width:F1} x {fqBox.Height:F1}");
+            var (fminW, fminH, _) = Nest.ResizeTo(grip, 2, 0, 0, A4W, A4H, Margin, true);
+            if (!About(fminW, 5) || !About(fminH, 5)) sizeBad.Add($"rasio bebas, batas kecil: {fminW:F1} x {fminH:F1} mm, harapan 5 x 5");
+            var (_, _, fmaxBox) = Nest.ResizeTo(grip, 2, 5000, 5000, A4W, A4H, Margin, true);
+            if (!About(fmaxBox.Width, A4W - 2 * Margin) || !About(fmaxBox.Height, A4H - 2 * Margin))
+                sizeBad.Add($"rasio bebas, batas area cetak: kotak {fmaxBox.Width:F1} x {fmaxBox.Height:F1}, harapan {A4W - 2 * Margin} x {A4H - 2 * Margin}");
+
+            var flatBox = Box(40, 30);
+            var tallBox = Loader.Reload(flatBox, flatBox.LoadedKiss, flatBox.LoadedDie, flatBox.LoadedBleed, 40, 60);
+            static (double X, double Y) Gap2(Sticker s) => (s.Outer.Bounds.Width - s.ArtW, s.Outer.Bounds.Height - s.ArtH);
+            if (!About(tallBox.ArtW, 40, 0.01) || !About(tallBox.ArtH, 60, 0.01) || !About(tallBox.StretchY, 2, 1e-9) || !About(Gap2(tallBox).X, Gap2(flatBox).X, 0.35)
+                || !About(Gap2(tallBox).Y, Gap2(flatBox).Y, 0.35) || !About(tallBox.Full.Width, 40, 0.01) || !About(tallBox.Full.Height, 60, 0.01) || !About(tallBox.Dpi ?? 0, 25.4, 0.05))
+                sizeBad.Add($"rasio bebas, muat ulang 40 x 60: {tallBox.ArtW:F2} x {tallBox.ArtH:F2} mm, regang {tallBox.StretchY:F2}, jarak garis {Gap2(flatBox).X:F2}/{Gap2(flatBox).Y:F2} -> "
+                    + $"{Gap2(tallBox).X:F2}/{Gap2(tallBox).Y:F2} mm, gambar export {tallBox.Full.Width:F2} x {tallBox.Full.Height:F2}, {tallBox.Dpi:F1} dpi");
+            if (!About(flatBox.ArtH, 30, 0.01) || flatBox.StretchY != 1) sizeBad.Add("rasio bebas: desain lama ikut berubah");
+            tallBox.WidthMm = 80;
+            var tallWide = Loader.Reload(tallBox, tallBox.LoadedKiss, tallBox.LoadedDie, tallBox.LoadedBleed);
+            if (!About(tallWide.ArtW, 80, 0.01) || !About(tallWide.ArtH, 120, 0.01) || !About(tallWide.StretchY, 2, 1e-9))
+                sizeBad.Add($"rasio bebas hilang saat lebar desain diubah (Susun otomatis): {tallWide.ArtW:F2} x {tallWide.ArtH:F2} mm");
+            tallBox.WidthMm = 40;
+            var lowBox = Loader.Reload(flatBox, flatBox.LoadedKiss, flatBox.LoadedDie, flatBox.LoadedBleed, 40, 15);
+            if (!About(lowBox.ArtH, 15, 0.01) || !About(lowBox.StretchY, 0.5, 1e-9) || !About(lowBox.Dpi ?? 0, 50.8, 0.05))
+                sizeBad.Add($"rasio bebas, dipendekkan 40 x 15: tinggi {lowBox.ArtH:F2} mm, regang {lowBox.StretchY:F2}, {lowBox.Dpi:F1} dpi");
+            var blackPng = Loader.Png(Draw(dc => dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 80, 60)), 80, 60));
+            var bledBox = Loader.Load("uji.png", 0, 40, kiss, die, edited: blackPng, bleed: 2);
+            var bledTall = Loader.Reload(bledBox, bledBox.LoadedKiss, bledBox.LoadedDie, bledBox.LoadedBleed, 40, 60);
+            if (bledTall.BleedPng == null || !About(bledTall.BleedRect.Width - bledTall.ArtW, bledBox.BleedRect.Width - bledBox.ArtW)
+                || !About(bledTall.BleedRect.Height - bledTall.ArtH, bledBox.BleedRect.Height - bledBox.ArtH))
+                sizeBad.Add($"rasio bebas, bleed: lebih {bledBox.BleedRect.Width - bledBox.ArtW:F2}/{bledBox.BleedRect.Height - bledBox.ArtH:F2} -> "
+                    + $"{bledTall.BleedRect.Width - bledTall.ArtW:F2}/{bledTall.BleedRect.Height - bledTall.ArtH:F2} mm");
+            var borderBox = Loader.Load("uji.png", 0, 40, kiss, die, edited: blackPng, border: new Cmyk(0, 1, 1, 0));
+            var borderTall = Loader.Reload(borderBox, borderBox.LoadedKiss, borderBox.LoadedDie, borderBox.LoadedBleed, 40, 60);
+            static double Rim(Sticker s) => s.BorderGeo!.Bounds.Height - s.KissGeo!.Bounds.Height;
+            if (!About(borderTall.ArtH, 60, 0.01) || !About(Rim(borderTall), Rim(borderBox), 0.05)) sizeBad.Add($"rasio bebas, border: {Rim(borderBox):F2} -> {Rim(borderTall):F2} mm di luar garis kiss");
+            var pkTall = Curves.Scale(pk, 1, 2)!;
+            if (pk.Zip(pkTall).Any(c => c.First.Zip(c.Second).Any(n => n.First.P.X != n.Second.P.X || n.First.P.Y * 2 != n.Second.P.Y || n.First.In.Y * 2 != n.Second.In.Y || n.First.Out.Y * 2 != n.Second.Out.Y)))
+                sizeBad.Add("rasio bebas: garis manual tidak diskala per sumbu");
+            var handFlat = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: pk, manualDie: pd);
+            var handTall = Loader.Reload(handFlat, handFlat.LoadedKiss, handFlat.LoadedDie, handFlat.LoadedBleed, 40, handFlat.ArtH * 2);
+            if (!About(handTall.Outer.Bounds.Width, handFlat.Outer.Bounds.Width, 0.01) || !About(handTall.Outer.Bounds.Height, 2 * handFlat.Outer.Bounds.Height, 0.01))
+                sizeBad.Add($"rasio bebas, garis manual: {handFlat.Outer.Bounds.Width:F2} x {handFlat.Outer.Bounds.Height:F2} -> {handTall.Outer.Bounds.Width:F2} x {handTall.Outer.Bounds.Height:F2} mm");
+            var starTall = Loader.Reload(sizeStar, sizeStar.LoadedKiss, sizeStar.LoadedDie, sizeStar.LoadedBleed, 40, 80);
+            if (!About(starTall.ArtH, 80, 0.01) || starTall.Shape != CutShape.Star || starTall.DieShape != CutShape.Rect || starTall.Border != sizeStar.Border)
+                sizeBad.Add($"rasio bebas, bentuk preset: tinggi {starTall.ArtH:F2} mm, bentuk {starTall.Shape}/{starTall.DieShape}");
+            var soloTall = Loader.Reload(solo, solo.LoadedKiss, solo.LoadedDie, solo.LoadedBleed, solo.ArtW, solo.ArtH * 2);
+            if (!Nest.Split(soloItems, soloBook, [soloB], solo, soloTall) || soloB.S != soloTall || soloC.S != solo || !About(soloB.S.ArtH, 2 * solo.ArtH, 0.01))
+                sizeBad.Add("rasio bebas, satu stiker diregangkan: stiker lain ikut berubah");
+            tallBox.Copies = 4;
+            if (Nest.Run([tallBox], A4W, A4H, Margin, Gap, out _) is not [var tallPage] || tallPage.Count != 4 || Nest.Check(tallPage, A4W, A4H, Margin, false, Gap) != 0)
+                sizeBad.Add("rasio bebas: susun otomatis desain yang diregangkan bertabrakan");
+            // Export PDF: gambar raster dan PDF vektor ikut diregangkan sampai bawah garis potongnya.
+            var tallCircle = Loader.Reload(Loader.Load(cPath, 0, 40, thin, none), thin, none, 0, 40, 80);
+            var tallSheet = new List<List<Placed>> { new() { new Placed { S = tallCircle, X = Margin, Y = Margin } } };
+            var tallPdf = Path.Combine(dir, "regang.pdf");
+            Export.Pdf(tallPdf, tallSheet, A4W, [A4H]);
+            var tallLow = At(RenderPage(tallPdf, 0, 4), tallSheet[0][0], 20 * 72 / 25.4, 0.95 * tallCircle.ArtH * 72 / 25.4, 4);
+            var vecSrc = Path.Combine(dir, "regang-sumber.pdf");
+            using (var vdoc = new PdfDocument())
+            {
+                var vpage = vdoc.AddPage();
+                vpage.Width = XUnit.FromMillimeter(40);
+                vpage.Height = XUnit.FromMillimeter(20);
+                using (var vg = XGraphics.FromPdfPage(vpage)) vg.DrawRectangle(XBrushes.Black, 0, 0, vpage.Width.Point, vpage.Height.Point);
+                vdoc.Save(vecSrc);
+            }
+            var vecTall = Loader.Reload(Loader.Load(vecSrc, 0, 40, thin, none), thin, none, 0, 40, 40);
+            var vecSheet = new List<List<Placed>> { new() { new Placed { S = vecTall, X = Margin, Y = Margin } } };
+            Export.Pdf(tallPdf, vecSheet, A4W, [A4H]);
+            var vecPage = RenderPage(tallPdf, 0, 4);
+            var (vecTop, vecLow) = (At(vecPage, vecSheet[0][0], 20 * 72 / 25.4, 5 * 72 / 25.4, 4), At(vecPage, vecSheet[0][0], 20 * 72 / 25.4, 35 * 72 / 25.4, 4));
+            static bool Dark(Color c) => c.R < 80 && c.G < 80 && c.B < 80;
+            if (!Orange(tallLow) || vecTall.Pdf == null || !Dark(vecTop) || !Dark(vecLow))
+                sizeBad.Add($"rasio bebas, export PDF: gambar di bawah {tallLow}, PDF vektor {(vecTall.Pdf == null ? "jadi gambar" : "vektor")} atas {vecTop} bawah {vecLow}");
+            File.Delete(tallPdf);
+            File.Delete(vecSrc);
+            // SVG digambar ulang pada resolusi lain saat diregangkan, jadi kotak isinya bisa bergeser satu piksel: tinggi yang diketik tetap harus tepat.
+            var bannerSvg = Path.Combine(dir, "regang-banner.svg");
+            File.WriteAllText(bannerSvg, """<svg xmlns="http://www.w3.org/2000/svg" width="50mm" height="5.04mm" viewBox="0 0 50 5.04"><rect width="50" height="5.04" fill="#000"/></svg>""");
+            var banner = Loader.Load(bannerSvg, 0, 50, kiss, die);
+            var bannerTall = Loader.Reload(banner, banner.LoadedKiss, banner.LoadedDie, banner.LoadedBleed, 50, 20);
+            File.Delete(bannerSvg);
+            if (!About(bannerTall.ArtH, 20, 0.01)) sizeBad.Add($"rasio bebas, SVG tipis 50 x {banner.ArtH:F3} mm diketik tinggi 20: hasil {bannerTall.ArtH:F3} mm");
+            sizeLog.Add($"rasio bebas: kotak 40 x 30 ditarik ke 80 x 45 mm; 40 x 30 -> 40 x 60 mm, jarak garis {Gap2(flatBox).X:F2}/{Gap2(flatBox).Y:F2} -> {Gap2(tallBox).X:F2}/{Gap2(tallBox).Y:F2} mm, {tallBox.Dpi:F1} dpi");
+
             var evenPage = Nest.Rows([Box(40, 30, 5)], A4W, A4H, Margin, Gap, out _, true)[0];
             var evenRows = evenPage.GroupBy(p => p.Y).OrderBy(g => g.Key).ToList();
             if (evenRows.Count < 2 || evenRows[0].Min(p => p.X) != evenRows[1].Min(p => p.X) || Nest.Check(evenPage, A4W, A4H, Margin, true) != 0)
@@ -1042,7 +1133,7 @@ public static class SelfCheck
             if (regRun.Count != 2) sizeBad.Add($"Hemat dengan tanda registrasi: {regRun.Count} lembar, harapan 2");
             sizeLog.Add($"kotak 40 x 30 mm: paling kecil {minW:F1} mm, paling besar {maxW:F1} mm; lingkaran 40 -> 80 mm, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm; tepi kiri baris Rapi {evenRows[0].Min(p => p.X):F0} mm; "
                 + $"Hemat foto 178 x 100 mm: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar");
-            S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, proporsi dan jarak garis tetap, batas ukuran, stiker lain dengan desain sama tidak ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,
+            S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, rasio terkunci atau bebas, jarak garis tetap, batas ukuran, stiker lain dengan desain sama tidak ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,
                 string.Join("; ", sizeBad.Distinct().Concat(sizeLog)));
 
             // S21: pindah stiker antar-lembar dan pemeriksaan jarak (audit 2026-11-03). Tidak ada tempat: stiker tidak berubah dan tidak tertinggal
@@ -1409,6 +1500,7 @@ public static class SelfCheck
                     var clip = e.Document!.Descendants(svg + "clipPath").FirstOrDefault(c => id != "" && (string?)c.Attribute("id") == id);
                     if (clip?.Element(svg + "path")?.Attribute("d")?.Value is not { Length: > 0 })
                         bad.Add($"{s.Name}: artwork tidak di-clip ke garis potong");
+                    if ((string?)e.Attribute("preserveAspectRatio") != "none") bad.Add($"{s.Name}: gambar tidak ikut diregangkan (preserveAspectRatio bukan none)");
                     var fill = (string?)e.Parent?.Parent?.Element(svg + "path")?.Attribute("fill");
                     var want = s.Border is { } b ? $"#{b.Rgb.R:X2}{b.Rgb.G:X2}{b.Rgb.B:X2}" : null;
                     if (fill != want) bad.Add($"{s.Name}: warna border {fill ?? "tidak ada"}, harus {want ?? "tidak ada"}");
