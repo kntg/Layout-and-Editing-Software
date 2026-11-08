@@ -85,6 +85,13 @@ public static class SelfCheck
             int afterText = ci.OpaqueCount(0);
             Check(ci.Undo() && ci.OpaqueCount(0) == afterBg, "undo tidak mengembalikan teks");
             Check(ci.EraseAt(150, 286, 32) > 0 && ci.OpaqueCount(0) == afterText, "hapus teks ulang gagal");
+            // Crop kotak (daftar tugas leader 2026-11-08): di luar kotak jadi transparan, satu langkah urungkan, kotak kosong tidak mengubah apa pun.
+            var crop = new CleanImage(Loader.Png(Draw(dc => dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 10, 10)), 10, 10)));
+            int cropAll = crop.OpaqueCount(0), cropN = crop.CropTo(new Int32Rect(2, 3, 4, 5)), cropIn = crop.OpaqueCount(0);
+            bool cropUndo = crop.Undo() && crop.OpaqueCount(0) == cropAll;
+            int cropEmpty = crop.CropTo(new Int32Rect(4, 4, 0, 3));
+            Check(cropAll == 100 && cropN == 80 && cropIn == 20 && cropUndo && cropEmpty == 0 && crop.OpaqueCount(0) == 100,
+                $"crop kotak: {cropAll} piksel, crop 4x5 menghapus {cropN} dan menyisakan {cropIn}, urungkan {cropUndo}, kotak kosong menghapus {cropEmpty}");
             Check(ci.OpaqueCount(2) < afterText, "kikis tepi tidak mengurangi piksel");
             var cleaned = Loader.Load(blueJpg, 0, 40, kiss, new Cut(false, 0, 0), edited: ci.ToPng(1));
             Check(cleaned.Edited != null && cleaned.Raster == cleaned.Edited, "hasil rapikan tidak dipakai untuk export");
@@ -462,6 +469,108 @@ public static class SelfCheck
             // Parametrik: offset kiss 3 dan lebar 60 mm menyesuaikan bentuk; editor: bentuk dipilih, node diedit = garis manual.
             double c3 = ShapeOf(cPath, 40, new Cut(true, 3, 1), new Cut(true, 5, 2), CutShape.Circle).KissGeo!.Bounds.Width;
             double c60 = ShapeOf(cPath, 60, kiss, die, CutShape.Circle).KissGeo!.Bounds.Width;
+            // Shift sambil menggeser (daftar tugas leader 2026-11-08). Editor: garis ke node tetangga lurus mendatar, tegak, atau 45 derajat; dari dua
+            // tetangga dipakai yang paling dekat ke kursor. Kanvas: stiker hanya bergeser mendatar atau tegak, mengikuti arah gerak yang lebih besar.
+            var edLine = new CutEditWindow(circle40, null, null, CutShape.Auto, "lurus");
+            edLine.ApplyShape(CutShape.Rect);
+            var rectLine = Loader.ShapeLines(circle40, CutShape.Rect).Kiss![0];
+            var rp = rectLine[1].P;
+            edLine.Press(rp, 0.3);
+            edLine.DragTo(rp + new Vector(2, 0.8), straight: true);
+            edLine.Release();
+            var rMoved = edLine.ManualKiss![0][1].P;
+            static bool Level(Point a, Point b) { var v = b - a; double t = Math.Atan2(v.Y, v.X) / (Math.PI / 4); return Math.Abs(t - Math.Round(t)) < 1e-6; }
+            bool straightOk = rectLine.Length >= 4 && (Level(rectLine[0].P, rMoved) || Level(rectLine[2].P, rMoved)) && (rMoved - rp).Length > 1;
+            straightOk &= Nest.Straight(new Vector(10, 3)) == new Vector(10, 0) && Nest.Straight(new Vector(2, -9)) == new Vector(0, -9) && Nest.Straight(new Vector(4, 4)) == new Vector(4, 0);
+            Check(straightOk, $"Shift garis lurus: node {rp.X:F2};{rp.Y:F2} ke {rMoved.X:F2};{rMoved.Y:F2}, tetangga {rectLine[0].P.X:F2};{rectLine[0].P.Y:F2} dan {rectLine[2].P.X:F2};{rectLine[2].P.Y:F2}; "
+                + $"kanvas (10;3) jadi {Nest.Straight(new Vector(10, 3))}");
+            // Smart select ikut offset (daftar tugas leader, keputusan user 2026-11-08): klik disimpan bersama desain, lalu garisnya dihitung ulang
+            // saat offset berubah, selama node-nya tidak diedit sesudah smart select. Editor yang dibuka lagi tetap membawa kliknya.
+            var smEd = new CutEditWindow(circle40, null, null, CutShape.Auto, "smart");
+            smEd.Pick(new Point(20, 4), false); // cincin oranye
+            var smPick = smEd.Smart;
+            var smLoaded = Loader.Load(cPath, 0, 40, kiss, die, manualKiss: smEd.ManualKiss, manualDie: smEd.ManualDie, smart: smPick);
+            var smWide = Loader.Reload(smLoaded, kiss, new Cut(true, die.Off + 2, die.Smooth), 0);
+            double smGrow = smWide.Outer.Bounds.Width - smLoaded.Outer.Bounds.Width;
+            var smAgain = new CutEditWindow(smLoaded, smLoaded.ManualKiss, smLoaded.ManualDie, CutShape.Auto, "smart lagi", null, CutShape.Auto, smLoaded.Smart);
+            bool smOk = smPick != null && smLoaded.Smart != null && smWide.Smart != null && Math.Abs(smGrow - 4) < 0.5 && smAgain.Smart != null;
+            var smNode = smEd.ManualKiss![0][0].P;
+            smEd.Press(smNode, 0.3);
+            smEd.DragTo(smNode + new Vector(0.6, 0));
+            smEd.Release();
+            smOk &= smEd.Smart == null;
+            Check(smOk, $"smart select ikut offset: resep {(smPick == null ? "tidak ada" : "ada")}, die +2 mm melebar {smGrow:F2} mm (harapan 4), editor dibuka lagi {(smAgain.Smart == null ? "tanpa" : "dengan")} resep, "
+                + $"sesudah node digeser {(smEd.Smart == null ? "tanpa" : "masih dengan")} resep");
+            // Tepi bergelombang (daftar tugas leader 2026-11-08). Riset: tepi scalloped adalah produk stiker umum dengan lengkung lembut, cetakan
+            // scalloped circle memakai 22 lengkung per keliling, dan lekukan lancip sulit dipotong pisau (blade offset CB09 ±0,45 mm). Jadi: lembah
+            // gelombang tetap sejauh offset dari artwork, gelombang benar-benar ada, jari-jari lengkung terkecil >= 0,9 mm, 4-8,5 mm per gelombang,
+            // hanya kurva, dan die Otomatis polos membungkus kiss.
+            var (waveBad, waveLog) = (new List<string>(), new List<string>());
+            static Point[] Resample(List<Node[]> lines, double step)
+            {
+                var f = Geometry.Parse(Curves.PathOf(lines, 0)).GetFlattenedPathGeometry(0.001, ToleranceType.Absolute).Figures[0];
+                var pts = new List<Point> { f.StartPoint };
+                foreach (var seg in f.Segments) pts.AddRange(seg is PolyLineSegment pl ? pl.Points : seg is LineSegment l ? [l.Point] : []);
+                pts.Add(f.StartPoint);
+                var res = new List<Point> { pts[0] };
+                double t = step;
+                for (int i = 1; i < pts.Count; i++)
+                {
+                    var (a, v) = (pts[i - 1], pts[i] - pts[i - 1]);
+                    for (; t <= v.Length; t += step) res.Add(a + v * (t / v.Length));
+                    t -= v.Length;
+                }
+                return [.. res];
+            }
+            static double MinRadius(Point[] p)
+            {
+                double best = double.MaxValue;
+                for (int i = 0; i < p.Length; i++)
+                {
+                    Point a = p[(i + p.Length - 2) % p.Length], b = p[i], c = p[(i + 2) % p.Length];
+                    double area2 = Math.Abs(Vector.CrossProduct(b - a, c - a));
+                    if (area2 > 1e-12) best = Math.Min(best, (b - a).Length * (c - b).Length * (a - c).Length / (2 * area2));
+                }
+                return best;
+            }
+            var waveRect = Draw(dc => dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 400, 300)), 400, 300);
+            var waveBox = Png(waveRect, 40, kiss, none);
+            var waveDisc = Png(Draw(dc => dc.DrawEllipse(Brushes.Black, null, new Point(200, 200), 200, 200), 400, 400), 40, kiss, none);
+            foreach (var (shape, art, artDist) in new (CutShape, Sticker, Func<Point, double>)[]
+            {
+                (CutShape.ScallopRect, waveBox, q => Math.Sqrt(Math.Pow(Math.Max(0, Math.Max(-q.X, q.X - 40)), 2) + Math.Pow(Math.Max(0, Math.Max(-q.Y, q.Y - 30)), 2))),
+                (CutShape.ScallopCircle, waveDisc, q => (q - new Point(20, 20)).Length - 20),
+            })
+            {
+                var (wk, _) = Loader.ShapeLines(art, shape);
+                if (wk == null) { waveBad.Add($"{shape}: tidak ada garis"); continue; }
+                var wp = Resample(wk, 0.1);
+                var dist = wp.Select(artDist).ToArray();
+                double wNear = dist.Min(), wFar = dist.Max(), bend = MinRadius(Resample(wk, 0.2)), perim = wp.Length * 0.1;
+                int waves = Enumerable.Range(0, dist.Length).Count(i => dist[i] > dist[(i + dist.Length - 1) % dist.Length] && dist[i] >= dist[(i + 1) % dist.Length] && dist[i] > wNear + (wFar - wNear) / 2);
+                double lambda = waves > 0 ? perim / waves : 0;
+                bool curvesOnly = !Curves.PathOf(wk, 0).Contains('L');
+                if (wNear < kiss.Off - 0.1 || wFar - wNear < 0.5 || bend < 0.9 || lambda < 3.9 || lambda > 8.5 || !curvesOnly)
+                    waveBad.Add($"{shape}: jarak ke artwork {wNear:F2}-{wFar:F2} mm (offset {kiss.Off}), jari-jari lengkung terkecil {bend:F2} mm, {waves} gelombang, {lambda:F2} mm per gelombang, hanya kurva {curvesOnly}");
+                waveLog.Add($"{shape}: {waves} gelombang, {lambda:F1} mm per gelombang, tinggi {wFar - wNear:F2} mm, lengkung terkecil {bend:F2} mm");
+            }
+            // Die: Otomatis dengan kiss bergelombang = polos membungkus kiss; die bergelombang yang dipilih juga membungkus kiss; tanpa kiss,
+            // die Otomatis bergelombang sendiri.
+            static double Spill(List<Node[]> inner, List<Node[]> outer) => Geometry.Combine(Geometry.Parse(Curves.PathOf(inner, 0)), Geometry.Parse(Curves.PathOf(outer, 0)),
+                GeometryCombineMode.Exclude, null).GetArea(0.001, ToleranceType.Absolute);
+            var waveBoxDie = Png(waveRect, 40, kiss, die);
+            foreach (var (dieShape, plain) in new[] { (CutShape.Auto, true), (CutShape.ScallopRect, false) })
+            {
+                var (dk2, dd2) = Loader.ShapeLines(waveBoxDie, CutShape.ScallopRect, dieShape);
+                if (dk2 == null || dd2 == null || (dd2[0].Length == 8) != plain || Spill(dk2, dd2) > 0.01)
+                    waveBad.Add($"kiss bergelombang, die {dieShape}: die {(dd2 == null ? "tidak ada" : dd2[0].Length + " node")}, kiss di luar die "
+                        + $"{(dk2 == null || dd2 == null ? 0 : Spill(dk2, dd2)):F3} mm2; harus {(plain ? "polos" : "bergelombang")} dan membungkus kiss");
+            }
+            var dieOnly = Loader.ShapeLines(Png(waveRect, 40, none, die), CutShape.ScallopRect).Die;
+            if (dieOnly == null || dieOnly[0].Length <= 8) waveBad.Add($"die saja: {(dieOnly == null ? "tidak ada" : dieOnly[0].Length + " node")}, harus bergelombang");
+            if (Lang.T("ShapeScallopRect") == "ShapeScallopRect" || Enum.GetValues<CutShape>().Length != 11) waveBad.Add("nama bentuk bergelombang belum ada");
+            Check(waveBad.Count == 0, "tepi bergelombang: " + string.Join("; ", waveBad));
+            log.Add("tepi bergelombang: " + string.Join("; ", waveLog));
             var edS = new CutEditWindow(circle40, null, null, CutShape.Auto, "bentuk");
             edS.ApplyShape(CutShape.Circle);
             bool edShape = edS.Shape == CutShape.Circle && edS.ManualKiss == null && edS.Info.Text.StartsWith("Kiss 4 ");
@@ -553,6 +662,19 @@ public static class SelfCheck
             bEdit &= bEd.Border == new Cmyk(0, 0, 0, 1);
             bEd.SetBorder(null);
             bEdit &= bEd.Border == null && bEd.ManualKiss == null;
+            // Pipet dan warna lain (daftar tugas leader 2026-11-08): klik di artwork memakai warnanya sebagai border, area transparan tidak mengubah apa
+            // pun; warna layar diubah ke CMYK dengan kebalikan rumus Cmyk.Rgb.
+            bEd.PickColor(new Point(20, 4)); // cincin oranye (tengah lingkaran putih)
+            var pickedBorder = bEd.Border;
+            bool bPick = pickedBorder is { } pc && pc.C < 0.05 && pc.M is > 0.2 and < 0.6 && pc.Y > 0.9 && pc.K < 0.05;
+            bEd.PickColor(new Point(1, 1)); // pojok kotak artwork di luar lingkaran: transparan
+            bPick &= bEd.Border == pickedBorder;
+            var dodger = Cmyk.FromRgb(Color.FromRgb(30, 144, 255)).Rgb;
+            bPick &= Cmyk.FromRgb(Colors.Red) == new Cmyk(0, 1, 1, 0) && Cmyk.FromRgb(Colors.Black) == new Cmyk(0, 0, 0, 1) && Cmyk.FromRgb(Colors.White) == new Cmyk(0, 0, 0, 0)
+                && Math.Abs(dodger.R - 30) <= 3 && Math.Abs(dodger.G - 144) <= 3 && Math.Abs(dodger.B - 255) <= 3;
+            Check(bPick, $"pipet warna border: dari cincin oranye {pickedBorder?.ToString() ?? "tidak ada"}, sesudah klik area transparan {bEd.Border?.ToString() ?? "tidak ada"}; "
+                + $"merah {Cmyk.FromRgb(Colors.Red)}, biru 30/144/255 kembali jadi {dodger}");
+            bEd.SetBorder(null);
             // Ujung tajam: border dan bleed menjorok sejauh e ke segala arah (sambungan bulat), tanpa lonjakan miter di ujung
             // (sebelumnya ujung bintang 2,26 mm dan segitiga 2,00 mm untuk e = 1 mm). Batas luar = batas garis kiss + e di keempat sisi.
             static double Over(Geometry outer, Geometry inner)
@@ -834,6 +956,36 @@ public static class SelfCheck
                     $"halaman {si + 1}: {curves} kurva, {lines} garis lurus, warna garis {string.Join(" / ", strokes)}, operator RGB/ruang warna lain {otherColor}");
             }
 
+            // Dialog Export (daftar tugas leader, 2026-11-08): file print tanpa garis potong, file cutting tanpa artwork, tanda registrasi hanya bila
+            // dicentang, dan file per lembar memakai nomor lembar aslinya bila hanya sebagian lembar yang dipilih.
+            var exportBad = new List<string>();
+            var printPdf = Path.Combine(dir, "export-print.pdf");
+            var cutPdf = Path.Combine(dir, "export-cutting.pdf");
+            Export.Pdf(printPdf, sheets, A4W, heights, false, Margin, cuts: false);
+            Export.Pdf(cutPdf, sheets, A4W, heights, true, Margin, art: false);
+            using (var expPrint = PdfReader.Open(printPdf, PdfDocumentOpenMode.Import))
+            {
+                var c1 = Content(expPrint.Pages[si]);
+                if (c1.Contains("0 1 0 0 K") || c1.Contains("1 0 0 0 K")) exportBad.Add("file print masih berisi garis potong");
+                if (!c1.Contains(" Do")) exportBad.Add("file print tanpa artwork");
+                if (c1.Contains("0 0 0 1 K")) exportBad.Add("file print berisi tanda registrasi padahal tidak dicentang");
+            }
+            using (var expCut = PdfReader.Open(cutPdf, PdfDocumentOpenMode.Import))
+            {
+                var c2 = Content(expCut.Pages[si]);
+                if (!c2.Contains("0 1 0 0 K")) exportBad.Add("file cutting tanpa garis kiss");
+                if (c2.Contains(" Do")) exportBad.Add("file cutting masih berisi artwork");
+                if (!c2.Contains("0 0 0 1 K")) exportBad.Add("file cutting tanpa tanda registrasi padahal dicentang");
+            }
+            File.Delete(printPdf);
+            File.Delete(cutPdf);
+            var picked = Export.Preview(Path.Combine(dir, "pilih.jpg"), [sheets[0], sheets[^1]], A4W, [heights[0], heights[^1]], Margin, numbers: [7, 9]);
+            var names = picked.Select(Path.GetFileName).ToList();
+            if (!names.SequenceEqual(["pilih-7.jpg", "pilih-9.jpg"])) exportBad.Add($"JPG lembar 7 dan 9: {string.Join(", ", names)}, harus pilih-7.jpg, pilih-9.jpg");
+            foreach (var f in picked) File.Delete(f);
+            Check(exportBad.Count == 0, "dialog Export: " + string.Join("; ", exportBad));
+            log.Add("dialog Export: file print tanpa garis potong, file cutting tanpa artwork, tanda registrasi hanya bila dicentang, JPG lembar pilihan memakai nomor lembar asli");
+
             // S18: susun berbaris (permintaan user 2026-11-02), tanpa dan dengan tanda registrasi; lalu desain sedikit mengisi sisa baris
             // rata tengah, desain yang cukup untuk satu baris mulai di baris baru, diputar hanya bila perlu, dan yang terlalu besar dihitung.
             var (rowBad, rowLog) = (new List<string>(), new List<string>());
@@ -862,6 +1014,15 @@ public static class SelfCheck
                 b.Copies = copies;
                 return b;
             }
+            // Penuhi lembar mengikuti desain terpilih (daftar tugas leader, keputusan user 2026-11-08): hanya desain itu yang ditambah, di Rapi maupun Hemat.
+            var (fillA, fillB) = (Box(30, 30, 2), Box(20, 20, 2));
+            var onlyRows = Nest.FillRows([fillA, fillB], A4W, A4H, Margin, Gap, out int onlyAdded, false, new HashSet<Sticker> { fillB });
+            bool onlyOk = onlyAdded > 0 && fillA.Copies == 2 && fillB.Copies == 2 + onlyAdded && onlyRows.SelectMany(x => x).Count(p => p.S == fillA) == 2;
+            (fillA.Copies, fillB.Copies) = (2, 2);
+            var onlyDense = Nest.Run([fillA, fillB], A4W, A4H, Margin, Gap, out _);
+            int denseA = onlyDense.Sum(x => x.Count(p => p.S == fillA)), denseAdded = Nest.Fill(onlyDense, [fillB], A4W, A4H, Margin, Gap);
+            onlyOk &= denseAdded > 0 && onlyDense.Sum(x => x.Count(p => p.S == fillA)) == denseA;
+            if (!onlyOk) rowBad.Add($"Penuhi lembar desain terpilih: Rapi +{onlyAdded} (jumlah A {fillA.Copies}, B {fillB.Copies}), Hemat +{denseAdded}");
             var (flat, tall) = (Box(30, 20), Box(30, 60));
             var mix = Nest.Rows([flat, tall], A4W, A4H, Margin, Gap, out _);
             if (mix.Count != 1 || mix[0][0].S != tall || mix[0][1].X <= mix[0][0].X || Math.Abs(mix[0][0].Y + mix[0][0].BH / 2 - mix[0][1].Y - mix[0][1].BH / 2) > 1)
@@ -1508,6 +1669,14 @@ public static class SelfCheck
             }
 
             CheckImages(sheets, "export.svg");
+            // Dialog Export: SVG print hanya layer artwork, SVG cutting hanya garis potong (dan tanda registrasi bila dicentang), nomor lembar asli.
+            string Layers(string f) => string.Join(",", XDocument.Load(f).Root!.Elements(svg + "g").Select(g => (string?)g.Attribute(XNamespace.Get("http://www.inkscape.org/namespaces/inkscape") + "label")));
+            var printSvg = ExportSvg.Svg(Path.Combine(tmp, "print.svg"), One(jpg), A4W, [A4H], Margin, false, cuts: false)[0];
+            var cutSvg = ExportSvg.Svg(Path.Combine(tmp, "cutting.svg"), One(jpg), A4W, [A4H], Margin, true, art: false)[0];
+            if (Layers(printSvg) != "Artwork") bad.Add($"SVG print: layer {Layers(printSvg)}, harus Artwork saja");
+            if (Layers(cutSvg) != "Kiss Cut,Die Cut,Registration Marks") bad.Add($"SVG cutting: layer {Layers(cutSvg)}, harus Kiss Cut,Die Cut,Registration Marks");
+            var svgPicked = ExportSvg.Svg(Path.Combine(tmp, "pilih.svg"), [sheets[0], sheets[0]], A4W, [A4H, A4H], Margin, numbers: [2, 5]).Select(Path.GetFileName).ToList();
+            if (!svgPicked.SequenceEqual(["pilih-2.svg", "pilih-5.svg"])) bad.Add($"SVG lembar pilihan: {string.Join(", ", svgPicked)}, harus pilih-2.svg, pilih-5.svg");
             var bordered = Loader.Load(Path.Combine(dir, "circle.png"), 0, 40, kiss, die, border: new Cmyk(0, 1, 1, 0));
             var bled = Loader.Load(Path.Combine(dir, "circle.png"), 0, 40, kiss, die, bleed: 2);
             CheckImages([[new Placed { S = bordered, X = Margin, Y = Margin }, new Placed { S = bled, X = Margin + 60, Y = Margin }]], "border-bleed.svg");

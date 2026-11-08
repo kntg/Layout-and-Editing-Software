@@ -33,6 +33,10 @@
                 </StackPanel>
                 <TextBlock Text="{DynamicResource CleanClickHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
+                <!-- Crop kotak (daftar tugas leader 2026-11-08): centang, lalu tarik kotak di gambar -->
+                <CheckBox x:Name="CropBox" Content="{DynamicResource CleanCrop}" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource CleanCrop}"/>
+                <TextBlock Text="{DynamicResource CleanCropHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
                 <DockPanel Margin="0,20,0,0">
                     <TextBlock x:Name="TolText" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Typography.NumeralAlignment="Tabular"/>
                     <TextBlock Text="{DynamicResource Tolerance}" Style="{StaticResource Label}"/>
@@ -66,10 +70,11 @@
         </Border>
 
         <Canvas x:Name="Board" Background="{StaticResource Ink0}" ClipToBounds="True" Cursor="Cross" SizeChanged="Board_Size"
-                MouseLeftButtonDown="View_Down" PreviewMouseWheel="View_Wheel"
+                MouseLeftButtonDown="View_Down" MouseLeftButtonUp="View_Up" PreviewMouseWheel="View_Wheel"
                 MouseRightButtonDown="View_PanDown" MouseMove="View_PanMove" MouseRightButtonUp="View_PanUp">
             <Rectangle x:Name="ViewBg" Fill="{StaticResource Checker}"/>
             <Image x:Name="View" Stretch="Fill" AutomationProperties.Name="{DynamicResource CleanClick}"/>
+            <Rectangle x:Name="CropRect" Stroke="White" StrokeThickness="1" StrokeDashArray="4 3" Fill="#33FFFFFF" Visibility="Collapsed" IsHitTestVisible="False"/>
         </Canvas>
     </DockPanel>
 </Window>

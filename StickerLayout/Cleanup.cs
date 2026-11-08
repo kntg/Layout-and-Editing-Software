@@ -146,6 +146,20 @@ public sealed class CleanImage
         return n;
     }
 
+    // Crop kotak (daftar tugas leader 2026-11-08): semua yang di luar kotak dihapus (jadi transparan), sebagai satu langkah yang bisa diurungkan.
+    // Kotak kosong tidak mengubah apa pun.
+    public int CropTo(Int32Rect r)
+    {
+        int x0 = Math.Clamp(r.X, 0, W), y0 = Math.Clamp(r.Y, 0, H), x1 = Math.Clamp(r.X + r.Width, 0, W), y1 = Math.Clamp(r.Y + r.Height, 0, H);
+        if (x1 <= x0 || y1 <= y0) return 0;
+        var step = new BitArray(W * H);
+        int n = 0;
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++)
+                if ((x < x0 || x >= x1 || y < y0 || y >= y1) && !Clear(y * W + x)) { step[y * W + x] = true; n++; }
+        return Commit(step, n);
+    }
+
     public bool Undo()
     {
         if (steps.Count == 0) return false;

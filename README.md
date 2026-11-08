@@ -37,20 +37,25 @@ Isi README ini:
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang. Lebar boleh memakai koma atau titik (62,5 atau 62.5).
 5. **Periksa layout.**
-   - **Seret stiker:** stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Seret stiker:** tahan Shift supaya stiker hanya bergeser mendatar atau tegak. Stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
    - **Pilih banyak stiker:** Ctrl+klik menambah atau melepas stiker dari pilihan. Seret dari area kosong lembar membuat kotak pilih. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda. Titik pojok hanya muncul saat satu stiker terpilih.
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin. Selama luas stiker melebihi lembar karena bertumpuk, angka bahan tampil 100% dan merah; susun ulang untuk melihat angka sebenarnya.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Lebar × tinggi artwork tampil di dekat kursor. Proporsi tetap selama **Kunci rasio** di panel Pilihan tercentang; lepas centangnya untuk mengubah lebar dan tinggi sendiri-sendiri (rasio bebas). Saat mouse dilepas, hanya stiker itu yang berubah, dan garis potong dihitung ulang. Bila desainnya juga dipakai stiker lain, stiker itu mendapat baris sendiri di daftar desain (nama sama, lebar baru), dan stiker lain tidak berubah. Kotak lebar dan tinggi di panel Pilihan bekerja sama untuk stiker yang terpilih. Garis potong, bleed, dan border selalu dihitung ulang dengan jarak mm yang sama. Bila tidak ada tempat kosong, stiker ditandai merah; klik Susun otomatis untuk menyusunnya ulang.
    - **Hemat atau Rapi:** pilihan di toolbar. Hemat (bawaan) memadatkan stiker dan boleh memutarnya, jadi bahannya paling hemat. Rapi menyusun stiker per baris dan kolom dengan tepi kiri rata dan desain yang sama berkumpul, tetapi bahan bisa lebih boros. Susun otomatis, tambah file, dan ganti kertas mengikuti pilihan ini.
-   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Saat Rapi dipilih, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
+   - **Penuhi lembar:** mengisi ruang kosong di semua lembar dengan salinan desain bergiliran, dan jumlah per desain ikut bertambah. Bila ada stiker terpilih, hanya desain stiker itu yang ditambah. Saat Rapi dipilih, semua stiker disusun ulang, jadi geseran manual hilang (bisa diurungkan).
    - **Duplikat kanvas:** tombol **Duplikat** di judul lembar menyalin lembar itu utuh, termasuk hasil edit, ke lembar baru di sampingnya. Lembar berjajar ke kanan dan turun ke bawah bila baris di layar penuh. Bahan bertambah 1 lembar, dan jumlah (pcs) tiap desain ikut bertambah. Cara keyboard: klik area kosong di kanvas, Ctrl+C, lalu Ctrl+V.
    - **Salin-tempel stiker:** klik stiker, Ctrl+C, lalu Ctrl+V. Salinan berada tepat di kanan stiker asli; bila baris penuh, turun ke baris berikutnya. Beberapa stiker terpilih tersalin bersama; bila satu saja tidak punya tempat, tidak ada yang ditempel. Susun otomatis tetap menyusun ulang semua stiker dari jumlah pcs, jadi hasil duplikat dan tempel hilang (bisa diurungkan).
    - **Urungkan / Ulangi:** Ctrl+Z / Ctrl+Y, sampai 30 langkah.
 6. **Export.**
-   - **Export PDF…** (Ctrl+E): satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
-   - **Export preview JPG…** (Ctrl+Shift+E): untuk konfirmasi ke customer lewat WhatsApp. Bingkai merah tidak ikut di JPG.
-   - **Export Print Ticket** (menu File): ringkasan satu halaman A4 untuk lampiran SPK.
-   - **Export SVG** (menu File): satu file SVG per lembar dengan layer Artwork, Kiss Cut, Die Cut, dan tanda registrasi. Artwork di dalamnya berupa gambar dan warnanya RGB; export PDF tetap menjaga vektor dan CMYK.
+   - Tombol **Export…** (Ctrl+E, atau menu File) membuka dialog Export. Pilih format, isi file, lembar, dan tanda registrasi, lalu klik Export dan pilih lokasi simpan. Ctrl+Shift+E membuka dialog dengan JPG terpilih.
+   - **PDF:** satu halaman per lembar. Artwork vektor tetap vektor. Garis kiss magenta C0 M100 Y0 K0, die cyan C100 M0 Y0 K0.
+   - **SVG:** satu file per lembar dengan layer Artwork, Kiss Cut, Die Cut, dan tanda registrasi, untuk dibuka di CorelDRAW. Artwork di dalamnya berupa gambar dan warnanya RGB; export PDF tetap menjaga vektor dan CMYK.
+   - **JPG preview:** untuk konfirmasi ke customer lewat WhatsApp. Bingkai merah tidak ikut di JPG.
+   - **Print Ticket:** ringkasan satu halaman A4 untuk lampiran SPK, selalu untuk semua lembar.
+   - **Isi file** (PDF dan SVG): Print + cutting, Print saja (untuk printer, tanpa garis potong), atau Cutting saja (garis potong saja).
+   - **Lembar:** centang lembar yang diexport. File per lembar memakai nomor lembar aslinya, misalnya `nama-3.svg`.
+   - **Tanda registrasi:** ikut ke file hanya bila dicentang (bawaan mati).
+   - Export langsung ke CDR atau AI tidak ada: buka PDF atau SVG hasil Printech di CorelDRAW atau Illustrator, lalu simpan dari sana.
 7. **Cetak dan potong.**
    - Buka PDF di CorelDRAW, lalu pasang tanda registrasi lewat Cutting Master 5.
    - Cetak di Develop.
@@ -69,21 +74,26 @@ Isi README ini:
 Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis potong**. Hasilnya berlaku untuk semua salinan desain itu, tetapi tidak untuk baris ukuran lain dari file yang sama.
 
 - **Bentuk.**
-  - Pilihan: Otomatis, kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam.
+  - Pilihan: Otomatis, kotak, kotak sudut bulat, lingkaran, oval, segitiga, bintang, hati, segi enam, kotak bergelombang, lingkaran bergelombang.
   - Bentuk berlaku untuk garis yang dipilih di **Garis yang diedit**, jadi kiss dan die bisa berbeda. Contoh: pilih Kiss-cut lalu Bintang, kemudian Die-cut lalu Kotak.
-  - Die Otomatis mengikuti bentuk kiss. Die dengan bentuk lain membungkus garis kiss sejauh selisih offset.
+  - Die Otomatis mengikuti bentuk kiss, kecuali di bawah kiss bergelombang: die-nya polos dan membungkus kiss. Die dengan bentuk lain membungkus garis kiss sejauh selisih offset.
+  - Tepi bergelombang: lembah gelombang tetap sejauh offset dari artwork, puncaknya di tiap sudut, panjang gelombang 4–8 mm, dan tanpa lekukan lancip.
   - Bentuk mengelilingi artwork sejauh offset, dan ikut menyesuaikan bila offset atau lebar diubah, selama titiknya tidak diedit.
   - Nama bentuk tampil di daftar desain, misalnya "Bintang · die Kotak".
 - **Warna border.**
   - Pilihan: tanpa warna, merah, hitam, biru, kuning, hijau, atau CMYK pilihan sendiri (empat angka persen, misalnya `0 100 100 0`, lalu Enter).
+  - **Warna lain…** membuka dialog warna Windows. **Pipet**: centang, lalu klik di gambar stiker untuk memakai warnanya. Warna dari keduanya diubah ke CMYK, jadi hasil cetak bisa sedikit beda dari layar.
   - Area antara artwork dan garis kiss (tanpa kiss: garis die) dicetak dengan warna itu, diteruskan sejauh bleed di luar garis (bila bleed 0: 1 mm).
 - **Garis yang diedit:** kiss-cut atau die-cut.
 - **Simplify** (hanya untuk bentuk Otomatis): makin ke kanan (Sederhana), titik garisnya makin sedikit. Garis dibuat ulang dari garis otomatis.
 - **Smart select.**
   - Centang, lalu klik objek: garis hanya mengikuti objek itu. Piksel tipis seperti watermark diabaikan; atur lewat slider Toleransi.
   - Shift+klik menambah objek. Klik di dalam lubang menambah atau menghapus garis dalamnya.
+  - Garis smart select ikut offset dan Halus yang baru, selama titiknya tidak diedit sesudahnya.
 - **Titik garis (node)**, diatur dengan mouse di kanvas.
   - Klik titik untuk memilihnya; klik saja tidak menggeser titik. Shift+klik menambah atau melepas titik dari pilihan.
+  - Tahan Shift saat menyeret titik: garis ke titik tetangga lurus mendatar, tegak, atau 45 derajat.
+  - Zoom: Ctrl + roda mouse (1×–8×); geser tampilan dengan tombol kanan mouse.
   - Seret titik yang dipilih untuk menggeser semuanya sejauh gerakan mouse.
   - Klik di garis atau kurva untuk menambah titik. Delete menghapus semua titik yang dipilih.
   - Bila tepat satu titik dipilih, pegangan kurva (handle, berupa titik bulat) tampil untuk mengatur lengkung.
@@ -95,8 +105,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 
 - **Untuk:** desain berupa gambar, yaitu PNG, JPG, SVG, dan PDF yang ditempel sebagai gambar.
 - **Cara membuka:** **Lainnya** (ikon titik tiga) di baris desain, lalu **Rapikan gambar**; atau klik dua kali gambar kecil desainnya.
-- **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**.
-- **Catatan:** file vektor (PDF/AI, dan CDR yang dibuka lewat CorelDRAW) dirapikan di CorelDRAW supaya warnanya tetap utuh. Fitur ini dibekukan, tidak dikembangkan lagi.
+- **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, crop kotak (centang, lalu tarik kotak: di luar kotak terhapus), toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**. Zoom dengan Ctrl + roda mouse.
+- **Catatan:** file vektor (PDF/AI, dan CDR yang dibuka lewat CorelDRAW) dirapikan di CorelDRAW supaya warnanya tetap utuh. Selain crop kotak dan zoom (2026-11-08), fitur ini tidak dikembangkan lagi.
 
 ### Tampilan dan bahasa
 
@@ -105,8 +115,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 - **Alat Zoom (Z):** klik untuk memperbesar, Alt+klik untuk memperkecil.
 - **Penggaris (mm):** tampil di atas dan kiri lembar. Bisa disembunyikan lewat tombol penggaris di batang alat kiri.
 - **Bahasa:** menu **Bahasa**, pilih Indonesia atau English.
-- **Tanda registrasi:** menu **Tampilan**, centang **Tanda registrasi** (bawaan: mati).
-  - Pilihan bawaan itu menggambar siku L hitam di 4 pojok lembar, ikut di layar, preview JPG, dan PDF.
+- **Tanda registrasi:** tombol siku di batang alat kiri (di bawah penggaris), atau menu **Tampilan**, centang **Tanda registrasi** (bawaan: mati).
+  - Pilihan itu menggambar siku L hitam di 4 pojok lembar di layar. Ke file export, siku hanya ikut bila **Tanda registrasi** dicentang di dialog Export.
   - Stiker tidak ditaruh dalam 6 mm dari tanda (area pindai menurut manual Graphtec). Stiker yang masuk area itu ditandai merah; klik Susun otomatis untuk memindahkannya.
 
 ## Shortcut
@@ -115,8 +125,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | --- | --- |
 | Ctrl+O, Ctrl+I | Tambah file |
 | Ctrl+L | Susun otomatis |
-| Ctrl+E | Export PDF |
-| Ctrl+Shift+E | Export preview JPG |
+| Ctrl+E | Dialog Export |
+| Ctrl+Shift+E | Dialog Export dengan JPG terpilih |
 | Ctrl+Z | Urungkan |
 | Ctrl+Y, Ctrl+Shift+Z | Ulangi |
 | Ctrl+0, F4 | Pas layar |
@@ -130,6 +140,7 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | Ctrl+D | Duplikat semua stiker yang dipilih di kanan atau bawahnya. Bila satu saja tidak punya tempat, tidak ada yang ditambahkan |
 | Ctrl+klik | Tambah atau lepas stiker dari pilihan |
 | Alt + seret stiker | Salin stiker ke titik lepas, juga ke lembar lain |
+| Shift + seret stiker | Geser lurus mendatar atau tegak |
 | Esc saat menarik | Batalkan tarikan, atur ukuran, atau kotak pilih |
 
 ## Arti pesan dan peringatan
@@ -279,7 +290,7 @@ Hasilnya `publish\Printech-win-x64.zip`, berisi folder `Printech`. Folder `publi
 | `StickerLayout/Core.cs` | Mesin utama: memuat desain, garis potong otomatis (gambar bantu, penghalusan, Potrace), susun otomatis, pembaca CDR lewat libcdr, dan proses pembantu CorelDRAW |
 | `StickerLayout/libcdr/` | Alat libcdr dari MSYS2 untuk membuka CDR tanpa CorelDRAW, beserta DLL dan teks lisensinya. Asal, versi, dan sidik SHA256-nya ada di `SUMBER.txt` |
 | `StickerLayout/Curves.cs`, `Shapes.cs`, `SmartSelect.cs` | Titik garis potong (lurus/kurva), preset bentuk dan desain kotak, smart select |
-| `StickerLayout/Export.cs`, `ExportSvg.cs`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket, export SVG; membuka PDF/AI |
+| `StickerLayout/Export.cs`, `ExportSvg.cs`, `ExportWindow.xaml(.cs)`, `Pdfium.cs` | Export PDF, preview JPG, Print Ticket, export SVG, dialog Export; membuka PDF/AI |
 | `StickerLayout/Cleanup.cs` | Rapikan gambar (hapus latar, penghapus klik, kikis tepi) |
 | `StickerLayout/MainWindow.*`, `CutEditWindow.*`, `CleanupWindow.*`, `RulerControl.cs`, `Theme.xaml` | Tampilan: jendela utama, editor garis potong, jendela Rapikan, penggaris, tema |
 | `StickerLayout/Strings.cs` | Teks tampilan dalam bahasa Indonesia dan English |

@@ -30,6 +30,13 @@
                              AutomationProperties.Name="{DynamicResource BorderCmyk}"/>
                     <TextBlock Text="{DynamicResource BorderCmyk}" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                 </DockPanel>
+                <!-- Warna lain (dialog warna Windows) dan pipet dari artwork (daftar tugas leader 2026-11-08) -->
+                <DockPanel Margin="0,8,0,0">
+                    <Button DockPanel.Dock="Right" Content="{DynamicResource BorderMore}" ToolTip="{DynamicResource BorderMoreTip}" Click="MoreColor_Click"
+                            AutomationProperties.Name="{DynamicResource BorderMore}"/>
+                    <CheckBox x:Name="PickBox" Content="{DynamicResource BorderPick}" ToolTip="{DynamicResource BorderPickTip}" VerticalAlignment="Center"
+                              AutomationProperties.Name="{DynamicResource BorderPick}"/>
+                </DockPanel>
                 <TextBlock Text="{DynamicResource BorderHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,4,0,18"/>
 
                 <TextBlock Text="{DynamicResource CutLine}" Style="{StaticResource Label}"/>

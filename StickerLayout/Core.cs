@@ -74,6 +74,7 @@ public class Sticker
     public string Kiss = "", Die = "";           // path SVG garis potong (mm, koordinat kotak)
     // Garis potong hasil editor (node, mm relatif terhadap pojok kiri-atas artwork); null = garis otomatis.
     public List<Node[]>? ManualKiss, ManualDie;
+    public SmartPick? Smart;                     // klik smart select yang membuat garis manual ini; null = garis manual biasa (tidak ikut offset)
     public bool Manual => ManualKiss != null || ManualDie != null;
     public CutShape Shape;                       // bentuk preset dari editor (Auto = mengikuti artwork); garis manual menang
     public CutShape DieShape;                    // bentuk die (Auto = mengikuti kiss)
@@ -102,10 +103,28 @@ public class Sticker
     static Geometry Freeze(Geometry g) { g.Freeze(); return g; }
 }
 
+// Pilihan smart select di editor garis potong (keputusan user 2026-11-08): titik klik objek dan lubang (mm relatif artwork), toleransi, dan Simplify.
+// Disimpan bersama desain supaya garisnya dihitung ulang saat offset atau Halus berubah, selama node-nya tidak diedit sesudah smart select.
+public sealed record SmartPick(Point[] Objs, Point[] Holes, int Tol, double Eps)
+{
+    // Ukuran desain berubah: titik klik ikut berskala bersama artwork, seperti garis manual.
+    public SmartPick Scale(double kx, double ky) =>
+        this with { Objs = [.. Objs.Select(p => new Point(p.X * kx, p.Y * ky))], Holes = [.. Holes.Select(p => new Point(p.X * kx, p.Y * ky))] };
+}
+
 // Warna CMYK 0..1 untuk PDF. Rgb hanya perkiraan untuk layar dan preview.
 public readonly record struct Cmyk(double C, double M, double Y, double K)
 {
     public Color Rgb => Color.FromRgb(B(C), B(M), B(Y));
+    // Warna layar ke CMYK (pipet dan dialog warna di editor garis potong, 2026-11-08): kebalikan rumus Rgb, dibulatkan ke persen utuh.
+    // ponytail: tanpa profil warna, jadi hasil cetak bisa beda dari layar; pakai profil ICC bila warna border harus persis.
+    public static Cmyk FromRgb(Color c)
+    {
+        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0, k = 1 - Math.Max(r, Math.Max(g, b));
+        if (k >= 1) return new(0, 0, 0, 1);
+        static double P(double x) => Math.Round(x * 100) / 100;
+        return new(P((1 - r - k) / (1 - k)), P((1 - g - k) / (1 - k)), P((1 - b - k) / (1 - k)), P(k));
+    }
     byte B(double x) => (byte)Math.Round(255 * (1 - x) * (1 - K));
 }
 
@@ -187,15 +206,24 @@ public static partial class Loader
     // Bentuk preset dihitung ulang.
     public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed, double? widthMm = null, double? heightMm = null)
     {
-        double w = widthMm ?? it.WidthMm, k = w / it.LoadedW, ky = heightMm is { } h ? h / it.ArtH : k;
+        double w = widthMm ?? it.WidthMm, k = w / it.LoadedW, ky = heightMm is { } h ? h / it.ArtH : k, sy = it.StretchY * ky / k;
+        var (mk, md, smart) = (Curves.Scale(it.ManualKiss, k, ky), Curves.Scale(it.ManualDie, k, ky), it.Smart?.Scale(k, ky));
+        if (smart != null)
+        {
+            // Garis smart select dihitung ulang dari kliknya pada offset dan Halus yang baru (keputusan user 2026-11-08). Bila kliknya tidak lagi
+            // mengenai objek, garis lama (diskala) tetap dipakai.
+            var plain = Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf, border: it.Border, stretchY: sy, heightMm: heightMm);
+            var (sk, sd, _) = SmartSelect(plain, smart.Objs, smart.Holes, smart.Tol, smart.Eps);
+            if (kiss.On && sk.Count > 0) mk = sk;
+            if (die.On && sd.Count > 0) md = sd;
+        }
         return Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf,
-            manualKiss: Curves.Scale(it.ManualKiss, k, ky), manualDie: Curves.Scale(it.ManualDie, k, ky), shape: it.Shape, border: it.Border, dieShape: it.DieShape,
-            stretchY: it.StretchY * ky / k, heightMm: heightMm);
+            manualKiss: mk, manualDie: md, shape: it.Shape, border: it.Border, dieShape: it.DieShape, stretchY: sy, heightMm: heightMm, smart: smart);
     }
 
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
         string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null,
-        CutShape dieShape = CutShape.Auto, double stretchY = 1, double? heightMm = null)
+        CutShape dieShape = CutShape.Auto, double stretchY = 1, double? heightMm = null, SmartPick? smart = null)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -270,6 +298,7 @@ public static partial class Loader
         // Garis manual milik garis yang aktif. Titik yang lebih jauh dari jangkauan otomatis memperbesar kotak dan bleed.
         s.ManualKiss = manualKiss;
         s.ManualDie = manualDie;
+        s.Smart = smart;
         var mk = kiss.On ? manualKiss : null;
         var md = die.On ? manualDie : null;
         // Bentuk preset, atau desain kotak (masukan 2026-10-23): garis bentuk mengelilingi artwork sejauh offset, tanpa Halus.
@@ -1309,11 +1338,13 @@ public static class Nest
 
     // Penuhi lembar saat berbaris: salinan ditambah bergiliran lalu disusun ulang, selama jumlah lembar dan yang tidak muat tidak
     // bertambah. Copies diubah sesuai hasil. Mengembalikan susunan baru; geseran manual hilang (bisa diurungkan).
-    public static List<List<Placed>> FillRows(IReadOnlyList<Sticker> designs, double cw, double ch, double margin, double gap, out int added, bool marks = false)
+    public static List<List<Placed>> FillRows(IReadOnlyList<Sticker> designs, double cw, double ch, double margin, double gap, out int added, bool marks = false,
+        IReadOnlyCollection<Sticker>? only = null)
     {
         var best = Rows(designs, cw, ch, margin, gap, out int big, marks);
         added = 0;
-        var turn = designs.Where(s => s.Copies > 0).ToList();
+        // only: desain yang boleh ditambah (stiker terpilih, keputusan user 2026-11-08); null = semua desain bergiliran.
+        var turn = designs.Where(s => s.Copies > 0 && (only == null || only.Contains(s))).ToList();
         for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
         {
             turn[i].Copies++;
@@ -1346,6 +1377,9 @@ public static class Nest
         double bw = (turned ? height : width) + padX, bh = (turned ? width : height) + padY;
         return (width, height, new Rect(right ? ax : ax - bw, down ? ay : ay - bh, bw, bh));
     }
+
+    // Shift sambil menyeret stiker (daftar tugas leader 2026-11-08): hanya mendatar atau tegak, mengikuti arah gerak yang lebih besar.
+    public static Vector Straight(Vector v) => Math.Abs(v.X) >= Math.Abs(v.Y) ? new(v.X, 0) : new(0, v.Y);
 
     // Desain diganti (Rapikan, Edit garis potong, atau atur ukuran tanpa stiker lain yang memakai desainnya): semua salinannya ikut. Posisinya tetap;
     // yang jadi bertabrakan ditandai Check.

@@ -23,9 +23,6 @@
                     <MenuItem Header="{DynamicResource MFile}">
                         <MenuItem Header="{DynamicResource Add}" InputGestureText="Ctrl+O, Ctrl+I" Click="Add_Click"/>
                         <MenuItem Header="{DynamicResource Export}" InputGestureText="Ctrl+E" Click="Export_Click"/>
-                        <MenuItem Header="{DynamicResource Preview}" InputGestureText="Ctrl+Shift+E" Click="Preview_Click"/>
-                        <MenuItem Header="Export SVG" Click="ExportSvg_Click"/>
-                        <MenuItem Header="{DynamicResource Ticket}" Click="Ticket_Click"/>
                         <Separator/>
                         <MenuItem Header="{DynamicResource Exit}" Click="Exit_Click"/>
                     </MenuItem>
@@ -151,6 +148,9 @@
                         <Rectangle Height="1" Fill="{StaticResource Line}" Margin="10,8"/>
                         <ToggleButton x:Name="RulerToggle" Style="{StaticResource ToolToggle}" Content="&#xED5E;" IsChecked="True" Click="Rulers_Click"
                                     ToolTip="{DynamicResource ToggleRulers}" AutomationProperties.Name="{DynamicResource ToggleRulers}"/>
+                        <!-- Tombol view tanda registrasi (daftar tugas leader 2026-11-08: "regmark cocok untuk visual saja"); sama dengan menu Tampilan. -->
+                        <ToggleButton x:Name="RegMarksToggle" Style="{StaticResource ToolToggle}" Content="&#xE7A8;" IsChecked="{Binding IsChecked, ElementName=RegMarksToggleMenu}"
+                                    Click="RegMarksMenu_Click" ToolTip="{DynamicResource RegMarksTip}" AutomationProperties.Name="{DynamicResource RegMarks}"/>
                     </StackPanel>
                 </Border>
 

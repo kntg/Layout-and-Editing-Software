@@ -61,12 +61,36 @@ public partial class CleanupWindow : Window
     // Nilai slider dibaca di UI thread; hitungannya sendiri jalan di background.
     void Background_Click(object s, RoutedEventArgs e) { int tol = TolValue; Run(() => img.EraseFromBorder(tol)); }
 
+    Point? cropFrom; // titik awal kotak crop di papan (layar)
+
     void View_Down(object s, MouseButtonEventArgs e)
     {
         var p = e.GetPosition(Board);
+        if (CropBox.IsChecked == true) { cropFrom = p; Board.CaptureMouse(); return; }
         int x = (int)((p.X - ox) / scale), y = (int)((p.Y - oy) / scale), tol = TolValue;
         if (x < 0 || y < 0 || x >= img.W || y >= img.H) return; // klik di luar gambar
         Run(() => img.EraseAt(x, y, tol));
+    }
+
+    // Kotak crop selesai ditarik: dari layar ke piksel gambar (seperti penghapus klik), lalu bagian di luarnya dihapus. Tarikan di bawah 3 px diabaikan.
+    void View_Up(object s, MouseButtonEventArgs e)
+    {
+        if (cropFrom is not { } f) return;
+        cropFrom = null;
+        Board.ReleaseMouseCapture();
+        CropRect.Visibility = Visibility.Collapsed;
+        var r = new Rect(f, e.GetPosition(Board));
+        if (r.Width < 3 || r.Height < 3) return;
+        CropBox.IsChecked = false;
+        CropPixels(new Rect((r.X - ox) / scale, (r.Y - oy) / scale, r.Width / scale, r.Height / scale));
+    }
+
+    internal void CropPixels(Rect px)
+    {
+        var k = new Int32Rect((int)Math.Floor(px.X), (int)Math.Floor(px.Y), 0, 0);
+        k.Width = (int)Math.Ceiling(px.Right) - k.X;
+        k.Height = (int)Math.Ceiling(px.Bottom) - k.Y;
+        Run(() => img.CropTo(k));
     }
 
     void Undo_Click(object s, RoutedEventArgs e) { if (img.Undo()) Refresh(); }
@@ -124,6 +148,14 @@ public partial class CleanupWindow : Window
 
     void View_PanMove(object s, MouseEventArgs e)
     {
+        if (cropFrom is { } f)
+        {
+            var r = new Rect(f, e.GetPosition(Board));
+            Canvas.SetLeft(CropRect, r.X);
+            Canvas.SetTop(CropRect, r.Y);
+            (CropRect.Width, CropRect.Height, CropRect.Visibility) = (r.Width, r.Height, Visibility.Visible);
+            return;
+        }
         if (!panning) return;
         var p = e.GetPosition(Board);
         panX += p.X - panFrom.X;

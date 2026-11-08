@@ -72,7 +72,9 @@ public static class Export
 
     // Satu halaman per lembar. Artwork PDF/AI/CDR ditempel sebagai vektor (warna asli), PNG/JPG apa adanya,
     // di-clip ke garis potong terluar; garis potong digambar di atasnya. Mengembalikan peringatan per file.
-    public static List<string> Pdf(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, bool regMarks = false, double margin = 0)
+    // Dialog Export (2026-11-08): art = false untuk file cutting (garis potong saja), cuts = false untuk file print (tanpa garis potong).
+    public static List<string> Pdf(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, bool regMarks = false, double margin = 0,
+        bool art = true, bool cuts = true)
     {
         var warn = new List<string>();
         using var doc = new PdfDocument();
@@ -86,7 +88,7 @@ public static class Export
             page.Height = XUnit.FromMillimeter(sheetH[i]);
             using var g = XGraphics.FromPdfPage(page);
             g.ScaleTransform(Pt); // satuan gambar = mm
-            foreach (var p in sheets[i])
+            foreach (var p in art ? sheets[i] : [])
             {
                 var s = p.S;
                 var st = g.Save();
@@ -113,7 +115,7 @@ public static class Export
                 }
                 g.Restore(st);
             }
-            foreach (var p in sheets[i])
+            foreach (var p in cuts ? sheets[i] : [])
             {
                 var st = g.Save();
                 Place(g, p);
@@ -155,14 +157,16 @@ public static class Export
     }
 
     // Satu JPG per lembar (nama-1.jpg, nama-2.jpg, ...), sisi panjang +-2000 px: cukup tajam, ringan dikirim lewat WhatsApp.
-    public static List<string> Preview(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, double margin, bool regMarks = false)
+    // numbers: nomor lembar aslinya bila hanya sebagian lembar yang dipilih di dialog Export; tanpa numbers 1, 2, ...
+    public static List<string> Preview(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH, double margin, bool regMarks = false,
+        IList<int>? numbers = null)
     {
         var files = new List<string>();
         for (int i = 0; i < sheets.Count; i++)
         {
             double h = sheetH[i];
             var file = sheets.Count == 1 ? path
-                : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{i + 1}{Path.GetExtension(path)}");
+                : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{numbers?[i] ?? i + 1}{Path.GetExtension(path)}");
             var enc = new JpegBitmapEncoder { QualityLevel = 85 };
             enc.Frames.Add(BitmapFrame.Create(Snapshot(Nest.Sheet(sheets[i], cw, h, margin, null, i, regMarks), cw, h, 2000 / Math.Max(cw, h))));
             using (var fs = File.Create(file)) enc.Save(fs);

@@ -10,22 +10,23 @@ namespace StickerLayout;
 public static class ExportSvg
 {
     // Satu file SVG per lembar. Layer (group) dipisah agar CorelDRAW membacanya sebagai layer.
+    // Dialog Export (2026-11-08): art = false untuk file cutting, cuts = false untuk file print; numbers = nomor lembar asli untuk nama file.
     public static List<string> Svg(string path, IList<List<Placed>> sheets, double cw, IList<double> sheetH,
-                                   double margin, bool regMarks = false)
+                                   double margin, bool regMarks = false, bool art = true, bool cuts = true, IList<int>? numbers = null)
     {
         var files = new List<string>();
         for (int i = 0; i < sheets.Count; i++)
         {
             var file = sheets.Count == 1
                 ? path
-                : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{i + 1}.svg");
-            File.WriteAllText(file, Sheet(sheets[i], cw, sheetH[i], margin, regMarks), Encoding.UTF8);
+                : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{numbers?[i] ?? i + 1}.svg");
+            File.WriteAllText(file, Sheet(sheets[i], cw, sheetH[i], margin, regMarks, art, cuts), Encoding.UTF8);
             files.Add(file);
         }
         return files;
     }
 
-    static string Sheet(List<Placed> ps, double cw, double ch, double margin, bool regMarks)
+    static string Sheet(List<Placed> ps, double cw, double ch, double margin, bool regMarks, bool art, bool cuts)
     {
         var sb = new StringBuilder();
         sb.Append(CultureInfo.InvariantCulture,
@@ -38,19 +39,25 @@ public static class ExportSvg
         sb.AppendLine();
 
         // Layer 1: Artwork
-        sb.AppendLine("""  <g id="artwork" inkscape:label="Artwork" inkscape:groupmode="layer">""");
-        for (int i = 0; i < ps.Count; i++) Artwork(sb, ps[i], i);
-        sb.AppendLine("  </g>");
+        if (art)
+        {
+            sb.AppendLine("""  <g id="artwork" inkscape:label="Artwork" inkscape:groupmode="layer">""");
+            for (int i = 0; i < ps.Count; i++) Artwork(sb, ps[i], i);
+            sb.AppendLine("  </g>");
+        }
 
-        // Layer 2: Kiss Cut
-        sb.AppendLine("""  <g id="kiss-cut" inkscape:label="Kiss Cut" inkscape:groupmode="layer" fill="none" stroke="#EC008C" stroke-width="0.1">""");
-        foreach (var p in ps) if (p.S.KissGeo is { } k) CutPath(sb, p, k);
-        sb.AppendLine("  </g>");
+        if (cuts)
+        {
+            // Layer 2: Kiss Cut
+            sb.AppendLine("""  <g id="kiss-cut" inkscape:label="Kiss Cut" inkscape:groupmode="layer" fill="none" stroke="#EC008C" stroke-width="0.1">""");
+            foreach (var p in ps) if (p.S.KissGeo is { } k) CutPath(sb, p, k);
+            sb.AppendLine("  </g>");
 
-        // Layer 3: Die Cut
-        sb.AppendLine("""  <g id="die-cut" inkscape:label="Die Cut" inkscape:groupmode="layer" fill="none" stroke="#00AEEF" stroke-width="0.1">""");
-        foreach (var p in ps) if (p.S.DieGeo is { } d) CutPath(sb, p, d);
-        sb.AppendLine("  </g>");
+            // Layer 3: Die Cut
+            sb.AppendLine("""  <g id="die-cut" inkscape:label="Die Cut" inkscape:groupmode="layer" fill="none" stroke="#00AEEF" stroke-width="0.1">""");
+            foreach (var p in ps) if (p.S.DieGeo is { } d) CutPath(sb, p, d);
+            sb.AppendLine("  </g>");
+        }
 
         // Layer 4: Registration Marks
         if (regMarks)

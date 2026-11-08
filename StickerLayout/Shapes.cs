@@ -5,7 +5,7 @@ using System.Windows.Media.Imaging;
 namespace StickerLayout;
 
 // Bentuk garis potong (masukan 2026-10-23). Auto = garis mengikuti artwork (desain kotak otomatis jadi Rect).
-public enum CutShape { Auto, Rect, RoundRect, Circle, Oval, Triangle, Star, Heart, Hexagon }
+public enum CutShape { Auto, Rect, RoundRect, Circle, Oval, Triangle, Star, Heart, Hexagon, ScallopRect, ScallopCircle }
 
 // Preset bentuk yang mengelilingi artwork sejauh offset (artwork tidak terpotong). Koordinat: mm relatif artwork, y ke bawah.
 public static class Shapes
@@ -14,6 +14,9 @@ public static class Shapes
     // ponytail: radius sudut 3 mm dan rasio bintang 0,5 adalah titik awal; sesuaikan dengan pilihan operator AP 55.
     public const double CornerR = 3;
     const double StarInner = 0.5;
+    // ponytail: jari-jari lengkung terkecil tepi bergelombang 1 mm (± dua kali offset ujung pisau) dan ±22 gelombang per keliling adalah titik awal;
+    // sesuaikan dengan pilihan operator AP 55.
+    const double MinBend = 1;
 
     // Kotak bersudut tajam: 4 node lurus.
     public static Node[] Box(double x0, double y0, double x1, double y1) =>
@@ -39,7 +42,8 @@ public static class Shapes
         CutShape dieShape = CutShape.Auto)
     {
         var hull = Hull(mask, artW / mask.GetLength(0), artH / mask.GetLength(1));
-        var ds = dieShape == CutShape.Auto ? shape : dieShape;
+        // Die Otomatis di bawah kiss bergelombang: bentuk dasarnya yang polos, membungkus kiss (keputusan 2026-11-08, lihat Wave).
+        var ds = dieShape != CutShape.Auto ? dieShape : kiss.On ? Plain(shape) : shape;
         if (hull.Length < 3 || shape == CutShape.Auto && ds == CutShape.Auto) return (null, null);
         double dk = kiss.Off, dd = kiss.On ? Math.Max(die.Off, kiss.Off + 1 / Loader.PxMm) : die.Off;
         Point? center = null;
@@ -49,7 +53,7 @@ public static class Shapes
         Node[]? d = null;
         if (die.On && ds != CutShape.Auto)
         {
-            if (ds == shape) d = Make(ds, hull, dd, ref center, ref size, kSize);
+            if (ds == shape && Plain(ds) == ds) d = Make(ds, hull, dd, ref center, ref size, kSize); // gelombang dua garis tidak sejajar: die membungkus kiss
             else
             {
                 Point? dc = null;
@@ -69,6 +73,9 @@ public static class Shapes
         return k == "" ? d : k + " · " + d;
     }
 
+    // Bentuk dasar tanpa gelombang; bentuk lain tetap.
+    static CutShape Plain(CutShape s) => s switch { CutShape.ScallopRect => CutShape.RoundRect, CutShape.ScallopCircle => CutShape.Circle, _ => s };
+
     // Satu kontur bentuk yang memuat hull + offset. center/size: pusat dan ukuran hasil kiss, dipakai ulang untuk die supaya
     // die tetap membungkus kiss (bentuk yang sama, pusat sama, lebih besar).
     static Node[] Make(CutShape shape, Point[] hull, double off, ref Point? center, ref double size, double minSize = 0)
@@ -80,7 +87,7 @@ public static class Shapes
         {
             case CutShape.Rect:
                 return Box(x0 - off, y0 - off, x1 + off, y1 + off);
-            case CutShape.RoundRect:
+            case CutShape.RoundRect or CutShape.ScallopRect:
             {
                 // Ruang tambahan e (>= offset) sampai titik uji masuk kotak bersudut bulat; radius maksimal setengah sisi.
                 var probe = Probe(hull, off);
@@ -91,13 +98,15 @@ public static class Shapes
                 }
                 double e = Search(off, off + CornerR + 1, Fits, Math.Max(off, size));
                 size = e;
-                return RoundRect(x0 - e, y0 - e, x1 + e, y1 + e, Math.Min(CornerR, Math.Min(w, h) / 2 + e));
+                double rr = Math.Min(CornerR, Math.Min(w, h) / 2 + e);
+                return shape == CutShape.RoundRect ? RoundRect(x0 - e, y0 - e, x1 + e, y1 + e, rr) : Wave(x0 - e, y0 - e, x1 + e, y1 + e, rr);
             }
-            case CutShape.Circle:
+            case CutShape.Circle or CutShape.ScallopCircle:
             {
                 var (c, r) = center is { } cc ? (cc, hull.Max(p => (p - cc).Length)) : MinCircle(hull);
                 center = c;
-                return Ellipse(c, r + off, r + off);
+                r += off;
+                return shape == CutShape.Circle ? Ellipse(c, r, r) : Wave(c.X - r, c.Y - r, c.X + r, c.Y + r, r); // lingkaran = kotak bulat r = setengah sisi
             }
             case CutShape.Oval:
             {
@@ -286,6 +295,56 @@ public static class Shapes
         ];
     }
 
+    // Tepi bergelombang (daftar tugas leader 2026-11-08, riset di kebutuhan aplikasi §6): kotak bulat x0..x1, y0..y1 bersudut r (lingkaran = kotak
+    // dengan r setengah sisi) yang didorong keluar sejauh tinggi·(1 + cos)/2. Lembahnya tepat di bentuk dasar, jadi artwork tetap sejauh offset.
+    // Puncak ada di diagonal tiap sudut, dan tiap sisi (diagonal ke diagonal) mendapat gelombang utuh. Panjang gelombang ±keliling/22, 4–8 mm.
+    // Tinggi maksimal 1/4 panjang gelombang, dan lengkung dasar (1/r) + lengkung gelombang (tinggi·k²/2) <= 1/MinBend, supaya tidak ada lekukan
+    // lancip. 4 node kurva per gelombang, dengan posisi dan arah tepat di tiap node. waves dan amp hanya untuk ikon.
+    static Node[] Wave(double x0, double y0, double x1, double y1, double r, int[]? waves = null, double amp = 0)
+    {
+        double a = Math.Max(0, x1 - x0 - 2 * r), b = Math.Max(0, y1 - y0 - 2 * r), q = Math.PI * r / 2;
+        double[] seg = [a + q, b + q, a + q, b + q]; // atas, kanan, bawah, kiri
+        if (waves == null)
+        {
+            double lam0 = Math.Clamp(seg.Sum() / 22, 4, 8);
+            waves = [.. seg.Select(s => Math.Max(1, (int)Math.Round(s / lam0)))];
+            double lam = seg.Zip(waves, (s, m) => s / m).Min(), k2 = 2 * Math.PI * Math.PI / (lam * lam);
+            amp = Math.Clamp((1 / MinBend - 1 / r) / k2, 0, lam / 4);
+        }
+        Point[] cs = [new(x0 + r, y0 + r), new(x1 - r, y0 + r), new(x1 - r, y1 - r), new(x0 + r, y1 - r)]; // pusat sudut, searah jarum jam
+        // Titik bentuk dasar sejauh u dari diagonal sudut i: posisi, arah maju, normal keluar, lengkung.
+        (Point P, Vector T, Vector N, double K) Base(int i, double u)
+        {
+            double len = i % 2 == 0 ? a : b, th = (225 + 90 * i) * Math.PI / 180;
+            var c = cs[i];
+            if (u > q / 2 && u <= q / 2 + len)
+            {
+                var t = new Vector(Math.Cos(i * Math.PI / 2), Math.Sin(i * Math.PI / 2));
+                var n = new Vector(t.Y, -t.X);
+                return (c + r * n + t * (u - q / 2), t, n, 0);
+            }
+            if (u > q / 2) (c, th, u) = (cs[(i + 1) % 4], th + Math.PI / 4, u - q / 2 - len); // setengah busur sudut berikutnya
+            th += u / r;
+            var nn = new Vector(Math.Cos(th), Math.Sin(th));
+            return (c + r * nn, new Vector(-nn.Y, nn.X), nn, 1 / r);
+        }
+        var res = new List<Node>();
+        for (int i = 0; i < 4; i++)
+        {
+            int m = waves[i];
+            double du = seg[i] / (4 * m), duPrev = seg[(i + 3) % 4] / (4 * waves[(i + 3) % 4]);
+            for (int j = 0; j < 4 * m; j++)
+            {
+                double ph = 2 * Math.PI * j / 4, h = amp * (1 + Math.Cos(ph)) / 2, dh = -amp * Math.PI * m / seg[i] * Math.Sin(ph);
+                var (p, t, n, k) = Base(i, j * du);
+                Vector d = (1 + k * h) * t + dh * n;
+                Point pt = p + h * n;
+                res.Add(new Node(pt, pt - d * ((j == 0 ? duPrev : du) / 3), pt + d * (du / 3), true));
+            }
+        }
+        return [.. res];
+    }
+
     // Bintang 5 sudut menghadap atas, jari-jari luar 1.
     static Node[] Star() => [.. Enumerable.Range(0, 10).Select(i =>
     {
@@ -343,6 +402,8 @@ public static class Shapes
             CutShape.Star => Transform(Star(), new Point(0.5, 0.53), 0.5, 0.5),
             CutShape.Heart => Transform(Heart(), new Point(0.5, 0.47), 0.5, 0.5),
             CutShape.Hexagon => [.. Enumerable.Range(0, 6).Select(i => Node.Corner(new Point(0.5 + 0.5 * Math.Cos(i * Math.PI / 3), 0.5 + 0.5 * Math.Sin(i * Math.PI / 3))))],
+            CutShape.ScallopRect => Wave(0, 0.15, 1, 0.85, 0.22, [3, 2, 3, 2], 0.09),
+            CutShape.ScallopCircle => Wave(0, 0, 1, 1, 0.5, [2, 2, 2, 2], 0.09),
             _ => [],
         };
         var g = c.Length == 0 ? Geometry.Empty : Geometry.Parse(Curves.PathOf([c], 0));

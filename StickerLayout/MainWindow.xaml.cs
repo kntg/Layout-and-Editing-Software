@@ -446,7 +446,7 @@ public partial class MainWindow : Window
         {
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
             var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, loadedPdf: it.Pdf, stretchY: it.StretchY);
-            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape) { Owner = this };
+            w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape, it.Smart?.Scale(k, k)) { Owner = this };
 
             var workArea = SystemParameters.WorkArea;
             w.MaxWidth = workArea.Width - 40;
@@ -458,14 +458,14 @@ public partial class MainWindow : Window
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         finally { Mouse.OverrideCursor = null; }
         bool ok = w.ShowDialog() == true;
-        var (mk, md, shape, dieShape, border) = (w.ManualKiss, w.ManualDie, w.Shape, w.DieShape, w.Border);
+        var (mk, md, shape, dieShape, border, smart) = (w.ManualKiss, w.ManualDie, w.Shape, w.DieShape, w.Border, w.Smart);
         w = null;
         FreeMemory(); // desain otomatis untuk editor memuat ulang gambar penuh
         if (!ok) return;
         try
         {
             Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, bleed: BleedMm, loadedPdf: it.Pdf,
-                manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape, stretchY: it.StretchY));
+                manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape, stretchY: it.StretchY, smart: smart));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -534,18 +534,20 @@ public partial class MainWindow : Window
     static void FreeMemory() { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(2, GCCollectionMode.Aggressive, true, true); }
 
     // Penuhi lembar: jumlah per desain ikut hasil, supaya daftar desain, Print Ticket, dan susun ulang memakai angka yang sama.
+    // Ada stiker terpilih: hanya desain stiker itu yang ditambah (daftar tugas leader, keputusan user 2026-11-08); tanpa pilihan, semua desain bergiliran.
     void Compact_Click(object s, RoutedEventArgs e)
     {
         if (sheets.Count == 0) return;
+        var only = sels.Select(p => p.S).ToHashSet();
         int added;
         if (RowsBox.IsChecked == true)
         {
-            sheets = Nest.FillRows(items, sheetW, CH, MarginMm, GapMm, out added, HasRegMarks);
+            sheets = Nest.FillRows(items, sheetW, CH, MarginMm, GapMm, out added, HasRegMarks, only.Count > 0 ? only : null);
             sheetH = sheets.Select(_ => CH).ToList();
             ClearSel();
         }
-        else added = Nest.Fill(sheets, items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
-        AfterAdd(Lang.T("Filled", added));
+        else added = Nest.Fill(sheets, only.Count > 0 ? only : items, sheetW, CH, MarginMm, GapMm, HasRegMarks);
+        AfterAdd(only.Count > 0 ? Lang.T("FilledSel", added, string.Join(", ", only.Select(d => d.Name).Distinct())) : Lang.T("Filled", added));
     }
 
     // Akhir aksi yang menambah stiker: jumlah per desain ikut hasil, lalu periksa, gambar ulang, dan simpan langkah urungkan.
@@ -677,12 +679,9 @@ public partial class MainWindow : Window
     }
     void Rotate_Click(object s, RoutedEventArgs e) => RotateSel();
 
-    // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK.
-    void Ticket_Click(object s, RoutedEventArgs e)
+    // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK. Selalu semua lembar.
+    void SaveTicket()
     {
-        CommitTyping();
-        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
-        if (!NumbersValid()) return;
         var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "print-ticket.pdf" };
         if (dlg.ShowDialog() != true) return;
         if (sheets.SelectMany(sh => sh).FirstOrDefault() is not { } placed) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
@@ -711,60 +710,50 @@ public partial class MainWindow : Window
         else if (box == SelHeightBox) SelHeight_LostFocus(box, new RoutedEventArgs());
     }
 
-    // Sebelum file keluar: sudah ada susunan, angka terbaca, dan operator tahu bila ada stiker bertanda merah.
-    bool ReadyToExport()
-    {
-        CommitTyping();
-        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return false; }
-        return NumbersValid() && (!sheets.Any(x => x.Any(p => p.Bad))
-            || MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes);
-    }
+    // Sebelum file keluar: operator tahu bila ada stiker bertanda merah di lembar yang diexport.
+    bool ReadyToExport(IEnumerable<List<Placed>> chosen) => !chosen.Any(x => x.Any(p => p.Bad))
+        || MessageBox.Show(Lang.T("ExportBad"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
     // File tujuan terkunci (masih terbuka di program lain), disk penuh, atau folder tanpa izin: pesan untuk operator, bukan pesan teknis.
     internal static string SaveFail(Exception ex) => ex is IOException or UnauthorizedAccessException ? Lang.T("SaveFail") : ex.Message;
 
-    void Export_Click(object s, RoutedEventArgs e)
+    // Satu tombol export (daftar tugas leader, keputusan user 2026-11-08): tombol Export dan Ctrl+E membuka dialog; Ctrl+Shift+E membuka dialog dengan
+    // JPG terpilih. Dialog memilih format (PDF untuk cetak dan potong, SVG per layer untuk CorelDRAW, JPG untuk customer, Print Ticket), isi file
+    // (print + cutting, print saja, cutting saja), lembar, dan tanda registrasi (bawaan mati; di layar tetap mengikuti menu Tampilan).
+    void Export_Click(object s, RoutedEventArgs e) => ExportDialog(ExportKind.Pdf);
+
+    void ExportDialog(ExportKind start)
     {
-        if (!ReadyToExport()) return;
-        var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "layout.pdf" };
+        CommitTyping();
+        if (sheets.Count == 0) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
+        if (!NumbersValid()) return;
+        var w = new ExportWindow([.. sheets.Select(sh => sh.Count)], start) { Owner = this };
+        if (w.ShowDialog() != true) return;
+        if (w.Kind == ExportKind.Ticket) { SaveTicket(); return; }
+        var chosen = w.Sheets;
+        if (!ReadyToExport(chosen.Select(i => sheets[i]))) return;
+        string ext = w.Kind switch { ExportKind.Svg => "svg", ExportKind.Jpg => "jpg", _ => "pdf" };
+        string name = w.Kind == ExportKind.Jpg ? "preview" : !w.Cuts ? "print" : !w.Art ? "cutting" : "layout";
+        var dlg = new SaveFileDialog { Filter = $"{ext.ToUpperInvariant()}|*.{ext}", FileName = $"{name}.{ext}" };
         if (dlg.ShowDialog() != true) return;
-        Mouse.OverrideCursor = Cursors.Wait;
-        try
-        {
-            var warn = Export.Pdf(dlg.FileName, sheets, sheetW, sheetH, HasRegMarks, MarginMm);
-            Redraw(string.Join("  ", warn.Prepend(Lang.T("Saved", dlg.FileName))));
-        }
-        catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
-        finally { Mouse.OverrideCursor = null; }
+        RunExport(w.Kind, chosen, w.Art, w.Cuts, w.RegMarks, dlg.FileName);
     }
 
-    // JPG ringan untuk konfirmasi ke customer (WhatsApp) sebelum cetak.
-    void Preview_Click(object s, RoutedEventArgs e)
+    // Tulis file untuk lembar terpilih (indeks); file per lembar (SVG, JPG) memakai nomor lembar aslinya. Dipisah dari dialog supaya bisa diuji.
+    void RunExport(ExportKind kind, List<int> chosen, bool art, bool cuts, bool marks, string path)
     {
-        if (!ReadyToExport()) return;
-        var dlg = new SaveFileDialog { Filter = "JPG|*.jpg", FileName = "preview.jpg" };
-        if (dlg.ShowDialog() != true) return;
+        var pick = chosen.Select(i => sheets[i]).ToList();
+        var hs = chosen.Select(i => sheetH[i]).ToList();
+        var nums = chosen.Select(i => i + 1).ToList();
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            var files = Export.Preview(dlg.FileName, sheets, sheetW, sheetH, MarginMm, HasRegMarks);
-            Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
-        }
-        catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
-        finally { Mouse.OverrideCursor = null; }
-    }
-
-        // SVG per layer (artwork / kiss-cut / die-cut / registration-marks): dibaca CorelDRAW sebagai layer.
-    void ExportSvg_Click(object s, RoutedEventArgs e)
-    {
-        if (!ReadyToExport()) return;
-        var dlg = new SaveFileDialog { Filter = "SVG|*.svg", FileName = "layout.svg" };
-        if (dlg.ShowDialog() != true) return;
-        Mouse.OverrideCursor = Cursors.Wait;
-        try
-        {
-            var files = ExportSvg.Svg(dlg.FileName, sheets, sheetW, sheetH, MarginMm, HasRegMarks);
-            Redraw(Lang.T("PreviewSaved", files.Count, Path.GetDirectoryName(dlg.FileName)!));
+            Redraw(kind switch
+            {
+                ExportKind.Pdf => string.Join("  ", Export.Pdf(path, pick, sheetW, hs, marks, MarginMm, art, cuts).Prepend(Lang.T("Saved", path))),
+                ExportKind.Svg => Lang.T("FilesSaved", ExportSvg.Svg(path, pick, sheetW, hs, MarginMm, marks, art, cuts, nums).Count, Path.GetDirectoryName(path)!),
+                _ => Lang.T("FilesSaved", Export.Preview(path, pick, sheetW, hs, MarginMm, marks, nums).Count, Path.GetDirectoryName(path)!),
+            });
         }
         catch (Exception ex) { MessageBox.Show(SaveFail(ex), App.Brand); }
         finally { Mouse.OverrideCursor = null; }
@@ -1042,14 +1031,14 @@ public partial class MainWindow : Window
         if (drag != null || sizing >= 0 || band != null) // mouse masih ditahan: Ctrl+Z, Delete, dan lainnya menunggu stiker dilepas; Esc membatalkan
         {
             if (e.Key == Key.Escape && CancelDrag()) Redraw();
-            TrackDrag();
+            DragToCursor();
             e.Handled = true;
             return;
         }
         bool typing = Keyboard.FocusedElement is TextBox; // Ctrl+Z/Y di kotak teks = undo teks bawaan
         if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
-            if (e.Key == Key.E) Preview_Click(s, e);
+            if (e.Key == Key.E) ExportDialog(ExportKind.Jpg);
             else if (e.Key == Key.Z && !typing) Redo();
             else return;
             e.Handled = true;
@@ -1097,6 +1086,7 @@ public partial class MainWindow : Window
 
     void Window_KeyUp(object s, KeyEventArgs e)
     {
+        if (drag != null && e.Key is Key.LeftShift or Key.RightShift) DragToCursor();
         if (altUsed && e.SystemKey is Key.LeftAlt or Key.RightAlt)
         {
             altUsed = false;
@@ -1332,6 +1322,7 @@ public partial class MainWindow : Window
     {
         if (drag == null) return;
         var off = Mouse.GetPosition(canvases[drag.FromSheet]) - dragGrab;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) off = Nest.Straight(off); // Shift: hanya mendatar atau tegak (daftar tugas leader 2026-11-08)
         if (!drag.Moved && off != default)
         {
             HideHandles();
@@ -1394,6 +1385,7 @@ public partial class MainWindow : Window
     string? DropSelection(DragState d, MouseEventArgs e)
     {
         d.Offset = e.GetPosition(canvases[d.ToSheet >= 0 ? d.ToSheet : d.FromSheet]) - dragGrab; // dari kursor saat dilepas, di lembar tujuan
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) d.Offset = Nest.Straight(d.Offset); // sama dengan pratinjau saat menarik
         string who = SelWho;
         int to = d.ToSheet >= 0 ? d.ToSheet : d.FromSheet;
         if (d.Drop(sheets, sheetH, sheetW, MarginMm, GapMm, HasRegMarks) is not { } placed)

@@ -1,9 +1,11 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace StickerLayout;
@@ -48,9 +50,16 @@ public partial class CutEditWindow : Window
     public CutShape Shape => isAuto ? shape : CutShape.Auto;
     public CutShape DieShape => isAuto ? dieShape : CutShape.Auto;
     public Cmyk? Border => border;
+    // Klik smart select untuk disimpan bersama desain, hanya selama garis masih persis hasil smart select terakhir (node belum diedit).
+    public SmartPick? Smart => objs.Count + holes.Count > 0 && smartKiss != null && Same(kiss, smartKiss) && Same(die, smartDie!)
+        ? new([.. objs], [.. holes], smartTol, smartEps) : null;
+    List<Node[]>? smartKiss, smartDie;
+    int smartTol;
+    double smartEps;
+    static bool Same(List<Node[]> a, List<Node[]> b) => a.Count == b.Count && a.Zip(b).All(x => x.First.AsSpan().SequenceEqual(x.Second));
 
     public CutEditWindow(Sticker auto, List<Node[]>? manualKiss, List<Node[]>? manualDie, CutShape shape, string name, Cmyk? border = null,
-        CutShape dieShape = CutShape.Auto)
+        CutShape dieShape = CutShape.Auto, SmartPick? smart = null)
     {
         InitializeComponent();
         Title = Lang.T("CutTitle", name);
@@ -86,6 +95,13 @@ public partial class CutEditWindow : Window
             BorderPanel.Children.Add(rb);
         }
         this.border = border;
+        if (smart != null && !isAuto) // smart select sebelumnya: klik dan slider kembali, garisnya tetap seperti tersimpan
+        {
+            (objs, holes) = ([.. smart.Objs], [.. smart.Holes]);
+            (Tol.Value, Eps.Value) = (smart.Tol, smart.Eps);
+            TolText.Text = $"{Tolerance}";
+            (smartKiss, smartDie, smartTol, smartEps) = (Copy(kiss), Copy(die), smart.Tol, smart.Eps);
+        }
         ready = true;
         Changed();
     }
@@ -202,11 +218,12 @@ public partial class CutEditWindow : Window
 
     // Seret: node terpilih bergeser sejauh gerakan mouse (tidak melompat ke kursor), bersama handle-nya. Gerakan sampai
     // slop dari titik klik bukan seret, jadi klik saja tidak mengubah garis.
-    internal void DragTo(Point q)
+    internal void DragTo(Point q, bool straight = false)
     {
         if (!dragging || !moved && (q - pressAt).Length <= slop) return;
         var a = Active;
         var target = Clamp(q + grab);
+        if (straight && hsel == null && grabbed is (int sc, int si)) target = Clamp(Straight(a[sc], si, q + grab));
         if (hsel is (int c, int j, bool o)) a[c][j] = Curves.MoveHandle(a[c][j], o, target);
         else if (grabbed is (int gc, int gi))
         {
@@ -222,6 +239,25 @@ public partial class CutEditWindow : Window
         moved = true;
         isAuto = false;
         Draw();
+    }
+
+    // Shift sambil menggeser node (daftar tugas leader 2026-11-08): garis ke node tetangga lurus mendatar, tegak, atau 45 derajat. Dari dua
+    // tetangga dipakai yang arah terkuncinya paling dekat ke kursor.
+    static Point Straight(Node[] c, int i, Point target)
+    {
+        var best = target;
+        double bd = double.MaxValue;
+        foreach (int j in new[] { (i + c.Length - 1) % c.Length, (i + 1) % c.Length })
+        {
+            if (j == i) continue;
+            var o = c[j].P;
+            var v = target - o;
+            double t = Math.Round(Math.Atan2(v.Y, v.X) / (Math.PI / 4)) * (Math.PI / 4);
+            var dir = new Vector(Math.Cos(t), Math.Sin(t));
+            var p = o + dir * (v * dir);
+            if ((p - target).Length < bd) (bd, best) = ((p - target).Length, p);
+        }
+        return best;
     }
 
     internal void Release()
@@ -305,6 +341,7 @@ public partial class CutEditWindow : Window
         holes = h;
         if (auto.LoadedKiss.On) kiss = k;
         if (auto.LoadedDie.On) die = d;
+        (smartKiss, smartDie, smartTol, smartEps) = (Copy(kiss), Copy(die), Tolerance, Eps.Value);
         shape = dieShape = CutShape.Auto;
         sel.Clear();
         isAuto = false;
@@ -498,6 +535,7 @@ public partial class CutEditWindow : Window
 
     void Board_Down(object s, MouseButtonEventArgs e)
     {
+        if (PickBox.IsChecked == true) { PickColor(Mm(e.GetPosition(Board))); PickBox.IsChecked = false; return; }
         if (SmartBox.IsChecked == true) { Pick(Mm(e.GetPosition(Board)), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)); return; }
         Press(Mm(e.GetPosition(Board)), 7 / scale, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
         if (dragging) Board.CaptureMouse();
@@ -505,7 +543,7 @@ public partial class CutEditWindow : Window
 
     void Board_Move(object s, MouseEventArgs e)
     {
-        if (panning) Board_PanMove(s, e); else DragTo(Mm(e.GetPosition(Board)));
+        if (panning) Board_PanMove(s, e); else DragTo(Mm(e.GetPosition(Board)), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
     }
 
     void Board_Up(object s, MouseButtonEventArgs e)
@@ -519,6 +557,41 @@ public partial class CutEditWindow : Window
         if (!ready) return;
         sel.Clear();
         Changed(); // tombol bentuk dan Simplify mengikuti garis yang dipilih
+    }
+
+    // Pipet (daftar tugas leader, keputusan user 2026-11-08): warna artwork di titik q (mm relatif artwork) menjadi warna border. Di luar artwork atau
+    // di area transparan tidak ada yang berubah. Warna diambil dari gambar layar, jadi CMYK asli desain PDF vektor tidak terbaca persis.
+    internal void PickColor(Point q)
+    {
+        var img = auto.Preview;
+        int x = (int)(q.X / auto.ArtW * img.PixelWidth), y = (int)(q.Y / auto.ArtH * img.PixelHeight);
+        if (x < 0 || y < 0 || x >= img.PixelWidth || y >= img.PixelHeight) return;
+        var px = new byte[4];
+        new System.Windows.Media.Imaging.FormatConvertedBitmap(img, PixelFormats.Bgra32, null, 0).CopyPixels(new Int32Rect(x, y, 1, 1), px, 4, 0);
+        if (px[3] < 128) return;
+        SetBorder(Cmyk.FromRgb(Color.FromRgb(px[2], px[1], px[0])));
+    }
+
+    // Warna lain: dialog warna bawaan Windows (color wheel, keputusan user 2026-11-08). Warna sendiri di dialog disimpan selama Printech terbuka.
+    [StructLayout(LayoutKind.Sequential)]
+    struct ChooseColorInfo { public int Size; public IntPtr Owner, Instance; public int Rgb; public IntPtr Custom; public int Flags; public IntPtr Data, Hook, Template; }
+    [DllImport("comdlg32.dll", EntryPoint = "ChooseColorW")] static extern bool ChooseColor(ref ChooseColorInfo cc);
+    static readonly int[] customColors = new int[16];
+
+    void MoreColor_Click(object s, RoutedEventArgs e)
+    {
+        var start = (border ?? new Cmyk(0, 0, 0, 0)).Rgb;
+        var pin = GCHandle.Alloc(customColors, GCHandleType.Pinned);
+        try
+        {
+            var cc = new ChooseColorInfo
+            {
+                Size = Marshal.SizeOf<ChooseColorInfo>(), Owner = new WindowInteropHelper(this).Handle, Rgb = start.R | start.G << 8 | start.B << 16,
+                Custom = pin.AddrOfPinnedObject(), Flags = 0x1 | 0x2, // CC_RGBINIT | CC_FULLOPEN: mulai dari warna sekarang, spektrum langsung terbuka
+            };
+            if (ChooseColor(ref cc)) SetBorder(Cmyk.FromRgb(Color.FromRgb((byte)cc.Rgb, (byte)(cc.Rgb >> 8), (byte)(cc.Rgb >> 16))));
+        }
+        finally { pin.Free(); }
     }
 
     // Warna border: tombol warna atau kotak CMYK (empat angka 0-100, dipisah spasi/koma). Kosong = tanpa warna.
