@@ -1162,12 +1162,15 @@ public partial class MainWindow : Window
     }
 
     // Ubah lebar artwork stiker terpilih saja (keputusan user 2026-11-07): stiker lain dengan desain sama tidak ikut, karena desainnya dipisah menjadi baris
-    // baru (Nest.Split). Garis potong dihitung ulang dengan offset, Halus, dan bleed yang dimuat, walau panel sudah diubah. Tiap stiker ditaruh di at(p), lalu
-    // pindah ke posisi kosong terdekat seperti saat digeser. Tanpa posisi kosong ukuran baru tetap berlaku, stiker dijaga di dalam area cetak dan ditandai merah.
+    // baru (Nest.Split). Garis potong dihitung ulang dengan offset, Halus, dan bleed yang dimuat, walau panel sudah diubah. Tiap stiker ditaruh di at(p).
+    // Supaya tidak menumpuk (permintaan user 2026-11-09, Nest.MakeRoom): stiker yang ditarik (sel) diam; stiker yang ditimpanya dan sisa pilihan pindah ke
+    // posisi kosong terdekat, atau ke lembar baru tepat sesudahnya. Stiker yang lebih besar dari area cetak tetap di dalam area cetak dan ditandai merah.
     // size: lebar dan tinggi artwork baru per desain; tinggi yang mengikuti proporsi sekarang berarti rasio tidak berubah.
     void ResizeSel(List<Placed> picked, Func<Sticker, (double W, double H)> size, Func<Placed, Point> at)
     {
         bool split = false, fits = true, done = false;
+        int moved = 0;
+        List<int> fresh = [];
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
@@ -1178,16 +1181,11 @@ public partial class MainWindow : Window
                 var n = Loader.Reload(old, old.LoadedKiss, old.LoadedDie, old.LoadedBleed, w, h);
                 if (Nest.Split(items, sheets, [.. g], old, n)) split = true;
                 else { Replace(old, n); Nest.SwapDesign(sheets, old, n); }
-                foreach (var p in g)
-                {
-                    var pt = at(p);
-                    (p.X, p.Y) = (pt.X, pt.Y);
-                    int i = sheets.FindIndex(sh => sh.Contains(p));
-                    if (i < 0 || Nest.Snap(sheets[i], p, sheetW, sheetH[i], MarginMm, GapMm, HasRegMarks)) continue;
-                    Nest.KeepInside(p, sheetW, sheetH[i], MarginMm);
-                    fits = false;
-                }
+                foreach (var p in g) (p.X, p.Y) = (at(p).X, at(p).Y);
             }
+            (moved, fresh, bool tooBig) = Nest.MakeRoom(sheets, sheetH, [.. picked.OrderBy(p => p != sel)], sheetW, MarginMm, GapMm, HasRegMarks);
+            fits = !tooBig;
+            if (sel != null && sheets.FindIndex(sh => sh.Contains(sel)) is int at0 and >= 0) selSheet = at0; // lembar baru di depannya menggeser nomor lembar
             done = true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { MessageBox.Show(ex.Message, App.Brand); }
@@ -1196,7 +1194,8 @@ public partial class MainWindow : Window
         CheckAll();
         var p0 = picked[0];
         var (aw, ah) = p0.Rot % 180 == 0 ? (p0.S.ArtW, p0.S.ArtH) : (p0.S.ArtH, p0.S.ArtW);
-        Redraw((done ? Lang.T(fits ? "Resized" : "ResizedNoRoom", p0.S.Name, F(aw), F(ah)) + (split ? "  " + Lang.T("ResizedSplit") : "") + "  " : "") + Summary());
+        Redraw((done ? Lang.T(fits ? "Resized" : "ResizedNoRoom", p0.S.Name, F(aw), F(ah)) + (split ? "  " + Lang.T("ResizedSplit") : "")
+            + (moved > 0 ? "  " + Lang.T("ResizedNewSheet", moved, string.Join(", ", fresh.Select(i => i + 1))) : "") + "  " : "") + Summary());
         Commit();
         FreeMemory();
     }
