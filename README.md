@@ -140,6 +140,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
 | Ctrl+D | Duplikat semua stiker yang dipilih di kanan atau bawahnya. Bila satu saja tidak punya tempat, tidak ada yang ditambahkan |
 | Ctrl+klik | Tambah atau lepas stiker dari pilihan |
+| Ctrl+A | Pilih semua stiker di lembar yang terakhir diklik (juga di menu Edit) |
+| Esc | Lepas pilihan |
 | Klik kanan | Menu aksi untuk stiker atau lembar |
 | Alt+klik (alat Zoom) | Perkecil tampilan |
 | Alt + seret stiker | Salin stiker ke titik lepas, juga ke lembar lain |

@@ -105,6 +105,7 @@ public static class Lang
         ["PasteSel"] = ("Tempel", "Paste"),
         ["DupSel"] = ("Duplikat terpilih", "Duplicate selected"),
         ["DupThisSheet"] = ("Duplikat lembar ini", "Duplicate this sheet"),
+        ["SelectAll"] = ("Pilih semua di lembar", "Select all on sheet"),
         ["StickerCopied"] = ("{0} disalin. Ctrl+V menempelnya di sebelah kanan.", "{0} copied. Ctrl+V pastes it to the right."),
         ["SheetCopied"] = ("Lembar {0} disalin. Ctrl+V menduplikatnya.", "Sheet {0} copied. Ctrl+V duplicates it."),
         ["Pasted"] = ("{0} ditempel.", "{0} pasted."),

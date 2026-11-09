@@ -1055,6 +1055,7 @@ public partial class MainWindow : Window
                 case Key.C when !typing: CopySel(); break;
                 case Key.V when !typing: Paste(); break;
                 case Key.D when !typing: DuplicateSel(); break;
+                case Key.A when !typing: SelectAll(); break;
                 case Key.O: case Key.I: Add_Click(s, e); break; // Ctrl+I = Import di CorelDRAW
                 case Key.E: Export_Click(s, e); break;
                 case Key.L: Arrange(); break;
@@ -1067,6 +1068,9 @@ public partial class MainWindow : Window
             return;
         }
         if (Keyboard.FocusedElement is TextBox) return;
+        // Kotak pilihan kertas dan daftar desain (audit 2026-11-09, G4): panah, huruf, Spasi, dan Delete milik kontrol itu. F4 tetap Pas layar di daftar desain;
+        // di kotak pilihan F4 membuka daftarnya. Tombol biasa tidak dikecualikan, supaya Delete dan R tetap jalan sesudah tombol diklik.
+        if (e.OriginalSource is ComboBox or ComboBoxItem || e.OriginalSource is ListBox or ListBoxItem && e.Key != Key.F4) return;
         double step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
         switch (e.Key)
         {
@@ -1077,6 +1081,7 @@ public partial class MainWindow : Window
             case Key.F4 when Keyboard.FocusedElement is not ComboBox: Fit(); break; // F4 / Shift+F4 seperti CorelDRAW
             case Key.Delete when sel != null: DeleteSel(); break;
             case Key.R when sel != null: RotateSel(); break;
+            case Key.Escape when sels.Count > 0: ClearSel(); Redraw(); break; // Esc melepas pilihan (G7); saat menarik, Esc membatalkan tarikan (di atas)
             case Key.Left when sel != null: EditSel(p => p.X -= step); break;
             case Key.Right when sel != null: EditSel(p => p.X += step); break;
             case Key.Up when sel != null: EditSel(p => p.Y -= step); break;
@@ -1484,6 +1489,18 @@ public partial class MainWindow : Window
         else if (action == "Cut") CutItem(st);
     }
     void Duplicate_Click(object s, RoutedEventArgs e) => DuplicateSel();
+    void SelectAll_Click(object s, RoutedEventArgs e) => SelectAll();
+
+    // Ctrl+A atau menu Edit (audit 2026-11-09, G8): semua stiker di lembar yang terakhir diklik.
+    void SelectAll()
+    {
+        if (sheets.Count == 0) return;
+        selSheet = Math.Clamp(selSheet, 0, sheets.Count - 1);
+        sels.Clear();
+        sels.UnionWith(sheets[selSheet]);
+        sel = sheets[selSheet].LastOrDefault();
+        Redraw(Lang.T("NSelected", sels.Count));
+    }
 
     // Klik kanan di kanvas (audit 2026-11-09, G1): menu aksi yang sudah ada, untuk stiker di bawah kursor atau untuk lembarnya bila kosong.
     // Stiker yang belum terpilih dipilih dulu; pilihan banyak tetap bila stiker itu termasuk di dalamnya. Tombol kanan tidak dipakai untuk hal lain di kanvas.
