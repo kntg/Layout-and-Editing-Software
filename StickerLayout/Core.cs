@@ -1381,6 +1381,16 @@ public static class Nest
     // Shift sambil menyeret stiker (daftar tugas leader 2026-11-08): hanya mendatar atau tegak, mengikuti arah gerak yang lebih besar.
     public static Vector Straight(Vector v) => Math.Abs(v.X) >= Math.Abs(v.Y) ? new(v.X, 0) : new(0, v.Y);
 
+    // Stiker yang ditarik (temuan 2026-11-09): titik pegangannya kursor, atau dengan Shift dikunci mendatar atau tegak di koordinat lembar asal,
+    // sama dengan pratinjau. Lembar tujuan = lembar yang memuat titik itu (-1 = celah antarlembar atau di luar tampilan), dan geseran dalam mm
+    // lembar tujuan (lembar asal bila di celah). cursor, grab, sheets, dan view dalam koordinat lembar asal.
+    public static (int To, Vector Offset) Aim(Point cursor, Point grab, bool straight, IReadOnlyList<Rect> sheets, Rect view, int from)
+    {
+        var at = straight ? grab + Straight(cursor - grab) : cursor;
+        int to = view.Contains(at) ? sheets.Select((r, i) => (r, i)).FirstOrDefault(x => x.r.Contains(at), (default, -1)).i : -1;
+        return (to, at - grab - (sheets[to >= 0 ? to : from].TopLeft - sheets[from].TopLeft));
+    }
+
     // Desain diganti (Rapikan, Edit garis potong, atau atur ukuran tanpa stiker lain yang memakai desainnya): semua salinannya ikut. Posisinya tetap;
     // yang jadi bertabrakan ditandai Check.
     public static void SwapDesign(IEnumerable<List<Placed>> sheets, Sticker old, Sticker n)

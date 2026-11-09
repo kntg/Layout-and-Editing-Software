@@ -1447,6 +1447,24 @@ public static class SelfCheck
             if (new DragState([hugeP], 0) { Offset = new Vector(9, 9) }.Drop(hugeBook, twoH, A4W, Margin, Gap) != null || (hugeP.X, hugeP.Y) != (30, 30) || hugeBook[0].Count != 1)
                 stateBad.Add("pindah di lembar yang sama tanpa tempat: stiker harus kembali ke posisi awal");
             S(23, "keadaan sementara saat stiker ditarik: dokumen tidak berubah sebelum dilepas; pindah dan salin semua atau tidak sama sekali; stiker asal tetap saat disalin", stateBad.Count == 0, string.Join("; ", stateBad));
+            // Shift sambil menarik stiker ke lembar lain (temuan 2026-11-09): lembar tujuan dan posisi lepas mengikuti titik yang terlihat di pratinjau,
+            // yaitu kursor yang dikunci mendatar atau tegak di koordinat lembar asal. Empat lembar 330 × 480 mm dalam dua baris, jarak antarlembar 16.
+            Rect[] aimSheets = [new(0, 0, 330, 480), new(346, 0, 330, 480), new(0, 496, 330, 480), new(346, 496, 330, 480)];
+            var aimBad = new List<string>();
+            foreach (var (aCur, aGrab, aShift, aTo, aOff) in new (Point, Point, bool, int, Vector)[]
+            {
+                (new(444, 90), new(100, 50), true, 1, new(-2, 0)),   // ke lembar 2 dengan kursor 40 mm lebih rendah: tetap mendatar
+                (new(500, 500), new(100, 470), true, 1, new(54, 0)), // kursor di lembar 4, stiker terlihat di lembar 2
+                (new(444, 90), new(100, 50), false, 1, new(-2, 40)), // tanpa Shift: ikut kursor
+                (new(130, 60), new(100, 50), true, 0, new(30, 0)),   // lembar yang sama
+                (new(338, 50), new(100, 50), false, -1, new(238, 0)), // celah antarlembar: geseran dihitung dari lembar asal
+            })
+            {
+                var aGot = Nest.Aim(aCur, aGrab, aShift, aimSheets, new Rect(-50, -50, 1000, 1100), 0);
+                if (aGot.To != aTo || (aGot.Offset - aOff).Length > 1e-9)
+                    aimBad.Add($"kursor {aCur.X};{aCur.Y} Shift {aShift}: lembar {aGot.To + 1}, geser {aGot.Offset.X};{aGot.Offset.Y} (harapan lembar {aTo + 1}, geser {aOff.X};{aOff.Y})");
+            }
+            Check(aimBad.Count == 0, "Shift ke lembar lain: " + string.Join("; ", aimBad));
 
             Check(fails.Count == 0, "skenario gagal: " + string.Join(", ", fails));
 

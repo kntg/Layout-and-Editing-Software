@@ -1375,7 +1375,8 @@ public partial class MainWindow : Window
     void TrackDrag()
     {
         if (drag == null) return;
-        (drag.ToSheet, drag.Copy) = (SheetAt(), (Keyboard.Modifiers & ModifierKeys.Alt) != 0);
+        drag.ToSheet = Aim(Mouse.GetPosition(canvases[drag.FromSheet])).To;
+        drag.Copy = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
         altUsed |= drag.Copy;
         if (drag.Moved) Status.Text = Lang.T(drag.Copy ? "DragCopy" : "DragMove", (drag.ToSheet >= 0 ? drag.ToSheet : drag.FromSheet) + 1);
     }
@@ -1384,8 +1385,7 @@ public partial class MainWindow : Window
     // Alt: salinannya yang ditaruh di sana, stiker asal tetap. Satu saja tidak punya tempat: tidak ada yang berubah. Mengembalikan pesan untuk operator.
     string? DropSelection(DragState d, MouseEventArgs e)
     {
-        d.Offset = e.GetPosition(canvases[d.ToSheet >= 0 ? d.ToSheet : d.FromSheet]) - dragGrab; // dari kursor saat dilepas, di lembar tujuan
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) d.Offset = Nest.Straight(d.Offset); // sama dengan pratinjau saat menarik
+        (d.ToSheet, d.Offset) = Aim(e.GetPosition(canvases[d.FromSheet])); // dari kursor saat dilepas
         string who = SelWho;
         int to = d.ToSheet >= 0 ? d.ToSheet : d.FromSheet;
         if (d.Drop(sheets, sheetH, sheetW, MarginMm, GapMm, HasRegMarks) is not { } placed)
@@ -1406,17 +1406,14 @@ public partial class MainWindow : Window
         return Lang.T("MovedTo", who, selSheet + 1);
     }
 
-    // Lembar di bawah kursor; -1 di celah antar-lembar atau di luar tampilan (saat zoom besar lembar bisa berlanjut di bawah panel kanan).
-    int SheetAt()
+    // Lembar tujuan dan geseran untuk kursor di koordinat lembar asal (Nest.Aim). Kotak lembar dan tampilan diubah ke koordinat itu; tampilan
+    // dihitung karena saat zoom besar lembar bisa berlanjut di bawah panel kanan.
+    (int To, Vector Offset) Aim(Point cursor)
     {
-        var v = Mouse.GetPosition(View);
-        if (v.X < 0 || v.Y < 0 || v.X > View.ViewportWidth || v.Y > View.ViewportHeight) return -1;
-        for (int i = 0; i < sheets.Count; i++)
-        {
-            var pt = Mouse.GetPosition(canvases[i]);
-            if (pt.X >= 0 && pt.Y >= 0 && pt.X <= canvases[i].Width && pt.Y <= canvases[i].Height) return i;
-        }
-        return -1;
+        var from = canvases[drag!.FromSheet];
+        Rect Box(UIElement e, double w, double h) => new(e.TranslatePoint(new Point(), from), e.TranslatePoint(new Point(w, h), from));
+        return Nest.Aim(cursor, dragGrab, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift), [.. canvases.Select(c => Box(c, c.Width, c.Height))],
+            Box(View, View.ViewportWidth, View.ViewportHeight), drag.FromSheet);
     }
 
     // Tarikan dibatalkan: dokumen tidak berubah, karena posisi sementara hanya ada di tampilan. Pemanggil menggambar ulang. false = tidak ada yang sedang ditarik.
