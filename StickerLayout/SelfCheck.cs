@@ -1037,6 +1037,64 @@ public static class SelfCheck
                 b.Copies = copies;
                 return b;
             }
+            // Ubah ukuran tanpa menumpuk (permintaan user 2026-11-09): stiker yang diubah diam di tempatnya; stiker yang ditimpanya pindah ke posisi kosong di
+            // lembar yang sama, atau ke lembar baru tepat sesudahnya dengan ukurannya sendiri. Beberapa sekaligus: yang pertama diam, sisanya dicarikan tempat.
+            var rzBad = new List<string>();
+            var rzSmall = Box(50, 50, 3);
+            var rzFoot = new Placed { S = rzSmall };
+            double rzW = 2 * Margin + 3 * rzFoot.BW + 2 * Gap + 2, rzH1 = 2 * Margin + rzFoot.BH + 2, rzH2 = 2 * Margin + 2 * rzFoot.BH + Gap + 2;
+            (List<List<Placed>> Book, List<double> Hs, Placed A, Placed B, Placed C) Row3(double h)
+            {
+                var book = Nest.Run([rzSmall], rzW, h, Margin, Gap, out _);
+                var row = book[0].OrderBy(p => p.X).ToList();
+                return (book, [.. book.Select(_ => h)], row[0], row[1], row[2]);
+            }
+            string RoomAt(List<List<Placed>> book, Placed p) => $"lembar {book.FindIndex(sh => sh.Contains(p)) + 1} ({p.X:F0};{p.Y:F0})";
+            bool RoomClean(List<List<Placed>> book, double h) => book.All(sh => Nest.Check(sh, rzW, h, Margin, false, Gap) == 0);
+            // 1. Lembar satu baris: A diperbesar, B tertimpa dan tidak punya tempat, jadi pindah ke lembar baru dengan ukurannya sendiri; C diam.
+            var rz1 = Row3(rzH1);
+            var (rzA1, rzC1) = ((rz1.A.X, rz1.A.Y), (rz1.C.X, rz1.C.Y));
+            rz1.A.S = Box(100, 50);
+            var rzM1 = Nest.MakeRoom(rz1.Book, rz1.Hs, [rz1.A], rzW, Margin, Gap);
+            if (rz1.Book.Count != 2 || rz1.Hs.Count != 2 || !rz1.Book[1].Contains(rz1.B) || rz1.B.S != rzSmall || (rz1.A.X, rz1.A.Y) != rzA1 || (rz1.C.X, rz1.C.Y) != rzC1
+                || !rz1.Book[0].Contains(rz1.C) || rzM1.Moved != 1 || !rzM1.NewSheets.SequenceEqual([1]) || rzM1.TooBig || !RoomClean(rz1.Book, rzH1))
+                rzBad.Add($"lembar penuh: {rz1.Book.Count} lembar, A {RoomAt(rz1.Book, rz1.A)}, B {RoomAt(rz1.Book, rz1.B)}, C {RoomAt(rz1.Book, rz1.C)}, "
+                    + $"pindah {rzM1.Moved} ke lembar [{string.Join(",", rzM1.NewSheets.Select(i => i + 1))}]");
+            // 2. Lembar dua baris: B yang tertimpa pindah ke tempat kosong di lembar yang sama, tanpa lembar baru.
+            var rz2 = Row3(rzH2);
+            var rzA2 = (rz2.A.X, rz2.A.Y);
+            rz2.A.S = Box(100, 50);
+            var rzM2 = Nest.MakeRoom(rz2.Book, rz2.Hs, [rz2.A], rzW, Margin, Gap);
+            if (rz2.Book.Count != 1 || (rz2.A.X, rz2.A.Y) != rzA2 || !rz2.Book[0].Contains(rz2.B) || rzM2.Moved != 0 || !RoomClean(rz2.Book, rzH2))
+                rzBad.Add($"masih ada tempat: {rz2.Book.Count} lembar, A {RoomAt(rz2.Book, rz2.A)}, B {RoomAt(rz2.Book, rz2.B)}");
+            // 3. Ketiganya diubah sekaligus: A diam, B dicarikan tempat, C pindah ke lembar baru dengan ukuran barunya.
+            var rz3 = Row3(rzH1);
+            var rzA3 = (rz3.A.X, rz3.A.Y);
+            var rzBig = Box(70, 50);
+            (rz3.A.S, rz3.B.S, rz3.C.S) = (rzBig, rzBig, rzBig);
+            var rzM3 = Nest.MakeRoom(rz3.Book, rz3.Hs, [rz3.A, rz3.B, rz3.C], rzW, Margin, Gap);
+            if (rz3.Book.Count != 2 || (rz3.A.X, rz3.A.Y) != rzA3 || !rz3.Book[0].Contains(rz3.B) || !rz3.Book[1].Contains(rz3.C) || rz3.C.S != rzBig || rzM3.Moved != 1
+                || !RoomClean(rz3.Book, rzH1))
+                rzBad.Add($"ubah tiga sekaligus: {rz3.Book.Count} lembar, A {RoomAt(rz3.Book, rz3.A)}, B {RoomAt(rz3.Book, rz3.B)}, C {RoomAt(rz3.Book, rz3.C)}");
+            // 4. A lebih besar dari area cetak: tetap di lembarnya (merah), stiker lain tidak dipindah.
+            var rz4 = Row3(rzH1);
+            var (rzB4, rzC4) = ((rz4.B.X, rz4.B.Y), (rz4.C.X, rz4.C.Y));
+            rz4.A.S = Box(300, 50);
+            var rzM4 = Nest.MakeRoom(rz4.Book, rz4.Hs, [rz4.A], rzW, Margin, Gap);
+            if (rz4.Book.Count != 1 || !rzM4.TooBig || (rz4.B.X, rz4.B.Y) != rzB4 || (rz4.C.X, rz4.C.Y) != rzC4)
+                rzBad.Add($"lebih besar dari lembar: {rz4.Book.Count} lembar, terlalu besar {rzM4.TooBig}, B {RoomAt(rz4.Book, rz4.B)}, C {RoomAt(rz4.Book, rz4.C)}");
+            // 5. Pilihan di dua lembar: tiap lembar mendapat lembar baru tepat sesudahnya, dan lembar kedua tidak tertukar dengan lembar baru pertama.
+            var (rz5a, rz5b) = (Row3(rzH1), Row3(rzH1));
+            List<List<Placed>> rzBook5 = [rz5a.Book[0], rz5b.Book[0]];
+            List<double> rzHs5 = [rzH1, rzH1];
+            var rzA5 = (rz5b.A.X, rz5b.A.Y);
+            (rz5a.A.S, rz5b.A.S) = (Box(100, 50), Box(100, 50));
+            var rzM5 = Nest.MakeRoom(rzBook5, rzHs5, [rz5a.A, rz5b.A], rzW, Margin, Gap);
+            if (rzBook5.Count != 4 || !rzBook5[1].Contains(rz5a.B) || !rzBook5[2].Contains(rz5b.A) || (rz5b.A.X, rz5b.A.Y) != rzA5 || !rzBook5[3].Contains(rz5b.B)
+                || rzM5.Moved != 2 || !rzM5.NewSheets.Order().SequenceEqual([1, 3]) || !RoomClean(rzBook5, rzH1))
+                rzBad.Add($"pilihan di dua lembar: {rzBook5.Count} lembar ({string.Join("/", rzBook5.Select(x => x.Count))}), B1 {RoomAt(rzBook5, rz5a.B)}, A2 {RoomAt(rzBook5, rz5b.A)}, "
+                    + $"B2 {RoomAt(rzBook5, rz5b.B)}, lembar baru [{string.Join(",", rzM5.NewSheets.Select(i => i + 1))}]");
+            Check(rzBad.Count == 0, "ubah ukuran tanpa menumpuk: " + string.Join("; ", rzBad));
             // Penuhi lembar mengikuti desain terpilih (daftar tugas leader, keputusan user 2026-11-08): hanya desain itu yang ditambah, di Rapi maupun Hemat.
             var (fillA, fillB) = (Box(30, 30, 2), Box(20, 20, 2));
             var onlyRows = Nest.FillRows([fillA, fillB], A4W, A4H, Margin, Gap, out int onlyAdded, false, new HashSet<Sticker> { fillB });

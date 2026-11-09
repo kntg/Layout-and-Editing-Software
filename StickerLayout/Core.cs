@@ -1223,6 +1223,55 @@ public static class Nest
         p.Y = Math.Clamp(p.Y, margin, Math.Max(margin, ch - margin - p.BH));
     }
 
+    // Ubah ukuran tanpa menumpuk (permintaan user 2026-11-09). Di tiap lembar, stiker pertama dari picked (yang ditarik) diam di tempatnya, hanya
+    // dirapatkan ke grid dan dijaga di dalam area cetak. Sisa picked di lembar itu, dan stiker lain yang ditimpanya, pindah ke posisi kosong terdekat di
+    // lembar yang sama; yang tidak kebagian tempat pindah ke lembar baru tepat sesudah lembar asalnya (seukuran lembar asal, dipakai bersama), dengan
+    // ukurannya sendiri. Stiker pertama yang lebih besar dari area cetak tetap di lembarnya dan tidak menggeser yang lain (TooBig; Check menandainya).
+    // Moved = jumlah stiker yang pindah ke lembar baru; NewSheets = indeks lembar baru.
+    public static (int Moved, List<int> NewSheets, bool TooBig) MakeRoom(List<List<Placed>> sheets, List<double> heights, IReadOnlyList<Placed> picked,
+        double cw, double margin, double gap, bool marks = false)
+    {
+        int moved = 0;
+        bool tooBig = false;
+        var made = new List<List<Placed>>();
+        // Dikelompokkan per lembar (bukan per indeks): lembar baru yang disisipkan menggeser indeks lembar sesudahnya.
+        foreach (var grp in picked.GroupBy(p => sheets.Find(sh => sh.Contains(p))).Where(g => g.Key != null).ToList())
+        {
+            var sheet = grp.Key!;
+            double ch = heights[sheets.IndexOf(sheet)];
+            var anchor = grp.First();
+            bool fits = Snap([], anchor, cw, ch, margin, gap, marks);
+            if (!fits) { KeepInside(anchor, cw, ch, margin); tooBig = true; }
+            var occ = Occupancy([anchor], cw, ch, margin, CellsOf(gap));
+            bool Hit(Placed q)
+            {
+                int ox = (int)Math.Round((q.X - margin) / Cell), oy = (int)Math.Round((q.Y - margin) / Cell);
+                return FootOf(q.S, q.Rot).Cells.Any(c => ox + c.X >= 0 && oy + c.Y >= 0 && ox + c.X < occ.GetLength(0) && oy + c.Y < occ.GetLength(1) && occ[ox + c.X, oy + c.Y]);
+            }
+            var move = grp.Skip(1).Concat(fits ? sheet.Where(q => q != anchor && !grp.Contains(q) && Hit(q)) : []).ToList();
+            sheet.RemoveAll(move.Contains);
+            List<Placed>? spill = null;
+            foreach (var q in move)
+            {
+                if (Snap(sheet, q, cw, ch, margin, gap, marks)) { sheet.Add(q); continue; }
+                var was = (q.X, q.Y);
+                (q.X, q.Y) = (margin, margin);
+                if (spill == null || !Snap(spill, q, cw, ch, margin, gap, marks))
+                {
+                    if (!Snap([], q, cw, ch, margin, gap, marks)) { (q.X, q.Y) = was; KeepInside(q, cw, ch, margin); sheet.Add(q); tooBig = true; continue; } // lebih besar dari lembar
+                    int at = spill == null ? sheets.IndexOf(sheet) + 1 : sheets.IndexOf(spill) + 1;
+                    spill = [];
+                    sheets.Insert(at, spill);
+                    heights.Insert(at, ch);
+                    made.Add(spill);
+                }
+                spill.Add(q);
+                moved++;
+            }
+        }
+        return (moved, [.. made.Select(m => sheets.IndexOf(m))], tooBig);
+    }
+
     // Tempel beberapa stiker: tiap salinan di kanan aslinya, di lembarnya sendiri (PasteNext). Satu tidak muat = tidak ada yang ditambahkan (null).
     public static List<Placed>? PasteAll(List<List<Placed>> sheets, IList<double> sheetH, IEnumerable<(Sticker S, int Rot, double X, double Y, int Sheet)> clip, double cw, double margin, double gap, bool marks = false)
     {
