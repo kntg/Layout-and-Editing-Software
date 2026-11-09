@@ -103,6 +103,8 @@ public static class Lang
         ["SheetDuped"] = ("Lembar {0} diduplikat menjadi lembar {1}.", "Sheet {0} duplicated as sheet {1}."),
         ["CopySel"] = ("Salin stiker atau lembar", "Copy sticker or sheet"),
         ["PasteSel"] = ("Tempel", "Paste"),
+        ["DupSel"] = ("Duplikat terpilih", "Duplicate selected"),
+        ["DupThisSheet"] = ("Duplikat lembar ini", "Duplicate this sheet"),
         ["StickerCopied"] = ("{0} disalin. Ctrl+V menempelnya di sebelah kanan.", "{0} copied. Ctrl+V pastes it to the right."),
         ["SheetCopied"] = ("Lembar {0} disalin. Ctrl+V menduplikatnya.", "Sheet {0} copied. Ctrl+V duplicates it."),
         ["Pasted"] = ("{0} ditempel.", "{0} pasted."),

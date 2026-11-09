@@ -147,6 +147,7 @@ public partial class MainWindow : Window
         if (sel != null && SelSizeBox != null && SelCopiesBox != null) // Tambahkan pengecekan
         {
             var (aw, ah) = sel.Rot % 180 == 0 ? (sel.S.ArtW, sel.S.ArtH) : (sel.S.ArtH, sel.S.ArtW);
+            SelInfo.DataContext = sel.S; // tombol Rapikan: mati dan tooltip vektor untuk desain PDF/AI/CDR (CanClean)
             SelThumb.Source = sel.S.Preview;
             SelThumb.LayoutTransform = new ScaleTransform(1, sel.S.StretchY); // rasio bebas: gambar kecil ikut diregangkan
             SelName.Text = sels.Count > 1 ? Lang.T("NSelected", sels.Count) : sel.S.Name;
@@ -436,9 +437,10 @@ public partial class MainWindow : Window
     }
 
     // Editor garis potong: bentuk preset, node lurus/kurva yang bisa digeser, ditambah, dihapus. Berlaku untuk semua salinan desain.
-    void CutItem_Click(object s, RoutedEventArgs e)
+    // Editor garis potong untuk satu desain: dari menu Lainnya, panel Pilihan, dan menu klik kanan.
+    void CutItem(Sticker it)
     {
-        if ((s as FrameworkElement)?.DataContext is not Sticker it || !CutsValid()) return;
+        if (!CutsValid()) return;
         double k = it.WidthMm / it.LoadedW;
         CutEditWindow? w;
         Mouse.OverrideCursor = Cursors.Wait;
@@ -1479,13 +1481,66 @@ public partial class MainWindow : Window
         {
             Clean(st); // Panggil fungsi Clean asli
         }
-        else if (action == "Cut")
-        {
-            // Kita buat Button dummy karena CutItem_Click butuh sender ber-DataContext
-            var dummyBtn = new Button { DataContext = st };
-            CutItem_Click(dummyBtn, e);
-        }
+        else if (action == "Cut") CutItem(st);
     }
+    void Duplicate_Click(object s, RoutedEventArgs e) => DuplicateSel();
+
+    // Klik kanan di kanvas (audit 2026-11-09, G1): menu aksi yang sudah ada, untuk stiker di bawah kursor atau untuk lembarnya bila kosong.
+    // Stiker yang belum terpilih dipilih dulu; pilihan banyak tetap bila stiker itu termasuk di dalamnya. Tombol kanan tidak dipakai untuk hal lain di kanvas.
+    void Sheets_RightUp(object s, MouseButtonEventArgs e)
+    {
+        if (drag != null || sizing >= 0 || band != null) return;
+        Placed? hit = null;
+        Canvas? sheet = null;
+        for (var d = e.OriginalSource as DependencyObject; d is Visual; d = VisualTreeHelper.GetParent(d))
+        {
+            if (hit == null && d is FrameworkElement { Tag: Placed p }) hit = p;
+            if (d is Canvas { Tag: int }) { sheet = (Canvas)d; break; }
+        }
+        if (sheet == null || !canvases.Contains(sheet)) return;
+        selSheet = (int)sheet.Tag;
+        if (hit == null) ClearSel();
+        else if (!sels.Contains(hit)) SelectOne(hit);
+        else sel = hit;
+        Redraw();
+        var menu = SheetMenu(hit != null);
+        menu.PlacementTarget = Sheets;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    // Isi menu klik kanan: stiker terpilih, atau lembar selSheet. Setiap item memanggil method yang sama dengan tombol, menu, dan shortcut-nya.
+    ContextMenu SheetMenu(bool onSticker)
+    {
+        var m = new ContextMenu();
+        void Add(string key, string keys, Action act, bool on = true)
+        {
+            var item = new MenuItem { Header = Lang.T(key), InputGestureText = keys, IsEnabled = on };
+            item.Click += (_, _) => { m.IsOpen = false; act(); }; // tutup dulu: editor dan Rapikan membuka jendela dialog
+            m.Items.Add(item);
+        }
+        if (onSticker && sel?.S is Sticker st)
+        {
+            Add("CutEdit", "", () => CutItem(st));
+            Add("Clean", "", () => Clean(st), st.CanClean);
+            m.Items.Add(new Separator());
+            Add("RotSel", "R", RotateSel);
+            Add("DupSel", "Ctrl+D", DuplicateSel);
+            Add("CopySel", "Ctrl+C", CopySel);
+            Add("DelSel", "Del", DeleteSel);
+        }
+        else
+        {
+            Add("PasteSel", "Ctrl+V", Paste, clipSheet >= 0);
+            Add("DupThisSheet", "", () => DuplicateSheet(selSheet), sheets[selSheet].Count > 0);
+            m.Items.Add(new Separator());
+            Add("Compact", "", () => Compact_Click(this, new RoutedEventArgs()));
+            Add("Nest", "Ctrl+L", Arrange);
+            Add("Fit", "Ctrl+0", Fit);
+        }
+        return m;
+    }
+
     void CleanSel_Click(object s, RoutedEventArgs e)
     {
         if (sel?.S is Sticker st) Clean(st);
@@ -1493,12 +1548,7 @@ public partial class MainWindow : Window
 
     void CutSel_Click(object s, RoutedEventArgs e)
     {
-        if (sel?.S is Sticker st)
-        {
-            // Panggil CutItem_Click dengan dummy button agar membaca DataContext
-            var dummyBtn = new Button { DataContext = st };
-            CutItem_Click(dummyBtn, e);
-        }
+        if (sel?.S is Sticker st) CutItem(st);
     }
 
     void SelCopies_Changed(object s, TextChangedEventArgs e)

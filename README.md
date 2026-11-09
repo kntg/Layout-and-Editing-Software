@@ -38,6 +38,7 @@ Isi README ini:
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang. Lebar boleh memakai koma atau titik (62,5 atau 62.5).
 5. **Periksa layout.**
    - **Seret stiker:** tahan Shift supaya stiker hanya bergeser mendatar atau tegak. Stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
+   - **Klik kanan:** pada stiker muncul Edit garis potong, Rapikan gambar, Putar, Duplikat, Salin, dan Hapus; stiker yang belum terpilih dipilih dulu. Pada area kosong lembar muncul Tempel, Duplikat lembar ini, Penuhi lembar, Susun otomatis, dan Pas layar.
    - **Pilih banyak stiker:** Ctrl+klik menambah atau melepas stiker dari pilihan. Seret dari area kosong lembar membuat kotak pilih. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda. Titik pojok hanya muncul saat satu stiker terpilih.
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin. Selama luas stiker melebihi lembar karena bertumpuk, angka bahan tampil 100% dan merah; susun ulang untuk melihat angka sebenarnya.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Lebar × tinggi artwork tampil di dekat kursor. Proporsi tetap selama **Kunci rasio** di panel Pilihan tercentang; lepas centangnya untuk mengubah lebar dan tinggi sendiri-sendiri (rasio bebas). Saat mouse dilepas, hanya stiker itu yang berubah, dan garis potong dihitung ulang. Bila desainnya juga dipakai stiker lain, stiker itu mendapat baris sendiri di daftar desain (nama sama, lebar baru), dan stiker lain tidak berubah. Kotak lebar dan tinggi di panel Pilihan bekerja sama untuk stiker yang terpilih. Garis potong, bleed, dan border selalu dihitung ulang dengan jarak mm yang sama. Stiker yang diubah diam di tempatnya; stiker yang ditimpanya pindah ke tempat kosong di lembar yang sama, atau ke lembar baru di sebelahnya bila lembar itu penuh, dengan ukurannya sendiri.
@@ -139,9 +140,12 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | Ctrl+C, lalu Ctrl+V | Salin dan tempel semua stiker yang dipilih. Bila tidak ada stiker yang dipilih: duplikat kanvas yang terakhir diklik |
 | Ctrl+D | Duplikat semua stiker yang dipilih di kanan atau bawahnya. Bila satu saja tidak punya tempat, tidak ada yang ditambahkan |
 | Ctrl+klik | Tambah atau lepas stiker dari pilihan |
+| Klik kanan | Menu aksi untuk stiker atau lembar |
+| Alt+klik (alat Zoom) | Perkecil tampilan |
 | Alt + seret stiker | Salin stiker ke titik lepas, juga ke lembar lain |
 | Shift + seret stiker | Geser lurus mendatar atau tegak |
 | Esc saat menarik | Batalkan tarikan, atur ukuran, atau kotak pilih |
+| Enter / Esc di jendela dialog | Tombol utama (Simpan, Pakai, Export) / Batal |
 
 ## Arti pesan dan peringatan
 

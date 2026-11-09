@@ -475,6 +475,19 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Menu klik kanan (audit 2026-11-09): tampilan sama dengan sub-menu. Tanpa ini menu memakai latar terang bawaan Windows, juga di kotak teks. -->
+    <Style TargetType="ContextMenu">
+        <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{StaticResource Ink2}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="4" MinWidth="230">
+                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <Style TargetType="MenuItem">
         <Setter Property="Foreground" Value="{StaticResource Text}"/>
         <Setter Property="Padding" Value="9,3"/>

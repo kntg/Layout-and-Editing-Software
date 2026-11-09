@@ -35,6 +35,7 @@
                         <Separator/>
                         <MenuItem Header="{DynamicResource CopySel}" InputGestureText="Ctrl+C" Click="Copy_Click"/>
                         <MenuItem Header="{DynamicResource PasteSel}" InputGestureText="Ctrl+V" Click="Paste_Click"/>
+                        <MenuItem Header="{DynamicResource DupSel}" InputGestureText="Ctrl+D" Click="Duplicate_Click"/>
                         <MenuItem Header="{DynamicResource RotSel}" InputGestureText="R" Click="Rotate_Click"/>
                         <MenuItem Header="{DynamicResource DelSel}" InputGestureText="Del" Click="DeletePlaced_Click"/>
                     </MenuItem>
@@ -345,6 +346,7 @@
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CanClean}" Value="False">
                                                                 <Setter Property="ToolTip" Value="{DynamicResource CleanVector}"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -474,7 +476,7 @@
                                         PreviewMouseDown="View_PreviewDown" PreviewMouseMove="View_PreviewMove" PreviewMouseUp="View_PreviewUp">
                                 
                                 <!-- Grid selebar tampilan: klik di luar lembar tetap sampai ke Sheets_Down dan melepas pilihan. Lembar berada di tengah. -->
-                                <Grid Background="Transparent" MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up" LostMouseCapture="Sheets_Lost">
+                                <Grid Background="Transparent" MouseLeftButtonDown="Sheets_Down" MouseMove="Sheets_Move" MouseLeftButtonUp="Sheets_Up" MouseRightButtonUp="Sheets_RightUp" LostMouseCapture="Sheets_Lost">
                                     <ItemsControl x:Name="Sheets" Margin="16" Background="Transparent" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
