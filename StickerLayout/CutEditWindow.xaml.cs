@@ -608,9 +608,12 @@ public partial class CutEditWindow : Window
 
     void BorderCmyk_LostFocus(object s, RoutedEventArgs e) => ApplyCmyk();
 
+    // Enter berhenti di kotak ini (audit 2026-11-09): tanpa Handled, tombol Simpan (IsDefault) ikut tertekan dan editor tertutup.
     void BorderCmyk_KeyDown(object s, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter) ApplyCmyk();
+        if (e.Key != Key.Enter) return;
+        ApplyCmyk();
+        e.Handled = true;
     }
 
     internal void ApplyCmyk()
@@ -638,6 +641,7 @@ public partial class CutEditWindow : Window
 
     void Window_KeyDown(object s, KeyEventArgs e)
     {
+        if (e.OriginalSource is TextBox) return; // mengetik di kotak CMYK: Delete dan Ctrl+Z/Y milik kotak itu, seperti di jendela utama (audit 2026-11-09)
         var m = Keyboard.Modifiers;
         if (e.Key == Key.Delete && m == ModifierKeys.None) DeletePoint();
         else if (e.Key == Key.Z && m == ModifierKeys.Control) Undo();

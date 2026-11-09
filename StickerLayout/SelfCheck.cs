@@ -257,6 +257,29 @@ public static class SelfCheck
                 && Curves.PathOf([Curves.ToLine(curved, 1)], 0) == Curves.PathOf([pk[0]], 0)
                 && Math.Abs(Vector.CrossProduct(smooth.In - smooth.P, smooth.Out - smooth.P)) < 1e-9 && smooth.Smooth;
 
+            // Tombol di kotak CMYK editor (audit 2026-11-09, G2 dan G3): Delete saat mengetik tidak menghapus titik garis, dan Enter menerapkan warna lalu
+            // berhenti di kotak itu, supaya tombol Simpan (tombol utama yang aktif dengan Enter) tidak ikut tertekan. Delete di papan tetap menghapus titik.
+            // Tombol dikirim sebagai event ke kontrolnya, tanpa keyboard sungguhan.
+            var edKey = new CutEditWindow(circle40, null, null, CutShape.Auto, "tombol");
+            using var keySrc = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("uji tombol", 0, 0) { WindowStyle = 0 });
+            System.Windows.Input.KeyEventArgs KeyArgs(System.Windows.Input.Key k, RoutedEvent ev) => new(System.Windows.Input.Keyboard.PrimaryDevice, keySrc, 0, k) { RoutedEvent = ev };
+            edKey.Press(ek[0][2].P, 0.3);
+            edKey.Release();
+            edKey.BorderCmyk.RaiseEvent(KeyArgs(System.Windows.Input.Key.Delete, System.Windows.Input.Keyboard.PreviewKeyDownEvent));
+            bool keyOk = edKey.ManualKiss == null;
+            var keyLog = new List<string> { $"Delete di kotak CMYK: {(edKey.ManualKiss == null ? "titik tetap" : "titik terhapus")}" };
+            edKey.BorderCmyk.Text = "0 100 100 0";
+            var enterKey = KeyArgs(System.Windows.Input.Key.Enter, System.Windows.Input.Keyboard.KeyDownEvent);
+            edKey.BorderCmyk.RaiseEvent(enterKey);
+            keyOk &= enterKey.Handled && edKey.Border == new Cmyk(0, 1, 1, 0);
+            keyLog.Add($"Enter di kotak CMYK: warna {(edKey.Border is { } keyB ? $"{keyB.C:0.##} {keyB.M:0.##} {keyB.Y:0.##} {keyB.K:0.##}" : "kosong")}, "
+                + (enterKey.Handled ? "berhenti di kotak" : "diteruskan ke tombol Simpan"));
+            edKey.Board.RaiseEvent(KeyArgs(System.Windows.Input.Key.Delete, System.Windows.Input.Keyboard.PreviewKeyDownEvent));
+            keyOk &= edKey.ManualKiss != null;
+            keyLog.Add($"Delete di papan: {(edKey.ManualKiss != null ? "titik terhapus" : "titik tetap")}");
+            Check(keyOk, "tombol di kotak CMYK editor: " + string.Join("; ", keyLog));
+            log.Add("tombol di kotak CMYK editor: " + string.Join("; ", keyLog));
+
             // Editor tanpa mouse: tambah node di kurva lalu seret, undo/redo, hapus, kiss keluar die, handle, tombol node, Simplify, reset.
             var ed = new CutEditWindow(circle40, null, null, CutShape.Auto, "uji");
             var mid = Curves.At(ek[0][0], ek[0][1], 0.5); // titik tepat di kurva antara node 0 dan 1
