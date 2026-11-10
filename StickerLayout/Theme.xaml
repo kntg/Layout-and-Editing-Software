@@ -475,7 +475,8 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <!-- Menu klik kanan (audit 2026-11-09): tampilan sama dengan sub-menu. Tanpa ini menu memakai latar terang bawaan Windows, juga di kotak teks. -->
+    <!-- Menu klik kanan (audit 2026-11-09): tampilan sama dengan sub-menu. Tanpa ini menu memakai latar terang bawaan Windows.
+         Menu Cut/Copy/Paste di kotak teks tetap terang: WPF membuatnya dari kelas turunan ContextMenu, yang tidak ikut gaya ini. -->
     <Style TargetType="ContextMenu">
         <Setter Property="Foreground" Value="{StaticResource Text}"/>
         <Setter Property="Template">

@@ -483,9 +483,13 @@ public partial class MainWindow : Window
         n.Name = old.Name;
         
         int idx = items.IndexOf(old);
-        if (idx >= 0) 
+        if (idx >= 0)
         {
-            items[idx] = n; // Hanya ganti jika old masih ada di items
+            // Hanya ganti jika old masih ada di items. Daftar desain melepas baris yang diganti; tanpa syncingList, List_SelectionChanged ikut
+            // melepas stiker terpilih (uji dengan mouse 2026-11-09). Redraw sesudahnya memilih desain baru di daftar.
+            syncingList = true;
+            items[idx] = n;
+            syncingList = false;
         }
         
         clip = [.. clip.Select(c => c.S == old ? (n, c.Rot, c.X, c.Y, c.Sheet) : c)];

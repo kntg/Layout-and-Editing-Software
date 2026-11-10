@@ -1373,6 +1373,29 @@ public static class SelfCheck
                 sizeBad.Add($"Hemat: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar, tepi kiri {string.Join(" / ", upright)}");
             // 2 lembar: pekerjaan S17 dengan tanda registrasi sebelum percobaan ini. Hemat tidak boleh menambah lembar.
             if (regRun.Count != 2) sizeBad.Add($"Hemat dengan tanda registrasi: {regRun.Count} lembar, harapan 2");
+
+            // Stiker tetap terpilih sesudah ubah ukuran (uji dengan mouse 2026-11-09): titik pojok, Lebar, dan Tinggi di panel Pilihan memakai ResizeSel.
+            // Desain yang hanya dipakai stiker itu diganti di daftar desain, dan penggantian itu tidak boleh melepas pilihan. Jendela utama dibuat tanpa
+            // ditampilkan; method privatnya dipanggil lewat reflection, seperti saat titik pojok dilepas.
+            const System.Reflection.BindingFlags Priv = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var mw = new MainWindow([]);
+            mw.AddFiles([cPath]);
+            object? MwGet(string f) => typeof(MainWindow).GetField(f, Priv)!.GetValue(mw);
+            void MwCall(string m, params object?[] a) => typeof(MainWindow).GetMethod(m, Priv)!.Invoke(mw, a);
+            var mwPick = ((List<List<Placed>>)MwGet("sheets")!)[0][0];
+            var mwList = (System.Windows.Controls.ListBox)mw.FindName("List");
+            var (selOk, selLog) = (true, new List<string>());
+            foreach (var (rw, rh) in new[] { (60.0, 60.0), (69.6, 50.0) })
+            {
+                MwCall("SelectOne", mwPick);
+                MwCall("Redraw", (string?)null);
+                MwCall("ResizeSel", new List<Placed> { mwPick }, (Func<Sticker, (double, double)>)(_ => (rw, rh)), (Func<Placed, Point>)(p => new Point(p.X, p.Y)));
+                bool kept = MwGet("sel") == mwPick, listed = mwList.SelectedItem == mwPick.S;
+                selOk &= kept && listed && About(mwPick.S.ArtW, rw, 0.01);
+                selLog.Add($"{mwPick.S.ArtW:0.#} x {mwPick.S.ArtH:0.#} mm: stiker {(kept ? "masih terpilih" : "tidak terpilih")}, daftar desain {(listed ? "ikut memilih desain baru" : "tidak memilih")}");
+            }
+            Check(selOk, "pilihan sesudah ubah ukuran: " + string.Join("; ", selLog));
+            log.Add("pilihan sesudah ubah ukuran: " + string.Join("; ", selLog));
             sizeLog.Add($"kotak 40 x 30 mm: paling kecil {minW:F1} mm, paling besar {maxW:F1} mm; lingkaran 40 -> 80 mm, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm; tepi kiri baris Rapi {evenRows[0].Min(p => p.X):F0} mm; "
                 + $"Hemat foto 178 x 100 mm: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar");
             S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, rasio terkunci atau bebas, jarak garis tetap, batas ukuran, stiker lain dengan desain sama tidak ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,
