@@ -243,7 +243,7 @@ public partial class MainWindow : Window
     }
 
     // ---- Undo/redo global: satu langkah = keadaan dokumen setelah satu aksi operator ----
-    sealed record Doc(List<(Sticker S, int Copies, double WidthMm, string Name)> Items, List<List<(Sticker S, double X, double Y, int Rot)>> Sheets,
+    sealed record Doc(List<(Sticker S, int Copies, double WidthMm, string Name, bool Hidden, bool OwnCut)> Items, List<List<(Sticker S, double X, double Y, int Rot)>> Sheets,
         List<double> SheetH, double SheetW, int TooBig, string[] Settings);
     const int UndoMax = 30; // snapshot memegang Sticker lama beserta pratinjaunya; batas ini menjaga RAM
     readonly List<Doc> undo = [], redo = [];
@@ -253,7 +253,7 @@ public partial class MainWindow : Window
     string[] Settings() => [PaperBox.SelectedItem as string ?? "", CanvasW.Text, CanvasH.Text, MarginBox.Text, GapBox.Text,
         $"{KissOn.IsChecked}", KissOff.Text, KissSm.Text, $"{DieOn.IsChecked}", DieOff.Text, DieSm.Text, BleedBox.Text, WidthBox.Text, $"{RowsBox.IsChecked}", $"{HasRegMarks}"];
 
-    Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name))],
+    Doc Capture() => new([.. items.Select(s => (s, s.Copies, s.WidthMm, s.Name, s.Hidden, s.OwnCut))],
         [.. sheets.Select(sh => sh.Select(p => (p.S, p.X, p.Y, p.Rot)).ToList())], [.. sheetH], sheetW, tooBig, Settings());
 
     static bool Same(Doc a, Doc b) => a.SheetW == b.SheetW && a.TooBig == b.TooBig && a.Settings.SequenceEqual(b.Settings)
@@ -292,7 +292,7 @@ public partial class MainWindow : Window
         }
         finally { restoring = false; }
         items.Clear();
-        foreach (var (s, copies, width, name) in d.Items) { (s.Copies, s.WidthMm, s.Name) = (copies, width, name); items.Add(s); }
+        foreach (var (s, copies, width, name, hidden, ownCut) in d.Items) { (s.Copies, s.WidthMm, s.Name, s.Hidden, s.OwnCut) = (copies, width, name, hidden, ownCut); items.Add(s); }
         List.Items.Refresh();
         sheets = [.. d.Sheets.Select(sh => sh.Select(p => new Placed { S = p.S, X = p.X, Y = p.Y, Rot = p.Rot }).ToList())];
         (sheetH, sheetW, tooBig) = ([.. d.SheetH], d.SheetW, d.TooBig);
@@ -481,6 +481,8 @@ public partial class MainWindow : Window
 
         n.Copies = old.Copies;
         n.Name = old.Name;
+        n.Hidden = old.Hidden;
+        n.OwnCut = old.OwnCut;
         
         int idx = items.IndexOf(old);
         if (idx >= 0)
@@ -515,9 +517,15 @@ public partial class MainWindow : Window
             for (int i = 0; i < items.Count; i++)
             {
                 var it = items[i];
-                if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != kiss || it.LoadedDie != die
+                Cut itKiss = it.OwnCut ? it.LoadedKiss : kiss;
+                Cut itDie = it.OwnCut ? it.LoadedDie : die;
+                if (it.WidthMm > 0 && (Math.Abs(it.LoadedW - it.WidthMm) > 1e-6 || it.LoadedKiss != itKiss || it.LoadedDie != itDie
                     || (it.Pdf == null && it.LoadedBleed != bleed)))
-                    Replace(it, Loader.Reload(it, kiss, die, bleed));
+                {
+                    var n = Loader.Reload(it, itKiss, itDie, bleed);
+                    Replace(it, n);
+                    Nest.SwapDesign(sheets, it, n);
+                }
             }
             sheetW = CW;
             sheets = RowsBox.IsChecked == true ? Nest.Rows(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks) : Nest.Run(items, sheetW, CH, MarginMm, GapMm, out tooBig, HasRegMarks);
@@ -526,7 +534,7 @@ public partial class MainWindow : Window
             ClearSel();
             clip = []; // posisi yang disalin tidak berlaku lagi
             clipSheet = -1;
-            Redraw(Summary());
+            Redraw(sheets.Count > 0 ? Summary() : "");
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); }
         finally { Mouse.OverrideCursor = null; }
@@ -1491,6 +1499,68 @@ public partial class MainWindow : Window
             Clean(st); // Panggil fungsi Clean asli
         }
         else if (action == "Cut") CutItem(st);
+        else if (action == "CutOpt") CutOptItem(st);
+    }
+
+    void StepCopies_Click(object s, RoutedEventArgs e)
+    {
+        if (s is not FrameworkElement fe || fe.DataContext is not Sticker st) return;
+        int delta = int.TryParse(fe.Tag?.ToString(), out int d) ? d : 1;
+        int next = Math.Max(1, st.Copies + delta);
+        if (next == st.Copies) return;
+        st.Copies = next;
+        syncingList = true;
+        List.Items.Refresh();
+        if (sel?.S == st && SelCopiesBox != null)
+        {
+            syncingSel = true;
+            SelCopiesBox.Text = st.Copies.ToString();
+            syncingSel = false;
+        }
+        syncingList = false;
+        Commit();
+    }
+
+    void HideItem_Click(object s, RoutedEventArgs e)
+    {
+        if (s is not FrameworkElement fe || fe.DataContext is not Sticker st) return;
+        st.Hidden = !st.Hidden;
+        if (st.Hidden && sel?.S == st) ClearSel();
+        Arrange();
+        List.Items.Refresh();
+        Redraw(Lang.T(st.Hidden ? "ItemHidden" : "ItemShown", st.Name) + "  " + Summary());
+        Commit();
+    }
+
+    void SetCuts(Sticker st, (Cut Kiss, Cut Die)? custom)
+    {
+        if (st == null) return;
+        if (custom is { } c)
+        {
+            string? err = Cut.Error(c.Kiss, c.Die);
+            if (err != null) { MessageBox.Show(Lang.T(err), App.Brand); return; }
+            var n = Loader.Reload(st, c.Kiss, c.Die, BleedMm, st.WidthMm, st.ArtH);
+            Replace(st, n);
+            n.OwnCut = true;
+            Nest.SwapDesign(sheets, st, n);
+        }
+        else
+        {
+            var n = Loader.Reload(st, Kiss, Die, BleedMm, st.WidthMm, st.ArtH);
+            Replace(st, n);
+            n.OwnCut = false;
+            Nest.SwapDesign(sheets, st, n);
+        }
+        CheckAll();
+        Redraw(Lang.T("CutOptSaved", st.Name) + "  " + Summary());
+        Commit();
+    }
+
+    void CutOptItem(Sticker st)
+    {
+        var w = new CutOptWindow(st, Kiss, Die) { Owner = this };
+        if (w.ShowDialog() != true) return;
+        SetCuts(st, w.Result);
     }
     void Duplicate_Click(object s, RoutedEventArgs e) => DuplicateSel();
     void SelectAll_Click(object s, RoutedEventArgs e) => SelectAll();

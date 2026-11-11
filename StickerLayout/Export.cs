@@ -62,7 +62,17 @@ public static class Export
         Line("", 0, 5);
         var designs = all.GroupBy(p => p.S).ToList();
         Line(Lang.T("TicketDesigns"), 1);
-        foreach (var d in designs.Take(MaxDesigns)) Line($"{d.Key.Name} — {d.Key.ArtW:0.#} × {d.Key.ArtH:0.#} mm — {d.Count()} pcs", 0, 5);
+        foreach (var d in designs.Take(MaxDesigns))
+        {
+            var cuts = new List<string>();
+            if (d.Key.OwnCut)
+            {
+                if (d.Key.LoadedKiss.On) cuts.Add($"{Lang.T("Kiss")} {d.Key.LoadedKiss.Off:0.#} mm");
+                if (d.Key.LoadedDie.On) cuts.Add($"{Lang.T("Die")} {d.Key.LoadedDie.Off:0.#} mm");
+            }
+            string cutInfo = cuts.Count > 0 ? $" ({string.Join(", ", cuts)})" : "";
+            Line($"{d.Key.Name} — {d.Key.ArtW:0.#} × {d.Key.ArtH:0.#} mm{cutInfo} — {d.Count()} pcs", 0, 5);
+        }
         if (designs.Count > MaxDesigns) Line(Lang.T("TicketMore", designs.Count - MaxDesigns), 0, 5);
         Line("", 0, 5);
         Line(Lang.T("TicketSettings"), 1);

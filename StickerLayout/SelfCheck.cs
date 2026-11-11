@@ -1381,7 +1381,7 @@ public static class SelfCheck
             var mw = new MainWindow([]);
             mw.AddFiles([cPath]);
             object? MwGet(string f) => typeof(MainWindow).GetField(f, Priv)!.GetValue(mw);
-            void MwCall(string m, params object?[] a) => typeof(MainWindow).GetMethod(m, Priv)!.Invoke(mw, a);
+            void MwCall(string m, params object?[] a) => (typeof(MainWindow).GetMethod(m, Priv) ?? throw new MissingMethodException(nameof(MainWindow), m)).Invoke(mw, a);
             var mwPick = ((List<List<Placed>>)MwGet("sheets")!)[0][0];
             var mwList = (System.Windows.Controls.ListBox)mw.FindName("List");
             var (selOk, selLog) = (true, new List<string>());
@@ -1396,6 +1396,81 @@ public static class SelfCheck
             }
             Check(selOk, "pilihan sesudah ubah ukuran: " + string.Join("; ", selLog));
             log.Add("pilihan sesudah ubah ukuran: " + string.Join("; ", selLog));
+
+            // Catatan leader 2026-11-10: tombol naik/turun pcs, tombol mata, dan opsi garis potong per desain. Yang dipanggil method di balik tombolnya,
+            // pada jendela utama yang sama, dengan desain kedua supaya terlihat desain lain tidak ikut berubah.
+            mw.AddFiles([Path.Combine(dir, "badge.svg")]);
+            var mwItems = (System.Collections.ObjectModel.ObservableCollection<Sticker>)MwGet("items")!;
+            List<List<Placed>> MwSheets() => (List<List<Placed>>)MwGet("sheets")!;
+            int MwPlaced(int i) => MwSheets().Sum(sh => sh.Count(p => p.S == mwItems[i]));
+            System.Windows.Controls.Button Row(int i, string? tag = null) => new() { DataContext = mwItems[i], Tag = tag }; // tombol di baris desain ke-i
+            var click = new RoutedEventArgs();
+            var mwBad = new List<string>();
+
+            // Naik/turun: sama dengan mengetik di kotak pcs, jadi lembar baru berubah saat Susun otomatis. Paling kecil 1.
+            MwCall("StepCopies_Click", Row(0, "1"), click);
+            MwCall("StepCopies_Click", Row(0, "1"), click);
+            int stepUp = mwItems[0].Copies, stepWait = MwPlaced(0);
+            MwCall("Arrange");
+            int stepDone = MwPlaced(0);
+            for (int i = 0; i < 4; i++) MwCall("StepCopies_Click", Row(0, "-1"), click);
+            int stepDown = mwItems[0].Copies;
+            if (stepUp != 3 || stepWait != 1 || stepDone != 3 || stepDown != 1)
+                mwBad.Add($"naik/turun pcs: 2 kali naik {stepUp} pcs (harapan 3), di lembar sebelum susun {stepWait} (1), sesudah susun {stepDone} (3), 4 kali turun {stepDown} pcs (1)");
+            MwCall("StepCopies_Click", Row(0, "1"), click);
+            MwCall("StepCopies_Click", Row(0, "1"), click);
+            MwCall("Arrange"); // 3 pcs lagi untuk pemeriksaan berikutnya
+
+            // Tombol mata: desain tetap di daftar dengan jumlahnya, lembar disusun ulang tanpa desain itu, Penuhi lembar tidak menambahnya, dan bisa diurungkan.
+            MwCall("HideItem_Click", Row(0), click);
+            bool hid = mwItems[0].Hidden && mwItems[0].Copies == 3 && MwPlaced(0) == 0 && MwPlaced(1) == 1;
+            MwCall("Compact_Click", mw, click);
+            bool fillSkips = MwPlaced(0) == 0 && MwPlaced(1) > 1;
+            MwCall("Undo");
+            MwCall("Undo");
+            bool hideUndone = !mwItems[0].Hidden && MwPlaced(0) == 3 && MwPlaced(1) == 1;
+            MwCall("Redo");
+            bool hideRedone = mwItems[0].Hidden && MwPlaced(0) == 0;
+            MwCall("HideItem_Click", Row(0), click);
+            bool shown = !mwItems[0].Hidden && MwPlaced(0) == 3;
+            MwCall("HideItem_Click", Row(0), click);
+            MwCall("HideItem_Click", Row(1), click);
+            bool allHidden = MwSheets().Count == 0 && mwItems.Count == 2;
+            MwCall("HideItem_Click", Row(0), click);
+            MwCall("HideItem_Click", Row(1), click);
+            if (!hid || !fillSkips || !hideUndone || !hideRedone || !shown || !allHidden || MwPlaced(0) != 3 || MwPlaced(1) != 1)
+                mwBad.Add($"tombol mata: tersembunyi {hid}, Penuhi lembar melewatinya {fillSkips}, urungkan {hideUndone}, ulangi {hideRedone}, tampil lagi {shown}, semua tersembunyi {allHidden}, "
+                    + $"akhirnya {MwPlaced(0)} dan {MwPlaced(1)} stiker (harapan 3 dan 1)");
+
+            // Opsi garis potong per desain: kiss 1 mm dan die 3 mm hanya untuk desain pertama. Panel Garis potong tidak lagi mengubahnya, ubah ukuran dan baris
+            // baru hasil pisah desain membawanya, Print Ticket menyebutnya, dan desain bisa kembali mengikuti panel.
+            var ownCut = (Kiss: new Cut(true, 1, 0), Die: new Cut(true, 3, 0));
+            bool OwnOk(Sticker d) => d.OwnCut && d.LoadedKiss == ownCut.Kiss && d.LoadedDie == ownCut.Die && d.Die != "";
+            MwCall("SetCuts", mwItems[0], ((Cut, Cut)?)ownCut);
+            bool ownSet = OwnOk(mwItems[0]) && MwPlaced(0) == 3 && mwItems[0].CutBadge.Contains(Lang.T("CutOwn")) && !mwItems[1].OwnCut && !mwItems[1].LoadedDie.On;
+            ((System.Windows.Controls.TextBox)mw.FindName("KissOff")).Text = "3";
+            MwCall("Arrange");
+            bool ownKept = OwnOk(mwItems[0]) && mwItems[1].LoadedKiss.Off == 3;
+            var ownPick = MwSheets().SelectMany(sh => sh).First(p => p.S == mwItems[0]);
+            MwCall("SelectOne", ownPick);
+            MwCall("ResizeSel", new List<Placed> { ownPick }, (Func<Sticker, (double, double)>)(d => (d.ArtW + 10, d.ArtH + 10)), (Func<Placed, Point>)(p => new Point(p.X, p.Y)));
+            bool ownSplit = mwItems.Count == 3 && ownPick.S == mwItems[1] && OwnOk(mwItems[1]) && OwnOk(mwItems[0]);
+            MwCall("Arrange");
+            bool ownArranged = OwnOk(mwItems[0]) && OwnOk(mwItems[1]) && !mwItems[2].OwnCut;
+            var ownLine = Export.TicketLines("A3+", MwSheets(), (double)MwGet("sheetW")!, (List<double>)MwGet("sheetH")!, Margin, [])
+                .Select(l => l.Text).FirstOrDefault(t => t.StartsWith(mwItems[0].Name)) ?? "";
+            bool ownTicket = ownLine.Contains($"{Lang.T("Kiss")} 1 mm, {Lang.T("Die")} 3 mm");
+            MwCall("SetCuts", mwItems[0], null);
+            bool ownBack = !mwItems[0].OwnCut && mwItems[0].LoadedKiss.Off == 3 && !mwItems[0].LoadedDie.On && !mwItems[0].CutBadge.Contains(Lang.T("CutOwn")) && OwnOk(mwItems[1]);
+            MwCall("Undo");
+            bool ownUndone = OwnOk(mwItems[0]);
+            bool cutRule = Cut.Error(none, none) == "NeedCut" && Cut.Error(new(true, 2, 0), new(true, 2, 0)) == "DieInside" && Cut.Error(kiss, die) == null && Cut.Error(kiss, none) == null;
+            if (!ownSet || !ownKept || !ownSplit || !ownArranged || !ownTicket || !ownBack || !ownUndone || !cutRule)
+                mwBad.Add($"opsi garis potong per desain: tersimpan {ownSet}, panel diubah tetap {ownKept}, ikut ke baris baru {ownSplit}, tetap sesudah susun {ownArranged}, "
+                    + $"Print Ticket \"{ownLine}\" {ownTicket}, kembali ke panel {ownBack}, urungkan {ownUndone}, aturan kiss dan die {cutRule}");
+            Check(mwBad.Count == 0, "baris desain: " + string.Join("; ", mwBad));
+            log.Add($"baris desain: naik/turun {stepUp} pcs lalu {stepDone} stiker sesudah susun, paling kecil {stepDown}; tombol mata: tersembunyi, dilewati Penuhi lembar, urungkan dan ulangi; "
+                + $"opsi garis potong sendiri: tetap saat panel diubah, ikut ke baris baru, Print Ticket \"{ownLine}\"");
             sizeLog.Add($"kotak 40 x 30 mm: paling kecil {minW:F1} mm, paling besar {maxW:F1} mm; lingkaran 40 -> 80 mm, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm; tepi kiri baris Rapi {evenRows[0].Min(p => p.X):F0} mm; "
                 + $"Hemat foto 178 x 100 mm: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar");
             S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, rasio terkunci atau bebas, jarak garis tetap, batas ukuran, stiker lain dengan desain sama tidak ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,

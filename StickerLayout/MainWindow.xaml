@@ -162,17 +162,30 @@
                         <StackPanel>
                             <Expander Style="{StaticResource Panel}">
                                 <Expander.Header>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE81E;" FontSize="13" Foreground="{StaticResource Dim}"/>
-                                        <TextBlock Text="{DynamicResource SecFiles}" FontWeight="SemiBold" Margin="9,0,0,0"/>
-                                        <TextBlock x:Name="FileCount" Style="{StaticResource Label}" Margin="6,0,0,0"/>
-                                    </StackPanel>
+                                    <DockPanel LastChildFill="False">
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE81E;" FontSize="13" Foreground="{StaticResource Dim}"/>
+                                            <TextBlock Text="{DynamicResource SecFiles}" FontWeight="SemiBold" Margin="9,0,0,0"/>
+                                            <TextBlock x:Name="FileCount" Style="{StaticResource Label}" Margin="6,0,0,0"/>
+                                        </StackPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Height="20" Width="20" Content="&#xE710;" Click="Add_Click"
+                                                ToolTip="{DynamicResource Add}" AutomationProperties.Name="{DynamicResource Add}" Margin="0,0,4,0"/>
+                                    </DockPanel>
                                 </Expander.Header>
                                 <StackPanel>
                                     <ListBox x:Name="List" SelectionChanged="List_SelectionChanged" Style="{StaticResource Plain}" MaxHeight="340">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Hidden}" Value="True">
+                                                                    <Setter Property="Opacity" Value="0.45"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition/>
@@ -220,14 +233,37 @@
                                                                 <ColumnDefinition/>
                                                                 <ColumnDefinition Width="Auto"/>
                                                                 <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
                                                             <TextBox Width="50" Style="{StaticResource Num}" Text="{Binding WidthMm, Converter={x:Static local:MmText.I}}" ToolTip="{DynamicResource WidthTip}"/>
-                                                            <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip="{Binding HText}" Text="{Binding HText}" Style="{StaticResource Small}" Margin="5,0,6,0"/>
-                                                            <TextBox Grid.Column="2" Width="38" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" LostFocus="ListCopies_LostFocus" ToolTip="{DynamicResource QtyTip}"/>
-                                                            <TextBlock Grid.Column="3" Text="pcs" Style="{StaticResource Small}" Margin="5,0,0,0"/>
+                                                            <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip="{Binding HText}" Text="{Binding HText}" Style="{StaticResource Small}" Margin="4,0,4,0"/>
+                                                            <TextBox Grid.Column="2" Width="34" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" LostFocus="ListCopies_LostFocus" ToolTip="{DynamicResource QtyTip}"/>
+                                                            <StackPanel Grid.Column="3" Margin="2,0,0,0" VerticalAlignment="Center">
+                                                                <Button Style="{StaticResource IconBtn}" Tag="1" Click="StepCopies_Click" Height="10" Width="14" Padding="0" Margin="0" FontSize="7"
+                                                                        Content="&#xE70E;" ToolTip="{DynamicResource QtyUp}"/>
+                                                                <Button Style="{StaticResource IconBtn}" Tag="-1" Click="StepCopies_Click" Height="10" Width="14" Padding="0" Margin="0" FontSize="7"
+                                                                        Content="&#xE70D;" ToolTip="{DynamicResource QtyDown}"/>
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="4" Text="pcs" Style="{StaticResource Small}" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                                         </Grid>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2" VerticalAlignment="Top">
+
+                                                        <Button Click="HideItem_Click" Height="20">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
+                                                                    <Setter Property="Content" Value="&#xED1A;"/>
+                                                                    <Setter Property="ToolTip" Value="{DynamicResource HideItem}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Hidden}" Value="True">
+                                                                            <Setter Property="Content" Value="&#xED1B;"/>
+                                                                            <Setter Property="Opacity" Value="0.45"/>
+                                                                            <Setter Property="ToolTip" Value="{DynamicResource ShowItem}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                        </Button>
 
                                                         <Button x:Name="MoreBtn" Style="{StaticResource IconBtn}" Content="&#xE712;" Height="20"
                                                                 Click="MoreItem_Click"
@@ -256,6 +292,16 @@
                                                                                     </StackPanel>
                                                                                 </MenuItem.Header>
                                                                             </MenuItem>
+
+                                                                            <!-- Menu Opsi Garis Potong (CutOpt) -->
+                                                                            <MenuItem Tag="CutOpt">
+                                                                                <MenuItem.Header>
+                                                                                    <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE713;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource CutOpt}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </MenuItem.Header>
+                                                                            </MenuItem>
                                                                         </StackPanel>
                                                                     </Border>
                                                                 </Popup>
@@ -271,6 +317,12 @@
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
+                                    <Button Click="Add_Click" Style="{StaticResource Ghost}" Margin="0,4,0,0" HorizontalAlignment="Left" Padding="6,2" ToolTip="{DynamicResource Add}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="11" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{DynamicResource Add}"/>
+                                        </StackPanel>
+                                    </Button>
                                     <DockPanel Margin="0,10,0,0">
                                         <TextBox x:Name="WidthBox" Style="{StaticResource Num}" Text="50" Width="58" DockPanel.Dock="Right"/>
                                         <TextBlock Text="{DynamicResource DefWidth}" Style="{StaticResource Label}" TextWrapping="Wrap"/>

@@ -18,7 +18,11 @@ using SharpVectors.Renderers.Wpf;
 namespace StickerLayout;
 
 // Satu garis potong: aktif, jarak dari artwork, dan radius penghalus lekukan (mm).
-public record Cut(bool On, double Off, double Smooth);
+public record Cut(bool On, double Off, double Smooth)
+{
+    // Aturan pasangan kiss dan die, untuk panel Garis potong dan opsi per desain: kunci pesan (Lang.T), atau null bila boleh dipakai.
+    public static string? Error(Cut kiss, Cut die) => !kiss.On && !die.On ? "NeedCut" : kiss.On && die.On && die.Off <= kiss.Off ? "DieInside" : null;
+}
 
 // Angka milimeter di kotak isian: koma dan titik sama-sama tanda desimal (62,5 = 62.5), sama di semua kotak.
 public sealed class MmText : IValueConverter
@@ -35,6 +39,8 @@ public class Sticker
 {
     public string Name { get; set; } = "";
     public int Copies { get; set; } = 1;
+    public bool Hidden { get; set; }             // tombol mata di daftar desain (2026-11-10): tetap di daftar dengan jumlahnya, tetapi tidak disusun dan tidak ikut export
+    public bool OwnCut;                          // opsi garis potong per desain (2026-11-10): LoadedKiss dan LoadedDie milik desain ini, tidak mengikuti panel Garis potong
     public double WidthMm { get; set; }          // lebar artwork yang diminta operator (mm)
     public string Source = "";
     public int Page;
@@ -78,7 +84,7 @@ public class Sticker
     public bool Manual => ManualKiss != null || ManualDie != null;
     public CutShape Shape;                       // bentuk preset dari editor (Auto = mengikuti artwork); garis manual menang
     public CutShape DieShape;                    // bentuk die (Auto = mengikuti kiss)
-    public string CutBadge => Manual ? Lang.T("CutManual") : Shapes.Label(Shape, DieShape);
+    public string CutBadge => string.Join(" · ", new[] { Manual ? Lang.T("CutManual") : Shapes.Label(Shape, DieShape), OwnCut ? Lang.T("CutOwn") : "" }.Where(t => t != ""));
     public bool[,] Grid = null!;                 // hunian sel nesting dari garis terluar [x,y]
     public int Area;
     Geometry? kg, dg, clip;
@@ -1094,7 +1100,8 @@ public static class Nest
     // pindah ke background bila operator merasakan jeda.
     public static List<List<Placed>> Run(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig, bool marks = false)
     {
-        var items = stickers.SelectMany(s => Enumerable.Repeat(s, Math.Max(0, s.Copies))).ToList();
+        var items = stickers.Where(s => !s.Hidden).SelectMany(s => Enumerable.Repeat(s, Math.Max(0, s.Copies))).ToList();
+        if (items.Count == 0) { tooBig = 0; return []; }
         Func<Sticker, double>[] keys = [s => s.Area, s => Math.Max(s.W, s.H), s => s.W + s.H];
         // 3 percobaan dihitung paralel (kerja CPU). Once hanya membaca Sticker dan memakai cache sendiri.
         var trials = new (List<List<Placed>> r, int big)[keys.Length];
@@ -1300,7 +1307,7 @@ public static class Nest
         foreach (var ps in sheets)
         {
             var occ = Occupancy(ps, cw, ch, margin, gc, keep);
-            var turn = designs.Where(s => s.Copies > 0).ToList();
+            var turn = designs.Where(s => !s.Hidden && s.Copies > 0).ToList();
             for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
                 if (TryPlace(occ, turn[i], cache, gc, margin, ps)) { added++; i++; }
                 else turn.RemoveAt(i); // desain ini tidak muat lagi di lembar ini
@@ -1325,7 +1332,8 @@ public static class Nest
 
     static List<List<Placed>> RowsOnce(IEnumerable<Sticker> stickers, double cw, double ch, double margin, double gap, out int tooBig, bool marks, bool flush)
     {
-        var designs = stickers.Where(s => s.Copies > 0).ToList();
+        var designs = stickers.Where(s => !s.Hidden && s.Copies > 0).ToList();
+        if (designs.Count == 0) { tooBig = 0; return []; }
         // Tanpa stiker: occ hanya berisi area tanda registrasi, jadi sama untuk semua lembar. Baris tidak bisa saling menabrak.
         var occ = Occupancy([], cw, ch, margin, 0, KeepOut(cw, ch, margin, marks, designs.Select(Printed).DefaultIfEmpty(0).Max()));
         int cols = occ.GetLength(0), rows = occ.GetLength(1), gc = CellsOf(gap), cx = 0, cy = 0, rowH = 0;
@@ -1393,7 +1401,7 @@ public static class Nest
         var best = Rows(designs, cw, ch, margin, gap, out int big, marks);
         added = 0;
         // only: desain yang boleh ditambah (stiker terpilih, keputusan user 2026-11-08); null = semua desain bergiliran.
-        var turn = designs.Where(s => s.Copies > 0 && (only == null || only.Contains(s))).ToList();
+        var turn = designs.Where(s => !s.Hidden && s.Copies > 0 && (only == null || only.Contains(s))).ToList();
         for (int i = 0; turn.Count > 0; i %= Math.Max(1, turn.Count))
         {
             turn[i].Copies++;
@@ -1458,7 +1466,7 @@ public static class Nest
         var uses = sheets.SelectMany(x => x).Where(p => p.S == old).ToList();
         var mine = uses.Where(chosen.Contains).ToList();
         if (mine.Count == uses.Count) return false;
-        (n.Name, n.Copies, old.Copies) = (old.Name, mine.Count, Math.Max(0, old.Copies - mine.Count));
+        (n.Name, n.Copies, n.OwnCut, old.Copies) = (old.Name, mine.Count, old.OwnCut, Math.Max(0, old.Copies - mine.Count)); // opsi garis potong sendiri ikut ke baris baru
         items.Insert(items.IndexOf(old) + 1, n);
         foreach (var p in mine) p.S = n;
         return true;

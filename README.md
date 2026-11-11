@@ -24,8 +24,11 @@ Isi README ini:
    - AI yang disimpan tanpa PDF-compatible ditolak dengan pesan.
    - Bila aplikasi dibuka tanpa file, muncul halaman sambutan: tarik file ke kotaknya atau klik **Buka Folder**.
 2. **Atur desain** di panel **Desain**.
-   - Setiap desain punya lebar artwork (mm) dan jumlah (pcs). Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
-   - **Lainnya** (ikon titik tiga) berisi Rapikan gambar dan Edit garis potong.
+   - Setiap desain punya lebar artwork (mm) dan jumlah (pcs) dengan tombol stepper ▲/▼ untuk menaikkan/menurunkan jumlah.
+   - Tombol mata di tiap baris menyembunyikan desain (desain tetap di daftar, tetapi tidak disusun dan tidak diexport).
+   - Tombol **+** di header dan tombol **Tambah file…** di bawah daftar untuk menambah file langsung dari panel.
+   - Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
+   - **Lainnya** (ikon titik tiga) berisi Rapikan gambar, Edit garis potong, dan **Opsi garis potong…** untuk mengatur garis kiss/die serta offset khusus per desain (tidak mengikuti panel Garis potong).
    - PDF/AI/CDR memakai ukuran aslinya. PNG/JPG/SVG memakai "Lebar awal" (bawaan 50 mm).
    - Angka dpi merah berarti resolusinya di bawah 150 dpi, dan hasil cetaknya akan pecah.
 3. **Pilih kertas** di panel **Kertas**.
