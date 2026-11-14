@@ -62,6 +62,9 @@ public partial class MainWindow : Window
     double MarginMm => D(MarginBox, 10, 0);
     Cut Kiss => new(KissOn.IsChecked == true, D(KissOff, 2, 0), D(KissSm, 0, 0));
     Cut Die => new(DieOn.IsChecked == true, D(DieOff, 4, 0), D(DieSm, 0, 0));
+    // Garis potong yang berlaku untuk satu desain: miliknya sendiri (Opsi garis potong, 2026-11-10) atau panel Garis potong. Dipakai saat desain
+    // dimuat ulang oleh Rapikan dan Edit garis potong, supaya garis sendirinya tidak tertimpa panel.
+    (Cut Kiss, Cut Die) CutsOf(Sticker s) => s.OwnCut ? (s.LoadedKiss, s.LoadedDie) : (Kiss, Die);
     double BleedMm => D(BleedBox, 0, 0);
     double GapMm => D(GapBox, 2, 0);
     bool HasRegMarks => RegMarksToggleMenu.IsChecked;
@@ -377,7 +380,8 @@ public partial class MainWindow : Window
     {
         if ((s as FrameworkElement)?.DataContext is not Sticker st) return;
         // ponytail: dihitung dari selisih jumlah dan yang termuat. Jumlah yang baru diketik tanpa Susun ikut terhitung, sampai Susun berikutnya menghitung ulang.
-        tooBig -= Math.Clamp(st.Copies - sheets.Sum(sh => sh.Count(p => p.S == st)), 0, tooBig); // salinan desain ini yang tidak termuat ikut hilang dari peringatan
+        // Salinan desain ini yang tidak termuat ikut hilang dari peringatan. Desain tersembunyi tidak disusun, jadi tidak pernah dihitung di sana.
+        if (!st.Hidden) tooBig -= Math.Clamp(st.Copies - sheets.Sum(sh => sh.Count(p => p.S == st)), 0, tooBig);
         items.Remove(st);
         foreach (var sh in sheets) sh.RemoveAll(p => p.S == st);
         DropEmpty();
@@ -428,7 +432,8 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border, dieShape: it.DieShape,
+            var cuts = CutsOf(it);
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, cuts.Kiss, cuts.Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border, dieShape: it.DieShape,
                 stretchY: it.StretchY));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
@@ -442,12 +447,13 @@ public partial class MainWindow : Window
     {
         if (!CutsValid()) return;
         double k = it.WidthMm / it.LoadedW;
+        var cuts = CutsOf(it);
         CutEditWindow? w;
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
             // Garis otomatis pada pengaturan sekarang: dasar garis baru, bentuk preset, slider Simplify, dan Reset otomatis.
-            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, loadedPdf: it.Pdf, stretchY: it.StretchY);
+            var auto = Loader.Load(it.Source, it.Page, it.WidthMm, cuts.Kiss, cuts.Die, edited: it.Frozen, loadedPdf: it.Pdf, stretchY: it.StretchY);
             w = new CutEditWindow(auto, Curves.Scale(it.ManualKiss, k), Curves.Scale(it.ManualDie, k), it.Shape, it.Name, it.Border, it.DieShape, it.Smart?.Scale(k, k)) { Owner = this };
 
             var workArea = SystemParameters.WorkArea;
@@ -466,7 +472,7 @@ public partial class MainWindow : Window
         if (!ok) return;
         try
         {
-            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, Kiss, Die, edited: it.Frozen, bleed: BleedMm, loadedPdf: it.Pdf,
+            Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, cuts.Kiss, cuts.Die, edited: it.Frozen, bleed: BleedMm, loadedPdf: it.Pdf,
                 manualKiss: mk, manualDie: md, shape: shape, border: border, dieShape: dieShape, stretchY: it.StretchY, smart: smart));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
@@ -693,19 +699,26 @@ public partial class MainWindow : Window
     }
     void Rotate_Click(object s, RoutedEventArgs e) => RotateSel();
 
+    // Bagian Pengaturan di Print Ticket: pengaturan yang dipakai untuk layout ini, dari stiker yang mengikuti panel Garis potong. Desain dengan garis
+    // potong sendiri ditulis di baris desainnya (Export.TicketLines). null = belum ada stiker di lembar.
+    List<string>? TicketSettings()
+    {
+        if (sheets.SelectMany(sh => sh).OrderBy(p => p.S.OwnCut).FirstOrDefault()?.S is not { } st) return null;
+        var lines = new List<string>();
+        if (st.LoadedKiss.On) lines.Add(Lang.T("TicketCut", Lang.T("Kiss"), st.LoadedKiss.Off, st.LoadedKiss.Smooth));
+        if (st.LoadedDie.On) lines.Add(Lang.T("TicketCut", Lang.T("Die"), st.LoadedDie.Off, st.LoadedDie.Smooth));
+        lines.Add(Lang.T("TicketGap", GapMm, st.LoadedBleed));
+        return lines;
+    }
+
     // Print Ticket: ringkasan 1 halaman A4 (lembar, pcs, efisiensi bahan) untuk lampiran nota kasir/SPK. Selalu semua lembar.
     void SaveTicket()
     {
         var dlg = new SaveFileDialog { Filter = "PDF|*.pdf", FileName = "print-ticket.pdf" };
         if (dlg.ShowDialog() != true) return;
-        if (sheets.SelectMany(sh => sh).FirstOrDefault() is not { } placed) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
+        if (TicketSettings() is not { } lines) { MessageBox.Show(Lang.T("NestFirst"), App.Brand); return; }
         try
         {
-            var st = placed.S; // pengaturan yang dipakai untuk layout ini
-            var lines = new List<string>();
-            if (st.LoadedKiss.On) lines.Add(Lang.T("TicketCut", Lang.T("Kiss"), st.LoadedKiss.Off, st.LoadedKiss.Smooth));
-            if (st.LoadedDie.On) lines.Add(Lang.T("TicketCut", Lang.T("Die"), st.LoadedDie.Off, st.LoadedDie.Smooth));
-            lines.Add(Lang.T("TicketGap", GapMm, st.LoadedBleed));
             Export.Ticket(dlg.FileName, PaperBox.SelectedItem as string ?? "Custom", sheets, sheetW, sheetH, MarginMm, lines);
             Redraw(Lang.T("Saved", dlg.FileName));
         }
@@ -1506,7 +1519,7 @@ public partial class MainWindow : Window
     {
         if (s is not FrameworkElement fe || fe.DataContext is not Sticker st) return;
         int delta = int.TryParse(fe.Tag?.ToString(), out int d) ? d : 1;
-        int next = Math.Max(1, st.Copies + delta);
+        int next = Math.Max(Math.Min(1, st.Copies), st.Copies + delta); // paling kecil 1; desain 0 pcs (stikernya dihapus semua) tidak naik saat turun
         if (next == st.Copies) return;
         st.Copies = next;
         syncingList = true;
@@ -1523,7 +1536,8 @@ public partial class MainWindow : Window
 
     void HideItem_Click(object s, RoutedEventArgs e)
     {
-        if (s is not FrameworkElement fe || fe.DataContext is not Sticker st) return;
+        // CutsValid dulu: Arrange berhenti bila ada angka salah, dan tanda tersembunyi tidak boleh berubah tanpa lembarnya ikut disusun ulang.
+        if (s is not FrameworkElement fe || fe.DataContext is not Sticker st || !CutsValid()) return;
         st.Hidden = !st.Hidden;
         if (st.Hidden && sel?.S == st) ClearSel();
         Arrange();
@@ -1539,25 +1553,26 @@ public partial class MainWindow : Window
         {
             string? err = Cut.Error(c.Kiss, c.Die);
             if (err != null) { MessageBox.Show(Lang.T(err), App.Brand); return; }
-            var n = Loader.Reload(st, c.Kiss, c.Die, BleedMm, st.WidthMm, st.ArtH);
+            var n = Loader.Reload(st, c.Kiss, c.Die, BleedMm); // tanpa tinggi: lebar yang baru diketik di daftar ikut, rasio tetap (seperti Susun otomatis)
             Replace(st, n);
             n.OwnCut = true;
             Nest.SwapDesign(sheets, st, n);
         }
         else
         {
-            var n = Loader.Reload(st, Kiss, Die, BleedMm, st.WidthMm, st.ArtH);
+            var n = Loader.Reload(st, Kiss, Die, BleedMm);
             Replace(st, n);
             n.OwnCut = false;
             Nest.SwapDesign(sheets, st, n);
         }
-        CheckAll();
+        Arrange(); // seperti Edit garis potong: lembar disusun ulang dengan garis yang baru (rancangan yang disetujui 2026-11-10)
         Redraw(Lang.T("CutOptSaved", st.Name) + "  " + Summary());
         Commit();
     }
 
     void CutOptItem(Sticker st)
     {
+        if (!CutsValid()) return; // seperti Edit garis potong: Simpan menyusun ulang lembar, jadi angka di panel harus benar
         var w = new CutOptWindow(st, Kiss, Die) { Owner = this };
         if (w.ShowDialog() != true) return;
         SetCuts(st, w.Result);
@@ -1613,6 +1628,7 @@ public partial class MainWindow : Window
         if (onSticker && sel?.S is Sticker st)
         {
             Add("CutEdit", "", () => CutItem(st));
+            Add("CutOpt", "", () => CutOptItem(st));
             Add("Clean", "", () => Clean(st), st.CanClean);
             m.Items.Add(new Separator());
             Add("RotSel", "R", RotateSel);

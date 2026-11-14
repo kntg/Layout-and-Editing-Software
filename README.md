@@ -24,11 +24,11 @@ Isi README ini:
    - AI yang disimpan tanpa PDF-compatible ditolak dengan pesan.
    - Bila aplikasi dibuka tanpa file, muncul halaman sambutan: tarik file ke kotaknya atau klik **Buka Folder**.
 2. **Atur desain** di panel **Desain**.
-   - Setiap desain punya lebar artwork (mm) dan jumlah (pcs) dengan tombol stepper ▲/▼ untuk menaikkan/menurunkan jumlah.
-   - Tombol mata di tiap baris menyembunyikan desain (desain tetap di daftar, tetapi tidak disusun dan tidak diexport).
-   - Tombol **+** di header dan tombol **Tambah file…** di bawah daftar untuk menambah file langsung dari panel.
+   - Setiap desain punya lebar artwork (mm) dan jumlah (pcs). Tombol ▲/▼ di samping jumlah menaikkan atau menurunkan 1 pcs (paling kecil 1); seperti angka yang diketik, lembar baru berubah saat Susun otomatis.
+   - Tombol mata di tiap baris menyembunyikan desain: desain tetap di daftar dengan jumlahnya, tetapi tidak disusun, tidak diexport, dan dilewati Penuhi lembar. Lembar langsung disusun ulang. Ikon mata dicoret berarti desain sedang disembunyikan.
+   - Tombol **+** di judul panel dan tombol **Tambah file…** di bawah daftar untuk menambah file langsung dari panel.
    - Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
-   - **Lainnya** (ikon titik tiga) berisi Rapikan gambar, Edit garis potong, dan **Opsi garis potong…** untuk mengatur garis kiss/die serta offset khusus per desain (tidak mengikuti panel Garis potong).
+   - **Lainnya** (ikon titik tiga) berisi Rapikan gambar, Edit garis potong, dan **Opsi garis potong…** untuk memberi satu desain garis kiss/die, offset, dan Halus sendiri (tidak mengikuti panel Garis potong). Opsi garis potong juga ada di klik kanan stiker. Simpan langsung menyusun ulang lembar, dan baris desainnya diberi tanda "potong sendiri". Garis sendiri tetap dipakai saat Susun otomatis, ubah ukuran, Edit garis potong, dan Rapikan gambar.
    - PDF/AI/CDR memakai ukuran aslinya. PNG/JPG/SVG memakai "Lebar awal" (bawaan 50 mm).
    - Angka dpi merah berarti resolusinya di bawah 150 dpi, dan hasil cetaknya akan pecah.
 3. **Pilih kertas** di panel **Kertas**.
@@ -41,7 +41,7 @@ Isi README ini:
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang. Lebar boleh memakai koma atau titik (62,5 atau 62.5).
 5. **Periksa layout.**
    - **Seret stiker:** tahan Shift supaya stiker hanya bergeser mendatar atau tegak. Stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
-   - **Klik kanan:** pada stiker muncul Edit garis potong, Rapikan gambar, Putar, Duplikat, Salin, dan Hapus; stiker yang belum terpilih dipilih dulu. Pada area kosong lembar muncul Tempel, Duplikat lembar ini, Penuhi lembar, Susun otomatis, dan Pas layar.
+   - **Klik kanan:** pada stiker muncul Edit garis potong, Opsi garis potong, Rapikan gambar, Putar, Duplikat, Salin, dan Hapus; stiker yang belum terpilih dipilih dulu. Pada area kosong lembar muncul Tempel, Duplikat lembar ini, Penuhi lembar, Susun otomatis, dan Pas layar.
    - **Pilih banyak stiker:** Ctrl+klik menambah atau melepas stiker dari pilihan. Seret dari area kosong lembar membuat kotak pilih. Stiker terpilih bergerak, berputar, tersalin, dan terhapus bersama, juga bila berada di lembar berbeda. Titik pojok hanya muncul saat satu stiker terpilih.
    - **Stiker bertanda merah:** tumpang tindih dengan stiker lain, lebih dekat dari Jarak antar stiker, atau keluar margin. Selama luas stiker melebihi lembar karena bertumpuk, angka bahan tampil 100% dan merah; susun ulang untuk melihat angka sebenarnya.
    - **Atur ukuran di kanvas:** klik stiker, lalu tarik salah satu dari 4 titik di pojoknya. Lebar × tinggi artwork tampil di dekat kursor. Proporsi tetap selama **Kunci rasio** di panel Pilihan tercentang; lepas centangnya untuk mengubah lebar dan tinggi sendiri-sendiri (rasio bebas). Saat mouse dilepas, hanya stiker itu yang berubah, dan garis potong dihitung ulang. Bila desainnya juga dipakai stiker lain, stiker itu mendapat baris sendiri di daftar desain (nama sama, lebar baru), dan stiker lain tidak berubah. Kotak lebar dan tinggi di panel Pilihan bekerja sama untuk stiker yang terpilih. Garis potong, bleed, dan border selalu dihitung ulang dengan jarak mm yang sama. Stiker yang diubah diam di tempatnya; stiker yang ditimpanya pindah ke tempat kosong di lembar yang sama, atau ke lembar baru di sebelahnya bila lembar itu penuh, dengan ukurannya sendiri.

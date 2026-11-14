@@ -1415,8 +1415,14 @@ public static class SelfCheck
             int stepDone = MwPlaced(0);
             for (int i = 0; i < 4; i++) MwCall("StepCopies_Click", Row(0, "-1"), click);
             int stepDown = mwItems[0].Copies;
-            if (stepUp != 3 || stepWait != 1 || stepDone != 3 || stepDown != 1)
-                mwBad.Add($"naik/turun pcs: 2 kali naik {stepUp} pcs (harapan 3), di lembar sebelum susun {stepWait} (1), sesudah susun {stepDone} (3), 4 kali turun {stepDown} pcs (1)");
+            // Desain 0 pcs (semua stikernya dihapus): tombol turun tidak menaikkan jumlahnya (tinjauan 2026-11-14).
+            mwItems[0].Copies = 0;
+            MwCall("StepCopies_Click", Row(0, "-1"), click);
+            int stepZero = mwItems[0].Copies;
+            mwItems[0].Copies = stepDown;
+            if (stepUp != 3 || stepWait != 1 || stepDone != 3 || stepDown != 1 || stepZero != 0)
+                mwBad.Add($"naik/turun pcs: 2 kali naik {stepUp} pcs (harapan 3), di lembar sebelum susun {stepWait} (1), sesudah susun {stepDone} (3), 4 kali turun {stepDown} pcs (1), "
+                    + $"turun dari 0 pcs menjadi {stepZero} (0)");
             MwCall("StepCopies_Click", Row(0, "1"), click);
             MwCall("StepCopies_Click", Row(0, "1"), click);
             MwCall("Arrange"); // 3 pcs lagi untuk pemeriksaan berikutnya
@@ -1441,18 +1447,38 @@ public static class SelfCheck
             if (!hid || !fillSkips || !hideUndone || !hideRedone || !shown || !allHidden || MwPlaced(0) != 3 || MwPlaced(1) != 1)
                 mwBad.Add($"tombol mata: tersembunyi {hid}, Penuhi lembar melewatinya {fillSkips}, urungkan {hideUndone}, ulangi {hideRedone}, tampil lagi {shown}, semua tersembunyi {allHidden}, "
                     + $"akhirnya {MwPlaced(0)} dan {MwPlaced(1)} stiker (harapan 3 dan 1)");
+            // Desain tersembunyi dihapus dari daftar: salinannya tidak pernah dihitung di peringatan "lebih besar dari kertas", jadi angka itu tetap
+            // (tinjauan 2026-11-14). Angka peringatannya diisi langsung, supaya tidak perlu memuat stiker raksasa.
+            MwCall("HideItem_Click", Row(1), click);
+            typeof(MainWindow).GetField("tooBig", Priv)!.SetValue(mw, 5);
+            MwCall("RemoveItem_Click", Row(1), click);
+            int bigLeft = (int)MwGet("tooBig")!;
+            MwCall("Undo");
+            MwCall("Undo");
+            if (bigLeft != 5 || mwItems.Count != 2 || mwItems[1].Hidden || MwPlaced(1) != 1)
+                mwBad.Add($"hapus desain tersembunyi: peringatan lebih besar dari kertas {bigLeft} (harapan 5); sesudah urungkan {mwItems.Count} desain, tersembunyi {mwItems[1].Hidden}, {MwPlaced(1)} stiker");
 
             // Opsi garis potong per desain: kiss 1 mm dan die 3 mm hanya untuk desain pertama. Panel Garis potong tidak lagi mengubahnya, ubah ukuran dan baris
             // baru hasil pisah desain membawanya, Print Ticket menyebutnya, dan desain bisa kembali mengikuti panel.
             var ownCut = (Kiss: new Cut(true, 1, 0), Die: new Cut(true, 3, 0));
             bool OwnOk(Sticker d) => d.OwnCut && d.LoadedKiss == ownCut.Kiss && d.LoadedDie == ownCut.Die && d.Die != "";
+            // Lebar yang baru diketik di daftar desain ikut dipakai dengan rasio tetap, dan Simpan langsung menyusun ulang lembar seperti Edit garis potong
+            // (rancangan yang disetujui 2026-11-10; tinjauan 2026-11-14).
+            double ratio0 = mwItems[0].ArtW / mwItems[0].ArtH, wantW = mwItems[0].ArtW + 10;
+            mwItems[0].WidthMm = wantW;
+            var sheetsBefore = MwSheets();
             MwCall("SetCuts", mwItems[0], ((Cut, Cut)?)ownCut);
-            bool ownSet = OwnOk(mwItems[0]) && MwPlaced(0) == 3 && mwItems[0].CutBadge.Contains(Lang.T("CutOwn")) && !mwItems[1].OwnCut && !mwItems[1].LoadedDie.On;
+            bool ownRatio = About(mwItems[0].ArtW, wantW, 0.01) && About(mwItems[0].ArtW / mwItems[0].ArtH, ratio0, 0.01), ownRearranged = !ReferenceEquals(sheetsBefore, MwSheets());
+            string ownSize = $"{mwItems[0].ArtW:0.#} x {mwItems[0].ArtH:0.#} mm, rasio {mwItems[0].ArtW / mwItems[0].ArtH:0.###} (harapan {ratio0:0.###})";
+            bool ownSet =OwnOk(mwItems[0]) && MwPlaced(0) == 3 && mwItems[0].CutBadge.Contains(Lang.T("CutOwn")) && !mwItems[1].OwnCut && !mwItems[1].LoadedDie.On;
             ((System.Windows.Controls.TextBox)mw.FindName("KissOff")).Text = "3";
             MwCall("Arrange");
             bool ownKept = OwnOk(mwItems[0]) && mwItems[1].LoadedKiss.Off == 3;
             var ownPick = MwSheets().SelectMany(sh => sh).First(p => p.S == mwItems[0]);
             MwCall("SelectOne", ownPick);
+            // Klik kanan stiker juga punya Opsi garis potong, seperti menu Lainnya di baris desain (rancangan yang disetujui 2026-11-10).
+            bool menuOpt = ((System.Windows.Controls.ContextMenu)typeof(MainWindow).GetMethod("SheetMenu", Priv)!.Invoke(mw, [true])!).Items
+                .OfType<System.Windows.Controls.MenuItem>().Any(m => m.Header as string == Lang.T("CutOpt"));
             MwCall("ResizeSel", new List<Placed> { ownPick }, (Func<Sticker, (double, double)>)(d => (d.ArtW + 10, d.ArtH + 10)), (Func<Placed, Point>)(p => new Point(p.X, p.Y)));
             bool ownSplit = mwItems.Count == 3 && ownPick.S == mwItems[1] && OwnOk(mwItems[1]) && OwnOk(mwItems[0]);
             MwCall("Arrange");
@@ -1460,17 +1486,26 @@ public static class SelfCheck
             var ownLine = Export.TicketLines("A3+", MwSheets(), (double)MwGet("sheetW")!, (List<double>)MwGet("sheetH")!, Margin, [])
                 .Select(l => l.Text).FirstOrDefault(t => t.StartsWith(mwItems[0].Name)) ?? "";
             bool ownTicket = ownLine.Contains($"{Lang.T("Kiss")} 1 mm, {Lang.T("Die")} 3 mm");
+            // Bagian Pengaturan di Print Ticket memakai panel Garis potong (kiss 3 mm, halus 1 mm, tanpa die), walau stiker pertama di lembar punya
+            // garis potong sendiri; garis potong sendiri ditulis di baris desainnya (tinjauan 2026-11-14).
+            bool firstOwn = MwSheets().SelectMany(sh => sh).First().S.OwnCut;
+            var ticketSet = typeof(MainWindow).GetMethod("TicketSettings", Priv)?.Invoke(mw, null) as List<string>;
+            bool ticketPanel = ticketSet != null && ticketSet.Contains(Lang.T("TicketCut", Lang.T("Kiss"), 3.0, 1.0)) && !ticketSet.Any(l => l.StartsWith(Lang.T("Die")));
+            string ticketText = ticketSet == null ? "(TicketSettings tidak ada)" : string.Join(" / ", ticketSet);
             MwCall("SetCuts", mwItems[0], null);
             bool ownBack = !mwItems[0].OwnCut && mwItems[0].LoadedKiss.Off == 3 && !mwItems[0].LoadedDie.On && !mwItems[0].CutBadge.Contains(Lang.T("CutOwn")) && OwnOk(mwItems[1]);
             MwCall("Undo");
             bool ownUndone = OwnOk(mwItems[0]);
             bool cutRule = Cut.Error(none, none) == "NeedCut" && Cut.Error(new(true, 2, 0), new(true, 2, 0)) == "DieInside" && Cut.Error(kiss, die) == null && Cut.Error(kiss, none) == null;
-            if (!ownSet || !ownKept || !ownSplit || !ownArranged || !ownTicket || !ownBack || !ownUndone || !cutRule)
+            if (!ownSet || !ownKept || !ownSplit || !ownArranged || !ownTicket || !ownBack || !ownUndone || !cutRule || !ownRatio || !ownRearranged || !menuOpt || !ticketPanel)
                 mwBad.Add($"opsi garis potong per desain: tersimpan {ownSet}, panel diubah tetap {ownKept}, ikut ke baris baru {ownSplit}, tetap sesudah susun {ownArranged}, "
-                    + $"Print Ticket \"{ownLine}\" {ownTicket}, kembali ke panel {ownBack}, urungkan {ownUndone}, aturan kiss dan die {cutRule}");
+                    + $"Print Ticket \"{ownLine}\" {ownTicket}, kembali ke panel {ownBack}, urungkan {ownUndone}, aturan kiss dan die {cutRule}, "
+                    + $"lebar baru {ownSize} {ownRatio}, lembar disusun ulang {ownRearranged}, ada di klik kanan {menuOpt}, "
+                    + $"Pengaturan Print Ticket \"{ticketText}\" {ticketPanel} (stiker pertama punya garis sendiri: {firstOwn})");
             Check(mwBad.Count == 0, "baris desain: " + string.Join("; ", mwBad));
             log.Add($"baris desain: naik/turun {stepUp} pcs lalu {stepDone} stiker sesudah susun, paling kecil {stepDown}; tombol mata: tersembunyi, dilewati Penuhi lembar, urungkan dan ulangi; "
-                + $"opsi garis potong sendiri: tetap saat panel diubah, ikut ke baris baru, Print Ticket \"{ownLine}\"");
+                + $"opsi garis potong sendiri: lebar baru {ownSize}, lembar disusun ulang, ada di klik kanan, tetap saat panel diubah, ikut ke baris baru, Print Ticket \"{ownLine}\", "
+                + $"Pengaturan Print Ticket \"{ticketText}\"");
             sizeLog.Add($"kotak 40 x 30 mm: paling kecil {minW:F1} mm, paling besar {maxW:F1} mm; lingkaran 40 -> 80 mm, jarak garis {sizeGap:F2} -> {sizeGap2:F2} mm; tepi kiri baris Rapi {evenRows[0].Min(p => p.X):F0} mm; "
                 + $"Hemat foto 178 x 100 mm: lembar pertama {packed[0].Count} pcs, {packed.Count} lembar");
             S(20, "atur ukuran di kanvas dan tepi kiri Rapi: pojok seberang diam, rasio terkunci atau bebas, jarak garis tetap, batas ukuran, stiker lain dengan desain sama tidak ikut, tepi rata tanpa menambah lembar", sizeBad.Count == 0,

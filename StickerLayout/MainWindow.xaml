@@ -240,9 +240,9 @@
                                                             <TextBox Grid.Column="2" Width="34" Style="{StaticResource Num}" Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged}" LostFocus="ListCopies_LostFocus" ToolTip="{DynamicResource QtyTip}"/>
                                                             <StackPanel Grid.Column="3" Margin="2,0,0,0" VerticalAlignment="Center">
                                                                 <Button Style="{StaticResource IconBtn}" Tag="1" Click="StepCopies_Click" Height="10" Width="14" Padding="0" Margin="0" FontSize="7"
-                                                                        Content="&#xE70E;" ToolTip="{DynamicResource QtyUp}"/>
+                                                                        Content="&#xE70E;" ToolTip="{DynamicResource QtyUp}" AutomationProperties.Name="{DynamicResource QtyUp}"/>
                                                                 <Button Style="{StaticResource IconBtn}" Tag="-1" Click="StepCopies_Click" Height="10" Width="14" Padding="0" Margin="0" FontSize="7"
-                                                                        Content="&#xE70D;" ToolTip="{DynamicResource QtyDown}"/>
+                                                                        Content="&#xE70D;" ToolTip="{DynamicResource QtyDown}" AutomationProperties.Name="{DynamicResource QtyDown}"/>
                                                             </StackPanel>
                                                             <TextBlock Grid.Column="4" Text="pcs" Style="{StaticResource Small}" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                                         </Grid>
@@ -251,14 +251,16 @@
 
                                                         <Button Click="HideItem_Click" Height="20">
                                                             <Button.Style>
+                                                                <!-- Mata terbuka (E890) = tampil, mata dicoret (ED1A) = tersembunyi. Barisnya sudah redup, jadi tombol ini tidak diredupkan lagi. -->
                                                                 <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                                                                    <Setter Property="Content" Value="&#xED1A;"/>
+                                                                    <Setter Property="Content" Value="&#xE890;"/>
                                                                     <Setter Property="ToolTip" Value="{DynamicResource HideItem}"/>
+                                                                    <Setter Property="AutomationProperties.Name" Value="{DynamicResource HideItem}"/>
                                                                     <Style.Triggers>
                                                                         <DataTrigger Binding="{Binding Hidden}" Value="True">
-                                                                            <Setter Property="Content" Value="&#xED1B;"/>
-                                                                            <Setter Property="Opacity" Value="0.45"/>
+                                                                            <Setter Property="Content" Value="&#xED1A;"/>
                                                                             <Setter Property="ToolTip" Value="{DynamicResource ShowItem}"/>
+                                                                            <Setter Property="AutomationProperties.Name" Value="{DynamicResource ShowItem}"/>
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>

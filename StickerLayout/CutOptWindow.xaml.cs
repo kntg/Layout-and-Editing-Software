@@ -61,6 +61,16 @@ public partial class CutOptWindow : Window
             return;
         }
 
+        // Angka yang salah ketik tidak diam-diam diganti nilai bawaan, sama dengan panel Garis potong (MainWindow.NumbersValid).
+        foreach (var box in new[] { KissOff, KissSm, DieOff, DieSm })
+            if (MmText.Parse(box.Text) is not >= 0)
+            {
+                MessageBox.Show(Lang.T("BadNumber", box.Text, 0), App.Brand);
+                box.Focus();
+                box.SelectAll();
+                return;
+            }
+
         Cut kiss = new(KissOn.IsChecked == true, D(KissOff, 2, 0), D(KissSm, 0, 0));
         Cut die = new(DieOn.IsChecked == true, D(DieOff, 4, 0), D(DieSm, 0, 0));
 
