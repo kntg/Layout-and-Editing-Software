@@ -17,7 +17,6 @@
 
         <StackPanel Margin="16,14,16,16">
             <CheckBox x:Name="FollowBox" Content="{DynamicResource CutOptFollow}" IsChecked="True" Checked="Follow_Changed" Unchecked="Follow_Changed"/>
-            <TextBlock Text="{DynamicResource CutOptHint}" Style="{StaticResource Small}" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="22,4,0,14"/>
 
             <Border x:Name="CustomBorder" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4" Padding="12" Background="{StaticResource Ink1}">
                 <StackPanel x:Name="CustomPanel">

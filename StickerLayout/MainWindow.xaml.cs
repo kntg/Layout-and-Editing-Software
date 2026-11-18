@@ -57,6 +57,8 @@ public partial class MainWindow : Window
 
     static string F(double v) => MmText.Show(v);
 
+    static double ParseD(string t) => MmText.Parse(t) is { } v && v >= 0 ? v : 0;
+
     double CW => D(CanvasW, 297, 10);
     double CH => D(CanvasH, 420, 10);
     double MarginMm => D(MarginBox, 10, 0);
@@ -160,6 +162,22 @@ public partial class MainWindow : Window
             SelSizeBox.Text = F(sel.S.WidthMm);
             SelHeightBox.Text = F(sel.S.ArtH);
             SelCopiesBox.Text = sel.S.Copies.ToString();
+
+            // Sinkronkan panel Opsi Garis Potong dari stiker terpilih
+            if (OwnFollowBox != null && OwnKissOn != null && OwnDieOn != null)
+            {
+                var cuts = CutsOf(sel.S);   // (Kiss, Die) yang berlaku untuk desain ini
+                OwnFollowBox.IsChecked = !sel.S.OwnCut;
+                OwnKissOn.IsChecked   = cuts.Kiss.On;
+                OwnKissOff.Text       = F(cuts.Kiss.Off);
+                OwnKissSm.Text        = F(cuts.Kiss.Smooth);
+                OwnDieOn.IsChecked    = cuts.Die.On;
+                OwnDieOff.Text        = F(cuts.Die.Off);
+                OwnDieSm.Text         = F(cuts.Die.Smooth);
+                
+                SyncCutOptPanel();
+            }
+
             syncingSel = false;
 
             SelRot.Text = $"{sel.Rot}°";
@@ -1521,6 +1539,7 @@ public partial class MainWindow : Window
         int delta = int.TryParse(fe.Tag?.ToString(), out int d) ? d : 1;
         int next = Math.Max(Math.Min(1, st.Copies), st.Copies + delta); // paling kecil 1; desain 0 pcs (stikernya dihapus semua) tidak naik saat turun
         if (next == st.Copies) return;
+        
         st.Copies = next;
         syncingList = true;
         List.Items.Refresh();
@@ -1531,7 +1550,11 @@ public partial class MainWindow : Window
             syncingSel = false;
         }
         syncingList = false;
-        Commit();
+
+        // --- TAMBAHAN AGAR LANGSUNG TERUPDATE ---
+        CommitTyping(); // Pastikan angka yang mungkin sedang diketik di kotak teks tersimpan
+        Arrange();      // Susun ulang kanvas secara langsung
+        Commit();       // Simpan langkah ini ke dalam sistem Undo/Redo
     }
 
     void HideItem_Click(object s, RoutedEventArgs e)
@@ -1549,11 +1572,12 @@ public partial class MainWindow : Window
     void SetCuts(Sticker st, (Cut Kiss, Cut Die)? custom)
     {
         if (st == null) return;
+        
         if (custom is { } c)
         {
             string? err = Cut.Error(c.Kiss, c.Die);
             if (err != null) { MessageBox.Show(Lang.T(err), App.Brand); return; }
-            var n = Loader.Reload(st, c.Kiss, c.Die, BleedMm); // tanpa tinggi: lebar yang baru diketik di daftar ikut, rasio tetap (seperti Susun otomatis)
+            var n = Loader.Reload(st, c.Kiss, c.Die, BleedMm);
             Replace(st, n);
             n.OwnCut = true;
             Nest.SwapDesign(sheets, st, n);
@@ -1565,7 +1589,38 @@ public partial class MainWindow : Window
             n.OwnCut = false;
             Nest.SwapDesign(sheets, st, n);
         }
-        Arrange(); // seperti Edit garis potong: lembar disusun ulang dengan garis yang baru (rancangan yang disetujui 2026-11-10)
+
+        // Simpan referensi desain (Sticker) yang sedang terpilih
+        var savedDesigns = sels.Select(p => p.S).ToHashSet();
+        var savedMainDesign = sel?.S;
+
+        Arrange(); // Ini akan menghapus seleksi lama (ClearSel) dan membuat objek Placed baru
+
+        // Kembalikan seleksi dengan mencari objek Placed baru berdasarkan desain yang sama
+        if (savedDesigns.Count > 0)
+        {
+            sels.Clear();
+            var allNewPlaced = sheets.SelectMany(sh => sh).ToList();
+            
+            foreach (var p in allNewPlaced)
+            {
+                if (p.S != null && savedDesigns.Contains(p.S))
+                    sels.Add(p);
+            }
+            
+            if (savedMainDesign != null)
+            {
+                sel = allNewPlaced.FirstOrDefault(p => p.S == savedMainDesign);
+            }
+            
+            // Sinkronkan ke UI
+            if (sels.Count > 0 && sel != null) {
+                syncingList = true;
+                List.SelectedItem = sel.S;
+                syncingList = false;
+            }
+        }
+
         Redraw(Lang.T("CutOptSaved", st.Name) + "  " + Summary());
         Commit();
     }
@@ -1722,5 +1777,62 @@ public partial class MainWindow : Window
         bool free = LockRatio.IsChecked != true;
         var picked = sels.Where(p => Math.Abs(p.S.ArtH - h) >= 0.05).ToList();
         if (picked.Count > 0) ResizeSel(picked, d => (free ? d.ArtW : d.ArtW * h / d.ArtH, h), p => new Point(p.X, p.Y));
+    }
+
+    // Panel Opsi Garis Potong: saat "ikuti panel" dicentang, kotak custom dinonaktifkan dan disembunyikan.
+    void SyncCutOptPanel()
+    {
+        // PAGAR PENGAMAN: Hanya cek elemen yang memang ada di XAML
+        if (OwnFollowBox == null || OwnKissOn == null || OwnDieOn == null) return;
+        
+        bool follow = OwnFollowBox.IsChecked == true;
+        var vis = follow ? Visibility.Collapsed : Visibility.Visible;
+
+        OwnKissOn.Visibility = vis;
+        if (KissGrid != null) KissGrid.Visibility = vis;
+        
+        OwnDieOn.Visibility = vis;
+        if (DieGrid != null) DieGrid.Visibility = vis;
+
+        OwnKissOff.IsEnabled = !follow;
+        OwnKissSm.IsEnabled = !follow;
+        OwnDieOff.IsEnabled = !follow;
+        OwnDieSm.IsEnabled = !follow;
+    }
+
+    void OwnFollow_Changed(object s, RoutedEventArgs e)
+    {
+        SyncCutOptPanel();
+        
+        if (restoring || syncingSel || sel?.S is not Sticker st) return;
+        
+        if (OwnFollowBox.IsChecked == true)
+        {
+            SetCuts(st, null); // Panggil SetCuts untuk balik ke global
+        }
+        else
+        {
+            OwnCuts_Changed(s, e); // Terapkan custom
+        }
+    }
+
+    void OwnCuts_Changed(object s, RoutedEventArgs e)
+    {
+        if (restoring || syncingSel || sel?.S is not Sticker st) return;
+        if (OwnFollowBox.IsChecked == true) return; 
+
+        if (OwnKissOff == null || OwnDieOff == null) return;
+
+        var kiss = new Cut(OwnKissOn.IsChecked == true, ParseD(OwnKissOff.Text), ParseD(OwnKissSm.Text));
+        var die  = new Cut(OwnDieOn.IsChecked  == true, ParseD(OwnDieOff.Text),  ParseD(OwnDieSm.Text));
+
+        // Gunakan st yang sudah divalidasi di atas
+        if (Cut.Error(kiss, die) is { } err) 
+        { 
+            Redraw(Lang.T(err)); 
+            return; 
+        }
+
+        SetCuts(st, (kiss, die));
     }
 }

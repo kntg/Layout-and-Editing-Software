@@ -79,12 +79,6 @@
                             </StackPanel>
                         </Button>
                         <StackPanel Orientation="Horizontal">
-                            <Button Click="Add_Click" ToolTip="Ctrl+O" AutomationProperties.Name="{DynamicResource Add}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="12"/>
-                                    <TextBlock Text="{DynamicResource Add}" Margin="7,0,0,0"/>
-                                </StackPanel>
-                            </Button>
                             <Button Style="{StaticResource Primary}" Click="Nest_Click" Margin="8,0,0,0" ToolTip="Ctrl+L" AutomationProperties.Name="{DynamicResource Nest}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Icon}" Text="&#xECA5;" FontSize="13"/>
@@ -135,7 +129,7 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Batang alat -->
+                <!-- Tool Bar -->
                 <Border DockPanel.Dock="Left" Width="46" Background="{StaticResource Ink1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
                     <StackPanel Margin="0,8">
                         <RadioButton x:Name="ToolMove" Style="{StaticResource Tool}" GroupName="Tool" Content="&#xE8B0;" IsChecked="True" Checked="Tool_Checked"
@@ -319,12 +313,6 @@
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
-                                    <Button Click="Add_Click" Style="{StaticResource Ghost}" Margin="0,4,0,0" HorizontalAlignment="Left" Padding="6,2" ToolTip="{DynamicResource Add}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" FontSize="11" Margin="0,0,6,0"/>
-                                            <TextBlock Text="{DynamicResource Add}"/>
-                                        </StackPanel>
-                                    </Button>
                                     <DockPanel Margin="0,10,0,0">
                                         <TextBox x:Name="WidthBox" Style="{StaticResource Num}" Text="50" Width="58" DockPanel.Dock="Right"/>
                                         <TextBlock Text="{DynamicResource DefWidth}" Style="{StaticResource Label}" TextWrapping="Wrap"/>
@@ -347,38 +335,98 @@
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                         <TextBlock x:Name="SelName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                         
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="60"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
-                                            </Grid.RowDefinitions>
-                                            
-                                            <!-- Baris 0: Lebar artwork (Bisa Diedit) -->
-                                            <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
-                                            <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+                                        <StackPanel Margin="0,6,0,0">
+                                            <!-- ==== BAGIAN ATAS: LEBAR, TINGGI, DLL (TETAP SEPERTI ASLINYA) ==== -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="60"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                                </Grid.RowDefinitions>
+                                                
+                                                <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                                <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
+                                                <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
-                                            <!-- Baris 1: Tinggi artwork (rasio bebas, 2026-11-07) -->
-                                            <TextBlock Grid.Row="1" Text="{DynamicResource SelH}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBox x:Name="SelHeightBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelHeight_LostFocus" ToolTip="{DynamicResource HeightTip}" Margin="0,0,0,3"/>
-                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Row="1" Text="{DynamicResource SelH}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                                <TextBox x:Name="SelHeightBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelHeight_LostFocus" ToolTip="{DynamicResource HeightTip}" Margin="0,0,0,3"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
-                                            <!-- Baris 2: Kunci rasio. Bukan bagian dokumen: tidak ikut urungkan. -->
-                                            <CheckBox x:Name="LockRatio" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" IsChecked="True" Content="{DynamicResource LockRatio}" ToolTip="{DynamicResource LockRatioTip}" Margin="0,0,0,3"/>
+                                                <CheckBox x:Name="LockRatio" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" IsChecked="True" Content="{DynamicResource LockRatio}" ToolTip="{DynamicResource LockRatioTip}" Margin="0,0,0,3"/>
 
-                                            <!-- Baris 3: Jumlah (Bisa Diedit) -->
-                                            <TextBlock Grid.Row="3" Text="{DynamicResource QtyTip}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBox x:Name="SelCopiesBox" Grid.Row="3" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelCopies_Changed" ToolTip="{DynamicResource QtyTip}" Margin="0,0,0,3"/>
-                                            <TextBlock Grid.Row="3" Grid.Column="2" Text="pcs" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Row="3" Text="{DynamicResource QtyTip}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                                <TextBox x:Name="SelCopiesBox" Grid.Row="3" Grid.Column="1" Style="{StaticResource Num}" TextChanged="SelCopies_Changed" ToolTip="{DynamicResource QtyTip}" Margin="0,0,0,3"/>
+                                                <TextBlock Grid.Row="3" Grid.Column="2" Text="pcs" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
-                                            <!-- Baris 4: Rotasi -->
-                                            <TextBlock Grid.Row="4" Text="{DynamicResource SelRot}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="SelRot" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,3" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Row="4" Text="{DynamicResource SelRot}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="SelRot" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,3" VerticalAlignment="Center"/>
 
-                                            <!-- Baris 5: Posisi -->
-                                            <TextBlock Grid.Row="5" Text="{DynamicResource SelPos}" Style="{StaticResource Label}" Margin="0,0,12,0" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="SelPos" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,0" VerticalAlignment="Center"/>
-                                        </Grid>
+                                                <TextBlock Grid.Row="5" Text="{DynamicResource SelPos}" Style="{StaticResource Label}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="SelPos" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,0" VerticalAlignment="Center"/>
+                                            </Grid>
+
+                                            <!-- Garis Pemisah -->
+                                            <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,10,0,10" />
+
+                                            <!-- ==== BAGIAN BAWAH: OPSI GARIS POTONG (MEMBENTANG PENUH) ==== -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition/><!-- 0: Ikuti Panel -->
+                                                    <RowDefinition/><!-- 1: Kiss Checkbox -->
+                                                    <RowDefinition/><!-- 2: Kiss Input -->
+                                                    <RowDefinition/><!-- 3: Die Checkbox -->
+                                                    <RowDefinition/><!-- 4: Die Input -->
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Baris 0: Ikuti Panel -->
+                                                <TextBlock Text="Opsi" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,12,6" />
+                                                <CheckBox x:Name="OwnFollowBox" Grid.Column="1" Content="{DynamicResource CutOptFollow}" IsChecked="True" Margin="0,0,0,6"
+                                                        Checked="OwnFollow_Changed" Unchecked="OwnFollow_Changed"/>
+
+                                                <!-- Baris 1: Kiss Checkbox -->
+                                                <CheckBox x:Name="OwnKissOn" Grid.Row="1" Grid.Column="1" Content="{DynamicResource Kiss}" Margin="0,0,0,6" FontWeight="SemiBold" Click="OwnCuts_Changed"/>
+                                                        
+                                                <!-- Baris 2: Kiss Input (Offset & Halus) -->
+                                                <Grid x:Name="KissGrid" Grid.Row="2" Grid.Column="1" Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="45"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="45"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{DynamicResource Offset}" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="OwnKissOff" Grid.Column="1" Style="{StaticResource Num}" Margin="6,0,12,0" LostFocus="OwnCuts_Changed"/>
+                                                    <TextBlock Grid.Column="2" Text="{DynamicResource Smooth}" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="OwnKissSm" Grid.Column="3" Style="{StaticResource Num}" Margin="6,0,0,0" LostFocus="OwnCuts_Changed"/>
+                                                </Grid>
+
+                                                <!-- Baris 3: Die Checkbox -->
+                                                <CheckBox x:Name="OwnDieOn" Grid.Row="3" Grid.Column="1" Content="{DynamicResource Die}" Margin="0,0,0,6" FontWeight="SemiBold" Click="OwnCuts_Changed"/>
+                                                        
+                                                <!-- Baris 4: Die Input (Offset & Halus) -->
+                                                <Grid x:Name="DieGrid" Grid.Row="4" Grid.Column="1" Margin="0,0,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="45"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="45"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{DynamicResource Offset}" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="OwnDieOff" Grid.Column="1" Style="{StaticResource Num}" Margin="6,0,12,0" LostFocus="OwnCuts_Changed"/>
+                                                    <TextBlock Grid.Column="2" Text="{DynamicResource Smooth}" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="OwnDieSm" Grid.Column="3" Style="{StaticResource Num}" Margin="6,0,0,0" LostFocus="OwnCuts_Changed"/>
+                                                </Grid>
+                                            </Grid>
+                                        </StackPanel>
                                         
                                         <!-- Area Tombol Aksi -->
                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
