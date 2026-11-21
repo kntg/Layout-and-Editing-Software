@@ -1507,6 +1507,12 @@ public partial class MainWindow : Window
                         item.IsEnabled = st.CanClean;
                         item.ToolTip = Lang.T(st.CanClean ? "CleanTip" : "CleanVector");
                     }
+                    // Pisah jadi item hanya untuk desain gambar; vektor dimatikan dengan alasannya.
+                    if ((string)item.Tag == "Split" && btn.DataContext is Sticker sp)
+                    {
+                        item.IsEnabled = Loader.CanSplit(sp);
+                        item.ToolTip = Lang.T(Loader.CanSplit(sp) ? "SplitTip" : "SplitVector");
+                    }
                     // HAPUS dulu event listener yang mungkin menumpuk dari klik sebelumnya
                     item.Click -= MenuAction_Click;
                     // Pasang event listener yang baru
@@ -1531,6 +1537,7 @@ public partial class MainWindow : Window
         }
         else if (action == "Cut") CutItem(st);
         else if (action == "CutOpt") CutOptItem(st);
+        else if (action == "Split") SplitItem(st);
     }
 
     void StepCopies_Click(object s, RoutedEventArgs e)
@@ -1632,6 +1639,44 @@ public partial class MainWindow : Window
         if (w.ShowDialog() != true) return;
         SetCuts(st, w.Result);
     }
+    // Pisah jadi item (permintaan 2026-11-14): desain yang berisi grid item terpisah dipecah menjadi beberapa desain,
+    // masing-masing 1 pcs, lalu lembar disusun ulang. Tiap item kemudian disusun sendiri, jadi jarak antar item mengikuti
+    // panel Garis potong > Jarak antar stiker. Vektor (PDF/AI/CDR yang ditempel vektor) tidak dipisah.
+    void SplitItem(Sticker it)
+    {
+        if (!CutsValid()) return;
+        List<(byte[] Png, double WidthMm)> parts;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try { parts = Loader.Split(it); }
+        catch (Exception ex) { Mouse.OverrideCursor = null; MessageBox.Show(ex.Message, App.Brand); return; }
+        var cuts = CutsOf(it);
+        var made = new List<Sticker>();
+        try
+        {
+            for (int i = 0; i < parts.Count; i++)
+            {
+                var n = Loader.Load(it.Source, it.Page, parts[i].WidthMm, cuts.Kiss, cuts.Die, edited: parts[i].Png, bleed: BleedMm);
+                n.Name = $"{it.Name} #{i + 1}";
+                n.OwnCut = it.OwnCut;
+                made.Add(n);
+            }
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
+        finally { Mouse.OverrideCursor = null; }
+
+        int idx = items.IndexOf(it);
+        if (idx < 0) return;
+        syncingList = true;
+        items.RemoveAt(idx);
+        for (int i = 0; i < made.Count; i++) items.Insert(idx + i, made[i]);
+        syncingList = false;
+        foreach (var sh in sheets) sh.RemoveAll(p => p.S == it);
+        clip = [.. clip.Where(c => c.S != it)];
+        ClearSel();
+        Arrange();
+        Redraw(Lang.T("SplitDone", it.Name, made.Count));
+    }
+
     void Duplicate_Click(object s, RoutedEventArgs e) => DuplicateSel();
     void SelectAll_Click(object s, RoutedEventArgs e) => SelectAll();
 
@@ -1685,6 +1730,7 @@ public partial class MainWindow : Window
             Add("CutEdit", "", () => CutItem(st));
             Add("CutOpt", "", () => CutOptItem(st));
             Add("Clean", "", () => Clean(st), st.CanClean);
+            Add("Split", "", () => SplitItem(st), Loader.CanSplit(st));
             m.Items.Add(new Separator());
             Add("RotSel", "R", RotateSel);
             Add("DupSel", "Ctrl+D", DuplicateSel);

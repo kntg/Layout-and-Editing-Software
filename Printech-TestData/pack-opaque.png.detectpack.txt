@@ -1,0 +1,7 @@
+File     : pack-opaque.png
+IsPack   : True
+Stiker   : 4
+Kartu mm : 100 x 133.3
+Alasan   : OpaqueCard
+Kiss path: 4
+Die path : 99 char

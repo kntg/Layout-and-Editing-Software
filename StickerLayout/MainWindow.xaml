@@ -298,6 +298,16 @@
                                                                                     </StackPanel>
                                                                                 </MenuItem.Header>
                                                                             </MenuItem>
+
+                                                                            <!-- Menu Pisah jadi item (Split) -->
+                                                                            <MenuItem Tag="Split" ToolTipService.ShowOnDisabled="True">
+                                                                                <MenuItem.Header>
+                                                                                    <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B9;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource Split}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </MenuItem.Header>
+                                                                            </MenuItem>
                                                                         </StackPanel>
                                                                     </Border>
                                                                 </Popup>

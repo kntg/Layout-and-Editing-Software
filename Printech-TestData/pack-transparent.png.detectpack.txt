@@ -1,0 +1,7 @@
+File     : pack-transparent.png
+IsPack   : True
+Stiker   : 4
+Kartu mm : 84.8 x 101.5
+Alasan   : TransparentArt
+Kiss path: 4
+Die path : 121 char
