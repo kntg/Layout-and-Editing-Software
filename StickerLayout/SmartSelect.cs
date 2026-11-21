@@ -191,10 +191,12 @@ public static partial class Loader
     // vektornya menempel seluruh halaman, bukan satu item.
     // Dekat item = objek (piksel tidak transparan, atau piksel yang beda dari warna latar untuk gambar opak) yang bertetangga
     // 8 arah; item yang bersentuhan dihitung satu. Gelembung kecil (noise, titik huruf lepas) di bawah ambang luas dibuang.
-    // Hasil: PNG tiap item (dipotong pas batasnya) dan lebar (mm) item itu pada skala desain asal, berurutan baris demi baris.
+    // Hasil: PNG tiap item (dipotong pas batasnya), lebar (mm) item itu pada skala desain asal, dan posisi pojok kiri-atas
+    // artwork item (mm) relatif terhadap pojok kiri-atas isi desain asal, supaya item bisa ditaruh di tempat semula.
+    // Berurutan baris demi baris.
     public static bool CanSplit(Sticker s) => s.Pdf == null;
 
-    public static List<(byte[] Png, double WidthMm)> Split(Sticker s)
+    public static List<(byte[] Png, double WidthMm, Point At)> Split(Sticker s)
     {
         if (!CanSplit(s)) throw new InvalidOperationException(Lang.T("SplitVector"));
         // Resolusi penuh: desain dipotong dari gambar asli (bukan salinan layar), supaya item hasil tetap tajam.
@@ -233,7 +235,10 @@ public static partial class Loader
 
         // Lebar item pada skala desain asal: lebar kotak isi asli (s.PxW piksel) = s.WidthMm.
         double mmPerPx = s.WidthMm / Math.Max(1, s.PxW);
-        var res = new List<(byte[], double)>();
+        // Pojok kiri-atas isi desain asal: sudut terkecil semua komponen yang disimpan. Posisi item diukur dari sini,
+        // jadi tiap item bisa ditaruh di tempat semula pada lembar.
+        int minX = keep.Min(c => c.X0), minY = keep.Min(c => c.Y0);
+        var res = new List<(byte[], double, Point)>();
         foreach (var c in keep)
         {
             int cw = c.X1 - c.X0 + 1, ch = c.Y1 - c.Y0 + 1;
@@ -248,7 +253,7 @@ public static partial class Loader
                 }
             var bmp = BitmapSource.Create(cw, ch, 96, 96, PixelFormats.Bgra32, null, dst, cw * 4);
             bmp.Freeze();
-            res.Add((Png(bmp), Math.Max(1, cw * mmPerPx)));
+            res.Add((Png(bmp), Math.Max(1, cw * mmPerPx), new Point((c.X0 - minX) * mmPerPx, (c.Y0 - minY) * mmPerPx)));
         }
         return res;
     }

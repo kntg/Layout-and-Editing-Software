@@ -1645,7 +1645,7 @@ public partial class MainWindow : Window
     void SplitItem(Sticker it)
     {
         if (!CutsValid()) return;
-        List<(byte[] Png, double WidthMm)> parts;
+        List<(byte[] Png, double WidthMm, Point At)> parts;
         Mouse.OverrideCursor = Cursors.Wait;
         try { parts = Loader.Split(it); }
         catch (Exception ex) { Mouse.OverrideCursor = null; MessageBox.Show(ex.Message, App.Brand); return; }
@@ -1666,6 +1666,9 @@ public partial class MainWindow : Window
 
         int idx = items.IndexOf(it);
         if (idx < 0) return;
+        // Semua salinan desain asal yang sudah terpasang (per lembar), untuk menaruh item di tempat yang sama.
+        var where = sheets.Select((sh, sheet) => sh.Where(p => p.S == it).Select(p => (sheet, p.X, p.Y, p.Rot)).ToList()).SelectMany(x => x).ToList();
+
         syncingList = true;
         items.RemoveAt(idx);
         for (int i = 0; i < made.Count; i++) items.Insert(idx + i, made[i]);
@@ -1673,8 +1676,35 @@ public partial class MainWindow : Window
         foreach (var sh in sheets) sh.RemoveAll(p => p.S == it);
         clip = [.. clip.Where(c => c.S != it)];
         ClearSel();
-        Arrange();
-        Redraw(Lang.T("SplitDone", it.Name, made.Count));
+
+        // Taruh tiap item di posisi semula: pojok kiri-atas artwork item = pojok kiri-atas artwork desain asal + offset item.
+        // Hanya untuk salinan yang tidak diputar (Rot 0); salinan terputar jarang untuk file yang baru diimport.
+        bool placed = false;
+        foreach (var (sheet, px, py, rot) in where)
+        {
+            if (rot != 0) continue;
+            for (int i = 0; i < made.Count; i++)
+            {
+                var n = made[i];
+                double bx = px + it.Off + parts[i].At.X - n.Off, by = py + it.Off + parts[i].At.Y - n.Off;
+                sheets[sheet].Add(new Placed { S = n, X = bx, Y = by, Rot = 0 });
+            }
+            placed = true;
+        }
+
+        if (placed)
+        {
+            CountCopies();
+            CheckAll();
+            Redraw(Lang.T("SplitDone", it.Name, made.Count) + "  " + Summary());
+            Commit();
+        }
+        else
+        {
+            // Tidak ada salinan Rot 0 (mis. desain tersembunyi atau semua terputar): susun ulang seperti biasa.
+            Arrange();
+            Redraw(Lang.T("SplitDone", it.Name, made.Count));
+        }
     }
 
     void Duplicate_Click(object s, RoutedEventArgs e) => DuplicateSel();
