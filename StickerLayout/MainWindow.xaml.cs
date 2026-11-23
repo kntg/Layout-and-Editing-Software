@@ -1600,13 +1600,18 @@ public partial class MainWindow : Window
     void StepCopies_Click(object s, RoutedEventArgs e)
     {
         if (s is not FrameworkElement fe || fe.DataContext is not Sticker st) return;
+
         int delta = int.TryParse(fe.Tag?.ToString(), out int d) ? d : 1;
-        int next = Math.Max(Math.Min(1, st.Copies), st.Copies + delta); // paling kecil 1; desain 0 pcs (stikernya dihapus semua) tidak naik saat turun
+        int next = Math.Max(1, st.Copies + delta); // minimal 1
         if (next == st.Copies) return;
-        
+
         st.Copies = next;
+
+        // 1) Paksa baris ListBox menampilkan nilai baru segera
         syncingList = true;
         List.Items.Refresh();
+
+        // 2) Kalau stiker ini yang sedang terpilih, sinkronkan kotak qty di panel Pilihan
         if (sel?.S == st && SelCopiesBox != null)
         {
             syncingSel = true;
@@ -1614,7 +1619,12 @@ public partial class MainWindow : Window
             syncingSel = false;
         }
         syncingList = false;
-        Commit(); // seperti angka yang diketik: lembar baru berubah saat Susun otomatis (README), jadi susunan tangan tidak hilang
+
+        // 3) Susun ulang lembar supaya jumlah stiker di kanvas ikut berubah
+        Arrange();
+
+        // 4) Simpan langkah undo
+        Commit();
     }
 
     void HideItem_Click(object s, RoutedEventArgs e)
