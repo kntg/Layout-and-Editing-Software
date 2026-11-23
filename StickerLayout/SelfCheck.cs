@@ -723,6 +723,122 @@ public static class SelfCheck
             var big300 = Png(bigImg, 300, kiss, die);
             S(9, "stiker besar 300 mm dimuat < 5 detik", bsw.ElapsedMilliseconds < 5000, $"{bsw.ElapsedMilliseconds} ms, kiss {Nodes(big300.Kiss)} node, die {Nodes(big300.Die)} node");
 
+            // S24: stickerpack (2026-11-21). Kotak hitam bersudut bulat 120 x 80 mm berisi 3 lingkaran berwarna berbingkai putih: die 1 garis di tepi
+            // kotak, kiss 1 garis per lingkaran, semua kiss di dalam die. Gambar yang sama tanpa pack: satu kiss mengelilingi kotak.
+            var packImg = Loader.Png(Draw(dc =>
+            {
+                dc.DrawRoundedRectangle(Brushes.Black, null, new Rect(0, 0, 1200, 800), 60, 60);
+                foreach (var (cx, fill) in new[] { (250.0, Brushes.Orange), (600.0, Brushes.SteelBlue), (950.0, Brushes.Crimson) })
+                {
+                    dc.DrawEllipse(Brushes.White, null, new Point(cx, 400), 140, 140);
+                    dc.DrawEllipse(fill, null, new Point(cx, 400), 120, 120);
+                }
+            }, 1200, 800));
+            var pack = Loader.Load("pack.png", 0, 120, new Cut(true, 1, 0), new Cut(true, 0, 0), edited: packImg, pack: true);
+            var packPlain = Loader.Load("pack.png", 0, 120, new Cut(true, 1, 0), new Cut(true, 2, 0), edited: packImg);
+            static int Figures(Geometry? g) => g == null ? 0 : PathGeometry.CreateFromGeometry(g).Figures.Count;
+            var dieBox = pack.DieGeo?.Bounds ?? Rect.Empty;
+            double packOut = pack.KissGeo == null || pack.DieGeo == null ? double.NaN
+                : Geometry.Combine(pack.KissGeo, pack.DieGeo, GeometryCombineMode.Exclude, null).GetArea();
+            // Uji UI 2026-11-22: stiker berjarak 1,5 mm dengan offset kiss 1 mm dan Halus 1 mm tetap mendapat garis sendiri-sendiri yang tidak
+            // bersilangan, dan titik di dalam lubang cincin ikut stiker cincin. Sebelum PackKiss: satu garis untuk ketiganya.
+            double[] denseX = [305, 600, 895];
+            var denseImg = Loader.Png(Draw(dc =>
+            {
+                dc.DrawRoundedRectangle(Brushes.Black, null, new Rect(0, 0, 1200, 800), 60, 60);
+                foreach (var cx in denseX) dc.DrawEllipse(Brushes.White, null, new Point(cx, 400), 140, 140);
+                dc.DrawEllipse(Brushes.Black, null, new Point(600, 400), 100, 100);
+                dc.DrawEllipse(Brushes.Crimson, null, new Point(600, 400), 30, 30);
+            }, 1200, 800));
+            var packDense = Loader.Load("pack.png", 0, 120, new Cut(true, 1, 1), new Cut(true, 0, 0), edited: denseImg, pack: true);
+            var denseFigs = packDense.KissGeo == null ? new List<PathGeometry>()
+                : PathGeometry.CreateFromGeometry(packDense.KissGeo).Figures.Select(f => new PathGeometry([f.Clone()])).ToList();
+            double denseCross = 0;
+            for (int i = 0; i < denseFigs.Count; i++)
+                for (int j = i + 1; j < denseFigs.Count; j++) denseCross += Geometry.Combine(denseFigs[i], denseFigs[j], GeometryCombineMode.Intersect, null).GetArea();
+            bool denseOwn = denseX.All(cx => denseFigs.Count(f => f.FillContains(new Point(packDense.Off + cx / 10, packDense.OffY + 40))) == 1);
+            S(24, "stickerpack: die di tepi latar, kiss tiap stiker di dalamnya", Figures(pack.DieGeo) == 1 && Figures(pack.KissGeo) == 3
+                && Math.Abs(dieBox.Width - 120) < 0.5 && Math.Abs(dieBox.Height - 80) < 0.5 && packOut < 0.01 && Figures(packPlain.KissGeo) == 1
+                && pack.CutBadge.Contains(Lang.T("CutPack")) && denseFigs.Count == 3 && denseCross < 0.01 && denseOwn,
+                $"die {Figures(pack.DieGeo)} garis {dieBox.Width:F2} x {dieBox.Height:F2} mm (harapan 120 x 80), kiss {Figures(pack.KissGeo)} garis (harapan 3), "
+                + $"kiss di luar die {packOut:F3} mm²; tanpa pack kiss {Figures(packPlain.KissGeo)} garis (harapan 1); "
+                + $"celah 1,5 mm offset 1 Halus 1: kiss {denseFigs.Count} garis (harapan 3), tumpang {denseCross:F3} mm², tiap stiker satu garis {denseOwn}");
+
+            // Temuan review 2026-11-21: angka salah ketik tidak membekukan aplikasi, dan nama file per lembar memakai nomor lembar asli.
+            string capLoad = "tanpa error";
+            try { Loader.Load("pack.png", 0, 2500, kiss, none, edited: packImg); } catch (InvalidOperationException ex) { capLoad = ex.Message; }
+            var capSt = new Sticker { Copies = 100000 };
+            string capPick = Path.GetFileName(Export.SheetFile(@"C:\x\layout.svg", 1, 0, [3])), capSolo = Path.GetFileName(Export.SheetFile(@"C:\x\layout.svg", 1, 0, null));
+            Check(Cut.Error(new(true, 200, 0), none) == "CutTooBig" && Cut.Error(kiss, die) == null && MmText.Parse("Infinity") == null && MmText.Parse("1e999") == null
+                && MmText.Parse("62,5") == 62.5 && capSt.Copies == Sticker.MaxCopies && capLoad != "tanpa error" && capPick == "layout-3.svg" && capSolo == "layout.svg",
+                $"batas angka dan nama file: offset 200 {Cut.Error(new(true, 200, 0), none)}, Infinity {MmText.Parse("Infinity")?.ToString() ?? "ditolak"}, "
+                + $"100000 pcs jadi {capSt.Copies}, lebar 2500 mm: {capLoad}; lembar 3 saja: {capPick}, layout satu lembar: {capSolo}");
+
+            // Daftar tugas 2026-11-20. C1: garis manual kecil (seperti smart select) -> kotak stiker mengikuti garis, bukan gambar aslinya.
+            var t20Small = new List<Node[]> { new[] { Node.Corner(new(5, 5)), Node.Corner(new(15, 5)), Node.Corner(new(15, 15)), Node.Corner(new(5, 15)) } };
+            var t20C1 = Loader.Load(cPath, 0, 40, kiss, none, manualKiss: t20Small);
+            var t20C1b = t20C1.KissGeo!.Bounds;
+            bool t20Box = t20C1.W <= 12 && t20C1.H <= 12 && Math.Abs(t20C1b.X - t20C1.Off - 5) < 0.05 && Math.Abs(t20C1b.Y - t20C1.OffY - 5) < 0.05
+                && t20C1b.Right <= t20C1.W && t20C1b.Bottom <= t20C1.H;
+            // A3: 3 lingkaran terpisah di latar transparan (konten 840 px = 90 mm) -> 3 item seukuran aslinya; item bisa diubah ukurannya.
+            var t20Img = Loader.Png(Draw(dc => { foreach (var x in new[] { 150.0, 450, 750 }) dc.DrawEllipse(Brushes.SeaGreen, null, new Point(x, 150), 120, 120); }, 900, 300));
+            var t20Items = Loader.SplitItems(Loader.Load("layout.png", 0, 90, kiss, die, edited: t20Img), kiss, die, 0);
+            double t20Want = 240.0 * 90 / 840;
+            var t20Big = t20Items.Count == 3 ? Loader.Reload(t20Items[1], kiss, die, 0, 48) : null;
+            bool t20Split = t20Items.Count == 3 && t20Items.All(t => Math.Abs(t.ArtW - t20Want) < 0.6 && t.Part != null) && t20Items[0].Name.EndsWith("#1")
+                && t20Big != null && Math.Abs(t20Big.ArtW - 48) < 0.01 && Math.Abs(t20Big.ArtH - 48) < 0.6;
+            // Item hasil pisah bisa dirapikan (temuan 2026-11-23): Rapikan menerima gambar item itu saja, dan hasilnya desain mandiri seukuran item.
+            var t20Part = t20Items.Count == 3 ? Loader.Load("layout.png", 0, t20Items[0].WidthMm, kiss, die, edited: Loader.PartImage(t20Items[0])) : null;
+            t20Split &= t20Part != null && t20Items[0].CanClean && t20Part.Part == null && t20Part.PxW == t20Items[0].PxW
+                && Math.Abs(t20Part.ArtH - t20Items[0].ArtH) < 0.05;
+            // A4: garis cross 2 x 2 kotak. Cross 1 (celah 1 mm): 3 garis tegak + 3 mendatar. Cross 2 (celah 4 mm): 4 + 4.
+            var t20Rect = Loader.Load("pack.png", 0, 120, new Cut(true, 0, 0), none, edited: packImg);
+            var t20Ob = t20Rect.Outer.Bounds;
+            List<Placed> T20Grid(double gap) => [.. Enumerable.Range(0, 4).Select(i => new Placed { S = t20Rect, X = 10 + i % 2 * (t20Ob.Width + gap), Y = 10 + i / 2 * (t20Ob.Height + gap) })];
+            (Cross.Kind, Cross.Mm) = (1, 1);
+            var t20One = Cross.Lines(T20Grid(1));
+            Cross.Kind = 2;
+            var t20Two = Cross.Lines(T20Grid(4));
+            // Temuan 2026-11-23 (Hemat + cross): garis tidak boleh menembus stiker, dan tiap sisi stiker tetap punya garis. Grid 2 x 2 ditambah satu
+            // stiker diputar yang melintasi garis baris, dan susunan Hemat sungguhan 80 mm di A3+ (sisa lebar diisi stiker diputar).
+            (int Through, int Bare) CrossFault(List<Placed> ps)
+            {
+                var rs = ps.Select(p => Nest.Xf(p).TransformBounds(p.S.Outer.Bounds)).ToList();
+                var ls = Cross.Lines(ps).Select(l => l.A.X == l.B.X ? (C: l.A.X, A: Math.Min(l.A.Y, l.B.Y), B: Math.Max(l.A.Y, l.B.Y), V: true)
+                    : (C: l.A.Y, A: Math.Min(l.A.X, l.B.X), B: Math.Max(l.A.X, l.B.X), V: false)).ToList();
+                const double e = 0.01;
+                double near = Cross.Mm + 2 * Nest.Cell;
+                int through = ls.Count(l => rs.Any(r => l.V
+                    ? r.Left + e < l.C && l.C < r.Right - e && Math.Max(l.A, r.Top + e) < Math.Min(l.B, r.Bottom - e)
+                    : r.Top + e < l.C && l.C < r.Bottom - e && Math.Max(l.A, r.Left + e) < Math.Min(l.B, r.Right - e)));
+                bool Has(bool v, double c, double mid) => ls.Any(l => l.V == v && Math.Abs(l.C - c) <= near && l.A <= mid && mid <= l.B);
+                int bare = rs.Count(r => !(Has(true, r.Left, (r.Top + r.Bottom) / 2) && Has(true, r.Right, (r.Top + r.Bottom) / 2)
+                    && Has(false, r.Top, (r.Left + r.Right) / 2) && Has(false, r.Bottom, (r.Left + r.Right) / 2)));
+                return (through, bare);
+            }
+            List<Placed> T20Mixed(double gap) => [.. T20Grid(gap), new Placed { S = t20Rect, Rot = 90, X = 15 + 2 * (t20Ob.Width + gap), Y = 50 }];
+            var t20MixTwo = CrossFault(T20Mixed(4));
+            Cross.Kind = 1;
+            var t20MixOne = CrossFault(T20Mixed(1));
+            var t20Mk = Loader.Load("pack.png", 0, 80, new Cut(true, 0, 0), none, edited: packImg);
+            t20Mk.Copies = 40;
+            var t20Hemat = Nest.Run([t20Mk], 320, 480, Margin, 1, out _)[0];
+            var t20HematFault = CrossFault(t20Hemat);
+            Cross.Kind = 0;
+            bool t20Cross = t20One.Count == 6 && t20One.Count(l => l.A.X == l.B.X) == 3 && t20Two.Count == 8
+                && t20MixOne == (0, 0) && t20MixTwo == (0, 0) && t20HematFault == (0, 0);
+            // B: satuan tampilan. 6,25 cm = 62,5 mm dan tampil lagi 6.25; 300 px = 25,4 mm (300 ppi).
+            Units.Index = 1;
+            bool t20Unit = MmText.Parse("6,25") == 62.5 && MmText.Show(62.5) == "6.25";
+            Units.Index = 4;
+            t20Unit &= MmText.Parse("300") is { } t20Px && Math.Abs(t20Px - 25.4) < 1e-9;
+            Units.Index = 0;
+            Check(t20Box && t20Split && t20Cross && t20Unit, $"daftar tugas 2026-11-20: kotak garis manual {t20C1.W}x{t20C1.H} mm {t20Box}; pisah item {t20Items.Count} item "
+                + $"({string.Join(", ", t20Items.Select(t => $"{t.ArtW:F2}"))} mm, harapan {t20Want:F2}), ubah ukuran {t20Big?.ArtW:F2} mm {t20Split}; "
+                + $"rapikan item {t20Part?.PxW} px (item {t20Items.FirstOrDefault()?.PxW}); cross tunggal {t20One.Count} garis, ganda {t20Two.Count} garis, "
+                + $"tembus/sisi tanpa garis: campur tunggal {t20MixOne}, ganda {t20MixTwo}, Hemat {t20Hemat.Count} pcs ({t20Hemat.Count(p => p.Rot % 180 != 0)} diputar) "
+                + $"{t20HematFault} {t20Cross}; satuan {t20Unit}");
+
             // P1: CDR tanpa CorelDRAW (lewat proses worker): pesan jelas, aplikasi tidak crash.
             var fakeCdr = Path.Combine(dir, "tidak-ada.cdr");
             var cdrStart = DateTime.Now;
@@ -1467,7 +1583,7 @@ public static class SelfCheck
             double ratio0 = mwItems[0].ArtW / mwItems[0].ArtH, wantW = mwItems[0].ArtW + 10;
             mwItems[0].WidthMm = wantW;
             var sheetsBefore = MwSheets();
-            MwCall("SetCuts", mwItems[0], ((Cut, Cut)?)ownCut);
+            MwCall("SetCuts", mwItems[0], ((Cut, Cut, bool)?)(ownCut.Kiss, ownCut.Die, false));
             bool ownRatio = About(mwItems[0].ArtW, wantW, 0.01) && About(mwItems[0].ArtW / mwItems[0].ArtH, ratio0, 0.01), ownRearranged = !ReferenceEquals(sheetsBefore, MwSheets());
             string ownSize = $"{mwItems[0].ArtW:0.#} x {mwItems[0].ArtH:0.#} mm, rasio {mwItems[0].ArtW / mwItems[0].ArtH:0.###} (harapan {ratio0:0.###})";
             bool ownSet =OwnOk(mwItems[0]) && MwPlaced(0) == 3 && mwItems[0].CutBadge.Contains(Lang.T("CutOwn")) && !mwItems[1].OwnCut && !mwItems[1].LoadedDie.On;

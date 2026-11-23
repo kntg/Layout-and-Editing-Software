@@ -21,15 +21,34 @@ namespace StickerLayout;
 public record Cut(bool On, double Off, double Smooth)
 {
     // Aturan pasangan kiss dan die, untuk panel Garis potong dan opsi per desain: kunci pesan (Lang.T), atau null bila boleh dipakai.
-    public static string? Error(Cut kiss, Cut die) => !kiss.On && !die.On ? "NeedCut" : kiss.On && die.On && die.Off <= kiss.Off ? "DieInside" : null;
+    public static string? Error(Cut kiss, Cut die) => TooBig(kiss, die) ? "CutTooBig" : !kiss.On && !die.On ? "NeedCut" : kiss.On && die.On && die.Off <= kiss.Off ? "DieInside" : null;
+    // Stickerpack: offset die diukur dari tepi latar, offset kiss dari tepi tiap stiker, jadi aturan die > kiss tidak berlaku; die wajib aktif.
+    public static string? Error(Cut kiss, Cut die, bool pack) => !pack ? Error(kiss, die) : TooBig(kiss, die) ? "CutTooBig" : die.On ? null : "PackNeedDie";
+    // Batas atas salah ketik (200 untuk 2,0): offset 200 mm membuat dilasi jutaan titik per piksel tepi dan aplikasi membeku. Angka ada di teks CutTooBig.
+    public const double MaxMm = 50;
+    static bool TooBig(Cut kiss, Cut die) => kiss.Off + kiss.Smooth > MaxMm || die.Off + die.Smooth > MaxMm;
 }
 
-// Angka milimeter di kotak isian: koma dan titik sama-sama tanda desimal (62,5 = 62.5), sama di semua kotak.
+// Satuan tampilan (daftar tugas 2026-11-20): semua angka disimpan dan dihitung dalam mm; kotak isian, daftar desain, panel Pilihan, judul lembar,
+// dan penggaris memakai satuan pilihan. px dihitung pada 300 ppi, target resolusi cetak proyek (Sticker.MinDpi).
+// shortcut: pesan peringatan, Print Ticket, dan editor garis potong tetap dalam mm.
+public static class Units
+{
+    public static readonly (string Name, double Mm, string Fmt)[] All =
+        [("mm", 1, "0.#"), ("cm", 10, "0.###"), ("m", 1000, "0.#####"), ("in", 25.4, "0.####"), ("px", 25.4 / 300, "0.##")];
+    public static int Index;   // 0 = mm (bawaan)
+    public static string Name => All[Index].Name;
+    public static double Mm => All[Index].Mm;
+    public static string Fmt => All[Index].Fmt;
+}
+
+// Angka panjang di kotak isian: koma dan titik sama-sama tanda desimal (62,5 = 62.5), sama di semua kotak.
 public sealed class MmText : IValueConverter
 {
     public static readonly MmText I = new();
-    public static double? Parse(string? text) => double.TryParse(text?.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
-    public static string Show(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+    // Teks dalam satuan tampilan (Units) <-> mm. "Infinity" dan "1e999" ditolak.
+    public static double? Parse(string? text) => double.TryParse(text?.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && double.IsFinite(v) ? v * Units.Mm : null;
+    public static string Show(double v) => (v / Units.Mm).ToString(Units.Fmt, CultureInfo.InvariantCulture);
     public object Convert(object value, Type target, object parameter, CultureInfo culture) => Show((double)value);
     // Tidak terbaca atau bukan angka positif: nilai lama tetap dan kotaknya ditandai merah.
     public object ConvertBack(object value, Type target, object parameter, CultureInfo culture) => Parse(value as string) is > 0 and var v ? v : DependencyProperty.UnsetValue;
@@ -38,9 +57,12 @@ public sealed class MmText : IValueConverter
 public class Sticker
 {
     public string Name { get; set; } = "";
-    public int Copies { get; set; } = 1;
+    public int Copies { get => copies; set => copies = Math.Clamp(value, 0, MaxCopies); } // salah ketik 100000 pcs = ±1.200 lembar dibuat di thread tampilan
+    int copies = 1;
+    public const int MaxCopies = 9999;
     public bool Hidden { get; set; }             // tombol mata di daftar desain (2026-11-10): tetap di daftar dengan jumlahnya, tetapi tidak disusun dan tidak ikut export
     public bool OwnCut;                          // opsi garis potong per desain (2026-11-10): LoadedKiss dan LoadedDie milik desain ini, tidak mengikuti panel Garis potong
+    public bool Pack;                            // stickerpack (2026-11-21): file pack sudah di-layout; die di tepi latar, kiss di tiap stiker di dalamnya. Hanya diisi Loader.Load
     public double WidthMm { get; set; }          // lebar artwork yang diminta operator (mm)
     public string Source = "";
     public int Page;
@@ -52,7 +74,9 @@ public class Sticker
     // SVG digambar ulang selama filenya masih sama, supaya tetap tajam pada lebar baru; gambar yang ditautkan SVG hanya terbaca dari folder aslinya.
     // null = baca dari sumbernya (PDF lewat salinan saat dimuat).
     public byte[]? Frozen => Edited ?? (Pdf != null || SvgStamp is { } v && v == Loader.Stamp(Source) ? null : Raster);
-    public bool CanClean => Pdf == null;         // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh
+    public bool CanClean => Pdf == null; // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh; item hasil pisah dirapikan lewat Loader.PartImage
+    // Item hasil Pisah item (2026-11-20): wilayahnya di kotak isi artwork asal (0..1); null = seluruh file. Hanya diisi Loader.Load.
+    public Rect? Part;
     // PDF/AI yang tidak bisa ditempel vektor (halaman diputar, tidak terbaca PDFsharp): ditempel sebagai gambar RGB.
     public bool PdfAsImage => Pdf == null && Path.GetExtension(Source).ToLowerInvariant() is ".pdf" or ".ai";
     // CDR yang dibuka tanpa CorelDRAW (libcdr), atau halaman dari CorelDRAW yang tidak bisa ditempel vektor: ditempel sebagai gambar RGB.
@@ -61,6 +85,7 @@ public class Sticker
     public Cut LoadedKiss = null!, LoadedDie = null!;
     public double W, H;                          // kotak (mm), kelipatan Nest.Cell
     public double Off, ArtW, ArtH;               // posisi & ukuran artwork di dalam kotak (mm)
+    public double OffY;                          // posisi tegak artwork; beda dari Off hanya bila kotak dipangkas ke garis manual/smart select
     public double StretchY { get; set; } = 1;    // rasio bebas (2026-11-07): tinggi artwork dibagi tinggi menurut proporsi file; 1 = asli. Hanya diisi Loader.Load
     public Rect Full;                            // seluruh sumber (halaman PDF / gambar penuh) dalam koordinat kotak (mm)
     public byte[]? BleedPng;                     // raster + bleed (warna tepi diperluas) untuk export; null = tanpa bleed
@@ -69,7 +94,7 @@ public class Sticker
     public double AreaMm2;                       // luas di dalam garis potong terluar
     public BitmapSource Preview { get; set; } = null!; // artwork yang sudah di-crop, salinan kecil untuk layar
     public int PxW;                                     // lebar artwork dalam piksel asli (untuk dpi)
-    public string HText => $"× {MmText.Show(ArtH)} mm"; // tinggi artwork di daftar desain
+    public string HText => $"× {MmText.Show(ArtH)} {Units.Name}"; // tinggi artwork di daftar desain
     // Resolusi cetak untuk desain yang ditempel sebagai gambar. Target riset 300 ppi; 150 = batas kasar,
     // sesuaikan setelah melihat hasil cetak Develop.
     public const double MinDpi = 150;
@@ -84,7 +109,7 @@ public class Sticker
     public bool Manual => ManualKiss != null || ManualDie != null;
     public CutShape Shape;                       // bentuk preset dari editor (Auto = mengikuti artwork); garis manual menang
     public CutShape DieShape;                    // bentuk die (Auto = mengikuti kiss)
-    public string CutBadge => string.Join(" · ", new[] { Manual ? Lang.T("CutManual") : Shapes.Label(Shape, DieShape), OwnCut ? Lang.T("CutOwn") : "" }.Where(t => t != ""));
+    public string CutBadge => string.Join(" · ", new[] { Manual ? Lang.T("CutManual") : Shapes.Label(Shape, DieShape), Pack ? Lang.T("CutPack") : "", OwnCut ? Lang.T("CutOwn") : "" }.Where(t => t != ""));
     public bool[,] Grid = null!;                 // hunian sel nesting dari garis terluar [x,y]
     public int Area;
     Geometry? kg, dg, clip;
@@ -94,7 +119,8 @@ public class Sticker
     // Seberapa penuh bentuk mengisi kotaknya: persegi ±1, lingkaran ±0,79, bintang/logo bebas lebih kecil.
     public double Fill => AreaMm2 / Math.Max(1e-9, Outer.Bounds.Width * Outer.Bounds.Height);
     // Batas artwork saat digambar: garis terluar, atau dengan bleed: garis kiss (tanpa kiss: die) diperlebar bleed mm.
-    public Geometry ArtClip => clip ??= BleedPng == null ? Outer : Grow(KissGeo ?? DieGeo!, LoadedBleed);
+    // Stickerpack: latar pack dicetak sampai garis die, jadi bleed diukur dari die.
+    public Geometry ArtClip => clip ??= BleedPng == null ? Outer : Grow(Pack ? Outer : KissGeo ?? DieGeo!, LoadedBleed);
     // Warna border (masukan 2026-10-23): area di dalam garis kiss (tanpa kiss: die) di luar artwork dicetak dengan warna ini,
     // diteruskan sejauh bleed (bleed 0: BorderMin mm) di luar garis supaya pergeseran pisau tidak menyisakan tepi putih.
     // null = kertas putih. Lubang ikut diperlebar ke dalam sejauh yang sama.
@@ -210,26 +236,79 @@ public static partial class Loader
     // Muat ulang desain pada lebar it.WidthMm, atau widthMm bila diberikan (it tidak diubah). heightMm (rasio bebas, 2026-11-07): tinggi artwork baru; tanpa
     // tinggi, regangan yang sudah ada tetap dipakai. Garis manual tidak ikut offset/Halus; ukuran berubah: garis diskala bersama artwork per sumbu.
     // Bentuk preset dihitung ulang.
-    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed, double? widthMm = null, double? heightMm = null)
+    public static Sticker Reload(Sticker it, Cut kiss, Cut die, double bleed, double? widthMm = null, double? heightMm = null, bool? pack = null)
     {
+        bool pk = pack ?? it.Pack;
         double w = widthMm ?? it.WidthMm, k = w / it.LoadedW, ky = heightMm is { } h ? h / it.ArtH : k, sy = it.StretchY * ky / k;
         var (mk, md, smart) = (Curves.Scale(it.ManualKiss, k, ky), Curves.Scale(it.ManualDie, k, ky), it.Smart?.Scale(k, ky));
         if (smart != null)
         {
             // Garis smart select dihitung ulang dari kliknya pada offset dan Halus yang baru (keputusan user 2026-11-08). Bila kliknya tidak lagi
             // mengenai objek, garis lama (diskala) tetap dipakai.
-            var plain = Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf, border: it.Border, stretchY: sy, heightMm: heightMm);
+            var plain = Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf, border: it.Border, stretchY: sy, heightMm: heightMm, pack: pk, part: it.Part);
             var (sk, sd, _) = SmartSelect(plain, smart.Objs, smart.Holes, smart.Tol, smart.Eps);
             if (kiss.On && sk.Count > 0) mk = sk;
             if (die.On && sd.Count > 0) md = sd;
         }
         return Load(it.Source, it.Page, w, kiss, die, edited: it.Frozen, bleed: bleed, loadedPdf: it.Pdf,
-            manualKiss: mk, manualDie: md, shape: it.Shape, border: it.Border, dieShape: it.DieShape, stretchY: sy, heightMm: heightMm, smart: smart);
+            manualKiss: mk, manualDie: md, shape: it.Shape, border: it.Border, dieShape: it.DieShape, stretchY: sy, heightMm: heightMm, smart: smart, pack: pk, part: it.Part);
+    }
+
+    // Pisah item (daftar tugas 2026-11-20): file yang sudah di-layout dipecah menjadi satu desain per item, masing-masing dengan garis potongnya
+    // sendiri, sehingga jarak antar item mengikuti Jarak antar stiker dan offset tidak saling menempel. Item = komponen objek di salinan kecil
+    // artwork (latar transparan, atau warna latar rata dari tepi); komponen yang titik tengahnya di dalam kotak item lain (teks di dalam
+    // lingkaran) ikut item itu. Kosong bila item kurang dari dua.
+    // shortcut: item yang hanya terpisah celah kurang dari ±1 piksel salinan kecil dianggap satu; pisahkan di CorelDRAW bila perlu.
+    public static List<Sticker> SplitItems(Sticker s, Cut kiss, Cut die, double bleed)
+    {
+        var pv = s.Preview;
+        int w = pv.PixelWidth, h = pv.PixelHeight;
+        double pxMm = w / s.ArtW;
+        var obj = ItemMask(pv, (int)Math.Ceiling(PackMinMm2 * pxMm * pxMm), false);
+        var boxes = new List<Int32Rect>();
+        if (obj != null)
+            foreach (var p in Label(obj).Parts.Where(p => p.Value).OrderByDescending(p => p.Cells.Count))
+            {
+                int x0 = p.Cells.Min(c => c.X), y0 = p.Cells.Min(c => c.Y), x1 = p.Cells.Max(c => c.X) + 1, y1 = p.Cells.Max(c => c.Y) + 1;
+                double mx = (x0 + x1) / 2.0, my = (y0 + y1) / 2.0;
+                int at = boxes.FindIndex(b => b.X <= mx && mx < b.X + b.Width && b.Y <= my && my < b.Y + b.Height);
+                if (at < 0) { boxes.Add(new Int32Rect(x0, y0, x1 - x0, y1 - y0)); continue; }
+                var b = boxes[at];
+                int ux = Math.Min(b.X, x0), uy = Math.Min(b.Y, y0);
+                boxes[at] = new Int32Rect(ux, uy, Math.Max(b.X + b.Width, x1) - ux, Math.Max(b.Y + b.Height, y1) - uy);
+            }
+        if (boxes.Count < 2) return [];
+        double mmPerPx = s.WidthMm / s.PxW; // skala asli: mm per piksel gambar penuh
+        return [.. boxes.OrderBy(b => b.Y).ThenBy(b => b.X).Select((b, i) =>
+        {
+            var part = new Rect((b.X - 1.0) / w, (b.Y - 1.0) / h, (b.Width + 2.0) / w, (b.Height + 2.0) / h);
+            var n = Load(s.Source, s.Page, 0, kiss, die, edited: s.Frozen, bleed: bleed, loadedPdf: s.Pdf, border: s.Border, stretchY: s.StretchY,
+                part: part, partMmPerPx: mmPerPx);
+            n.Name = $"{s.Name} #{i + 1}";
+            return n;
+        })];
+    }
+
+    // Kotak isi item hasil Pisah item: dicari ulang hanya di wilayah item (pr relatif terhadap kotak isi bb gambar asal).
+    static Int32Rect? PartBox(byte[] px, int fw, int fh, Int32Rect bb, Rect pr) => ContentBox(px, fw, fh,
+        new Int32Rect(bb.X + (int)Math.Floor(pr.X * bb.Width), bb.Y + (int)Math.Floor(pr.Y * bb.Height), (int)Math.Ceiling(pr.Width * bb.Width), (int)Math.Ceiling(pr.Height * bb.Height)));
+
+    // Gambar untuk Rapikan gambar. Item hasil Pisah item (temuan 2026-11-23: Rapikan sempat dikunci): hanya wilayah item itu, bukan seluruh file
+    // asal. Hasil Rapikan lalu menjadi gambar item itu sendiri.
+    public static byte[] PartImage(Sticker s)
+    {
+        var src = s.Edited ?? s.Raster;
+        if (s.Part is not { } pr) return src;
+        BitmapSource full;
+        using (var ms = new MemoryStream(src)) full = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+        var (px, fw, fh) = Pixels(full);
+        return ContentBox(px, fw, fh) is { } bb && PartBox(px, fw, fh, bb, pr) is { } r ? Png(new CroppedBitmap(full, r)) : src;
     }
 
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
         string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null,
-        CutShape dieShape = CutShape.Auto, double stretchY = 1, double? heightMm = null, SmartPick? smart = null)
+        CutShape dieShape = CutShape.Auto, double stretchY = 1, double? heightMm = null, SmartPick? smart = null, bool pack = false,
+        Rect? part = null, double partMmPerPx = 0)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var s = new Sticker { Source = path, Page = page, Name = Path.GetFileName(path) + (multiPage ? $" p{page + 1}" : "") };
@@ -276,6 +355,13 @@ public static partial class Loader
 
         var (px, fw, fh) = Pixels(full);
         var bb = ContentBox(px, fw, fh) ?? throw new InvalidOperationException(Lang.T("Empty"));
+        if (part is { } pr)
+        {
+            // Item hasil Pisah item: skala asli dipakai saat item baru dipisah.
+            bb = PartBox(px, fw, fh, bb, pr) ?? throw new InvalidOperationException(Lang.T("Empty"));
+            if (partMmPerPx > 0) widthMm = bb.Width * partMmPerPx;
+        }
+        s.Part = part;
         var crop = new CroppedBitmap(full, bb);
         crop.Freeze();
         s.PxW = bb.Width;
@@ -297,6 +383,8 @@ public static partial class Loader
         s.ArtW = widthMm;
         s.ArtH = bb.Height * k * stretchY;
         s.StretchY = stretchY;
+        // Penjaga terakhir untuk semua jalur muat (daftar desain, panel Pilihan, tarik pojok): mask 6 px/mm untuk sisi 3000 mm butuh GB memori.
+        if (s.ArtW > MaxSideMm || s.ArtH > MaxSideMm || bleed > Cut.MaxMm) throw new InvalidOperationException(Lang.T("TooBigMm", F(s.ArtW), F(s.ArtH)));
 
         var small = new TransformedBitmap(crop, new ScaleTransform(s.ArtW * PxMm / bb.Width, s.ArtH * PxMm / bb.Height));
         var mask = Silhouette(small, out int mw, out int mh);
@@ -311,7 +399,8 @@ public static partial class Loader
         // Die memakai bentuk yang sama, minimal 1 px di luar kiss, atau bentuk die sendiri (masukan 2026-10-26) yang membungkus kiss.
         s.Shape = shape;
         s.DieShape = dieShape;
-        if (manualKiss == null && manualDie == null)
+        s.Pack = pack;
+        if (manualKiss == null && manualDie == null && !pack) // pack: garisnya dari latar dan stiker di dalamnya, bukan bentuk preset
         {
             var use = shape != CutShape.Auto ? shape : Shapes.IsBox(mask) ? CutShape.Rect : CutShape.Auto;
             if (use != CutShape.Auto || dieShape != CutShape.Auto) (mk, md) = Shapes.Lines(mask, use, s.ArtW, s.ArtH, kiss, die, dieShape);
@@ -326,49 +415,68 @@ public static partial class Loader
         // Lubang asli artwork (latar yang tidak terhubung ke tepi gambar), misalnya tengah stiker donat.
         var holes = Solid(m);
         foreach (var (x, y) in Cells(holes)) holes[x, y] &= !m[x, y];
-        bool[,]? outer = null, kissMask = null;
+        bool[,]? outer = null, kissMask = null, dieTrace = null;
         var dieMan = md == null ? null : Raster(md, pad / PxMm, W, H);
         if (kiss.On)
         {
-            if (mk != null) { kissMask = Raster(mk, pad / PxMm, W, H); s.Kiss = Curves.PathOf(mk, pad / PxMm); }
+            if (mk != null) kissMask = Raster(mk, pad / PxMm, W, H);
             else
             {
-                kissMask = KeepHoles(Smooth(Close(m, kiss), m, kiss), holes);
+                if (pack)
+                {
+                    // Stickerpack: kiss mengelilingi tiap stiker di dalam latar (rongga diisi, latar di lubang ikut stiker), dan berhenti di tengah
+                    // celah ke stiker tetangga (PackKiss); die di bawah mengikuti latar.
+                    var o = PackObjects(small);
+                    var obj = new bool[W, H];
+                    for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) obj[x + pad, y + pad] = o[x, y];
+                    kissMask = PackKiss(obj, kiss);
+                }
+                else kissMask = KeepHoles(Smooth(Close(m, kiss), m, kiss), holes);
                 // Die manual dengan kiss otomatis: kiss dipangkas ke dalam die (minimal 1 px), supaya die tetap membungkus kiss.
                 if (dieMan != null) { var inside = Not(Dilate(Not(dieMan), 1)); foreach (var (x, y) in Cells(kissMask)) kissMask[x, y] &= inside[x, y]; }
-                s.Kiss = Trace(kissMask);
             }
             outer = kissMask;
         }
         if (die.On)
         {
-            if (dieMan != null) { outer = dieMan; s.Die = Curves.PathOf(md!, pad / PxMm); }
+            if (dieMan != null) outer = dieMan;
             else
             {
                 outer = Smooth(Close(m, die), m, die);
                 // Die selalu membungkus kiss, minimal 1 px di luarnya: bila sama persis, kurva Potrace keduanya bisa bersilangan.
                 if (kissMask != null) { var near = Dilate(kissMask, 1); foreach (var (x, y) in Cells(outer)) outer[x, y] |= near[x, y]; }
-                outer = KeepHoles(outer, holes);
-                s.Die = Trace(outer);
+                outer = dieTrace = KeepHoles(outer, holes);
             }
         }
         if (outer != null) outer = Solid(outer); // grid nesting memakai bentuk padat: tidak ada stiker di dalam lubang
         if (outer == null) throw new InvalidOperationException(Lang.T("NeedCut"));
 
-        s.Off = pad / PxMm;
-        s.W = Math.Ceiling(W / PxMm / Nest.Cell) * Nest.Cell;
-        s.H = Math.Ceiling(H / PxMm / Nest.Cell) * Nest.Cell;
+        // Garis manual atau smart select yang hanya mengelilingi sebagian gambar (daftar tugas 2026-11-20, C1): kotak stiker dipangkas ke garis
+        // terluar + 3 px, supaya bingkai pilihan, titik pojok, dan area klik mengikuti garis, bukan gambar aslinya. Garis otomatis tidak dipangkas.
+        int cx = 0, cy = 0, cw = W, chh = H;
+        if (manualKiss != null || manualDie != null)
+        {
+            int x0 = W, y0 = H, x1 = -1, y1 = -1;
+            foreach (var (x, y) in Cells(outer)) if (outer[x, y]) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
+            if (x1 >= 0) { cx = Math.Max(0, x0 - 3); cy = Math.Max(0, y0 - 3); cw = Math.Min(W, x1 + 4) - cx; chh = Math.Min(H, y1 + 4) - cy; }
+        }
+        s.Off = (pad - cx) / PxMm;
+        s.OffY = (pad - cy) / PxMm;
+        if (kiss.On) s.Kiss = mk != null ? Curves.PathOf(mk, s.Off, s.OffY) : Trace(kissMask!, cx, cy);
+        if (die.On) s.Die = dieMan != null ? Curves.PathOf(md!, s.Off, s.OffY) : Trace(dieTrace!, cx, cy);
+        s.W = Math.Ceiling(cw / PxMm / Nest.Cell) * Nest.Cell;
+        s.H = Math.Ceiling(chh / PxMm / Nest.Cell) * Nest.Cell;
         int cp = (int)Math.Round(Nest.Cell * PxMm), n = 0;
         s.Grid = new bool[(int)Math.Round(s.W / Nest.Cell), (int)Math.Round(s.H / Nest.Cell)];
-        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (outer[x, y]) { s.Grid[x / cp, y / cp] = true; n++; }
+        for (int y = 0; y < chh; y++) for (int x = 0; x < cw; x++) if (outer[x + cx, y + cy]) { s.Grid[x / cp, y / cp] = true; n++; }
         foreach (bool c in s.Grid) if (c) s.Area++;
         s.AreaMm2 = n / (PxMm * PxMm);
         double ky = k * stretchY; // arah tegak, ikut regangan
-        s.Full = new Rect(s.Off + (media.X - bb.X) * k, s.Off + (media.Y - bb.Y) * ky, media.Width * k, media.Height * ky);
+        s.Full = new Rect(s.Off + (media.X - bb.X) * k, s.OffY + (media.Y - bb.Y) * ky, media.Width * k, media.Height * ky);
         if (bled)
         {
-            var b = kiss.On ? kiss : die; // bleed diukur dari garis kiss; tanpa kiss dari garis die
-            (s.BleedPng, s.BleedView, s.BleedRect) = Bleed(crop, s.ArtW, s.ArtH, Math.Max(b.Off + b.Smooth, over) + bleed + 1, s.Off);
+            var b = kiss.On && !pack ? kiss : die; // bleed diukur dari garis kiss; tanpa kiss, dan untuk stickerpack, dari garis die
+            (s.BleedPng, s.BleedView, s.BleedRect) = Bleed(crop, s.ArtW, s.ArtH, Math.Max(b.Off + b.Smooth, over) + bleed + 1, s.Off, s.OffY);
         }
         return s;
     }
@@ -382,7 +490,7 @@ public static partial class Loader
     // muncul (temuan 2026-10-28). Saat digambar, hasilnya di-clip ke garis potong + bleed (Sticker.ArtClip).
     // ponytail: gambar bleed dibuat ulang penuh (maks 300 dpi); stiker raster ±300 mm jadi ±1-2 detik lebih lambat.
     // Ganti dengan lapisan bawah beresolusi rendah bila operator merasakan lambat.
-    static (byte[] png, BitmapSource view, Rect rect) Bleed(BitmapSource crop, double artW, double artH, double d, double off)
+    static (byte[] png, BitmapSource view, Rect rect) Bleed(BitmapSource crop, double artW, double artH, double d, double off, double offY)
     {
         double k = Math.Min(crop.PixelWidth / artW, BleedPxMm);
         var src = new TransformedBitmap(crop, new ScaleTransform(artW * k / crop.PixelWidth, artH * k / crop.PixelHeight));
@@ -401,7 +509,7 @@ public static partial class Loader
             }
         var bmp = BitmapSource.Create(W, H, 96, 96, PixelFormats.Bgra32, null, o, W * 4);
         bmp.Freeze();
-        return (Png(bmp), Proxy(bmp), new Rect(off - p / kx, off - p / ky, W / kx, H / ky));
+        return (Png(bmp), Proxy(bmp), new Rect(off - p / kx, offY - p / ky, W / kx, H / ky));
     }
 
     // Lapisan perluasan tanpa garis (pull-push): warna piksel pekat dirata-rata ke luar pada beberapa skala. Dekat tepi
@@ -600,11 +708,13 @@ public static partial class Loader
     // dan garis mengelilingi kotak gambar. Latar dibuang operator lewat Rapikan atau editor garis potong (masukan leader 2026-10-21).
     static bool Fg(byte[] px, int i) => px[i * 4 + 3] > 16;
 
-    static Int32Rect? ContentBox(byte[] px, int w, int h)
+    static Int32Rect? ContentBox(byte[] px, int w, int h, Int32Rect? within = null)
     {
+        var r = within ?? new Int32Rect(0, 0, w, h);
+        int xa = Math.Max(0, r.X), ya = Math.Max(0, r.Y), xb = Math.Min(w, r.X + r.Width), yb = Math.Min(h, r.Y + r.Height);
         int x0 = w, y0 = h, x1 = -1, y1 = -1;
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
+        for (int y = ya; y < yb; y++)
+            for (int x = xa; x < xb; x++)
                 if (Fg(px, y * w + x)) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
         return x1 < 0 ? null : new Int32Rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     }
@@ -616,6 +726,82 @@ public static partial class Loader
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) m[x, y] = Fg(px, y * W + x);
         w = W; h = H;
         return m;
+    }
+
+    // Stickerpack (2026-11-21): stiker = piksel pekat yang warnanya beda dari latar pack. Warna latar = warna terbanyak di tepi gambar,
+    // piksel transparan (misalnya sudut bulat) tidak dihitung, sama seperti smart select pada gambar opak. Bintik kecil dibuang.
+    // shortcut: toleransi 32 dan PackMinMm2 belum dikalibrasi dengan file pack customer; sesuaikan setelah uji potong di Graphtec.
+    public const double PackMinMm2 = 4;
+    public const double MaxSideMm = 2000; // sisi artwork terbesar; angka yang sama ada di teks TooBigMm
+    static bool[,] PackObjects(BitmapSource small) =>
+        ItemMask(small, (int)Math.Ceiling(PackMinMm2 * PxMm * PxMm), true) ?? throw new InvalidOperationException(Lang.T("PackNoObjects"));
+
+    // Garis kiss stickerpack per stiker (uji UI 2026-11-22: stiker berjarak ±2 mm dengan offset 1 mm dan Halus 1 mm menyatu jadi satu garis).
+    // Stiker = komponen objek yang sudah diisi, jadi objek di dalam lubang stiker lain ikut stiker itu. Tiap stiker mendapat offset dan Halus
+    // sendiri, lalu dipotong ke zonanya: piksel yang lebih dekat ke stiker itu daripada ke stiker lain, tanpa piksel di batas zona. Garis
+    // stiker yang berdekatan berhenti di tengah celah, tidak menyatu dan tidak bersilangan.
+    static bool[,] PackKiss(bool[,] obj, Cut kiss)
+    {
+        int W = obj.GetLength(0), H = obj.GetLength(1);
+        var fill = Solid(obj);
+        var (lab, parts) = Label(fill);
+        // Zona: BFS 8 arah dari semua stiker sekaligus; tiap piksel ikut stiker yang mencapainya lebih dulu.
+        var owner = new int[W, H];
+        var q = new Queue<(int X, int Y)>();
+        for (int x = 0; x < W; x++) for (int y = 0; y < H; y++) if (fill[x, y]) { owner[x, y] = lab[x, y]; q.Enqueue((x, y)); }
+        while (q.Count > 0)
+        {
+            var (x, y) = q.Dequeue();
+            for (int v = Math.Max(0, y - 1); v <= Math.Min(H - 1, y + 1); v++)
+                for (int u = Math.Max(0, x - 1); u <= Math.Min(W - 1, x + 1); u++)
+                    if (owner[u, v] == 0) { owner[u, v] = owner[x, y]; q.Enqueue((u, v)); }
+        }
+        bool Inside(int x, int y, int id) => owner[x, y] == id && (x == 0 || owner[x - 1, y] == id) && (x == W - 1 || owner[x + 1, y] == id)
+            && (y == 0 || owner[x, y - 1] == id) && (y == H - 1 || owner[x, y + 1] == id);
+        int grow = (int)Math.Ceiling((kiss.Off + 4 * kiss.Smooth) * PxMm) + 2; // offset + Halus + jangkauan blur
+        var res = new bool[W, H];
+        for (int i = 0; i < parts.Count; i++)
+        {
+            if (!parts[i].Value) continue;
+            var cells = parts[i].Cells;
+            int x0 = cells.Min(c => c.X) - grow, y0 = cells.Min(c => c.Y) - grow;
+            var sub = new bool[cells.Max(c => c.X) + grow - x0 + 1, cells.Max(c => c.Y) + grow - y0 + 1];
+            foreach (var (x, y) in cells) sub[x - x0, y - y0] = true;
+            var k = Solid(Smooth(Close(sub, kiss), sub, kiss));
+            for (int u = 0; u < k.GetLength(0); u++)
+                for (int v = 0; v < k.GetLength(1); v++)
+                {
+                    int x = u + x0, y = v + y0;
+                    if (k[u, v] && x >= 0 && y >= 0 && x < W && y < H && Inside(x, y, i + 1)) res[x, y] = true;
+                }
+        }
+        return res;
+    }
+
+    // Objek = piksel pekat yang warnanya beda dari latar (sama dengan Fg/Silhouette untuk piksel pekat). Tanpa tepi pekat (latar transparan) semua
+    // piksel pekat dihitung objek, kecuali needBg (stickerpack wajib punya latar). Komponen lebih kecil dari minCells dibuang. null = tidak ada objek.
+    static bool[,]? ItemMask(BitmapSource b, int minCells, bool needBg)
+    {
+        var (px, w, h) = Pixels(b);
+        // Latar berwarna hanya bila sebagian besar tepi gambar pekat; item di latar transparan juga menyentuh tepi kotak isi, tetapi hanya di beberapa titik.
+        int edge = 0, solid = 0;
+        void Count(int x, int y) { edge++; if (Fg(px, y * w + x)) solid++; }
+        for (int x = 0; x < w; x++) { Count(x, 0); Count(x, h - 1); }
+        for (int y = 1; y < h - 1; y++) { Count(0, y); Count(w - 1, y); }
+        var bg = solid * 2 > edge ? CleanImage.BorderColor(px, w, h, i => !Fg(px, i)) : null;
+        if (bg == null && needBg) return null;
+        var obj = new bool[w, h];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                int i = (y * w + x) * 4;
+                obj[x, y] = Fg(px, y * w + x) && (bg is not { } c || Math.Max(Math.Abs(px[i] - c.B), Math.Max(Math.Abs(px[i + 1] - c.G), Math.Abs(px[i + 2] - c.R))) > 32);
+            }
+        bool any = false;
+        foreach (var p in Label(obj).Parts.Where(p => p.Value))
+            if (p.Cells.Count < minCells) foreach (var (x, y) in p.Cells) obj[x, y] = false;
+            else any = true;
+        return any ? obj : null;
     }
 
     // Rongga garis potong dipertahankan (garis dalam, stiker donat) hanya bila seluruhnya berada di lubang asli artwork.
@@ -746,14 +932,15 @@ public static partial class Loader
         return d;
     }
 
-    static string Trace(bool[,] m)
+    // dx, dy: geser hasil (px mask), untuk kotak stiker yang dipangkas.
+    static string Trace(bool[,] m, int dx = 0, int dy = 0)
     {
         int W = m.GetLength(0), H = m.GetLength(1);
         using var pb = PotraceBitmap.Create(W, H);
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (m[x, y]) pb.SetBlack(x, y);
         var st = Potrace.Trace(new PotraceParam { AlphaMax = AlphaMax, OptTolerance = OptTolerance }, pb);
         var sb = new StringBuilder();
-        string P(PotraceDPoint p) => $"{F(p.X / PxMm)} {F(p.Y / PxMm)}";
+        string P(PotraceDPoint p) => $"{F((p.X - dx) / PxMm)} {F((p.Y - dy) / PxMm)}";
         for (var p = st.Plist; p != null; p = p.Next)
         {
             var c = p.Curve;
@@ -1583,14 +1770,14 @@ public static class Nest
             if (s.BorderGeo is { } bgeo) c.Children.Add(new System.Windows.Shapes.Path { Data = bgeo, Fill = Frozen(s.Border!.Value.Rgb), IsHitTestVisible = false });
             // artwork di-clip ke garis potongnya sendiri agar tidak menimpa stiker tetangga
             var art = new Canvas { Width = s.W, Height = s.H, Clip = s.ArtClip, IsHitTestVisible = false };
-            var (src, r) = s.BleedView is { } bv ? (bv, s.BleedRect) : (s.Preview, new Rect(s.Off, s.Off, s.ArtW, s.ArtH));
+            var (src, r) = s.BleedView is { } bv ? (bv, s.BleedRect) : (s.Preview, new Rect(s.Off, s.OffY, s.ArtW, s.ArtH));
             var img = new Image { Source = src, Width = r.Width, Height = r.Height, Stretch = Stretch.Fill };
             Canvas.SetLeft(img, r.X);
             Canvas.SetTop(img, r.Y);
             art.Children.Add(img);
             c.Children.Add(art);
-            if (s.KissGeo is { } k) c.Children.Add(new System.Windows.Shapes.Path { Data = k, Stroke = KissBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
-            if (s.DieGeo is { } d) c.Children.Add(new System.Windows.Shapes.Path { Data = d, Stroke = DieBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
+            if (!Cross.On && s.KissGeo is { } k) c.Children.Add(new System.Windows.Shapes.Path { Data = k, Stroke = KissBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
+            if (!Cross.On && s.DieGeo is { } d) c.Children.Add(new System.Windows.Shapes.Path { Data = d, Stroke = DieBrush, StrokeThickness = 0.4, IsHitTestVisible = false });
             if (sels != null && (p.Bad || sels.Contains(p))) // bingkai merah dan pilihan hanya untuk layar, tidak ikut pratinjau untuk customer
                 c.Children.Add(new System.Windows.Shapes.Rectangle
                 {
@@ -1599,8 +1786,58 @@ public static class Nest
                 });
             root.Children.Add(c);
         }
+        foreach (var (a, b) in Cross.Lines(ps))
+            root.Children.Add(new System.Windows.Shapes.Line { X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y, Stroke = Brushes.Black, StrokeThickness = Cross.Mm, IsHitTestVisible = false });
         if (regMarks) RegistrationMarks.Draw(root, cw, ch, margin);
         return root;
+    }
+}
+
+// Garis cross untuk potong manual (daftar tugas 2026-11-20): garis lurus hitam di antara stiker, dicetak sebagai pemandu potong tangan. Selama
+// cross aktif garis kiss/die tidak digambar dan tidak diexport. Cross 1 (tunggal): satu garis di tengah celah, celah = tebal garis. Cross 2
+// (ganda): garis di luar tiap tepi stiker, dengan celah di antaranya, seperti potong ganda di imposisi cetak.
+// Garis mengikuti ukuran dan posisi stiker, tidak membentang selebar lembar, jadi susunan Hemat dengan stiker diputar tetap aman (temuan 2026-11-23).
+public static class Cross
+{
+    public static int Kind;          // 0 mati, 1 tunggal, 2 ganda; diisi MainWindow.Arrange
+    public static double Mm = 1;     // tebal garis (mm)
+    public const double Ext = 5;     // garis diteruskan 5 mm di luar kumpulan stiker
+    public static bool On => Kind > 0;
+
+    // Garis (mm lembar) dari kotak garis potong terluar tiap stiker.
+    public static List<(Point A, Point B)> Lines(IEnumerable<Placed> ps)
+    {
+        var rs = On ? ps.Select(p => Nest.Xf(p).TransformBounds(p.S.Outer.Bounds)).ToList() : [];
+        return [.. Axis([.. rs.Select(r => (r.Left, r.Right, r.Top, r.Bottom))]).Select(l => (new Point(l.C, l.A), new Point(l.C, l.B))),
+                .. Axis([.. rs.Select(r => (r.Top, r.Bottom, r.Left, r.Right))]).Select(l => (new Point(l.A, l.C), new Point(l.B, l.C)))];
+    }
+
+    // Garis satu arah: C = posisi (sumbu Lo-Hi stiker), A-B = rentang sepanjang garis (sumbu From-To). Tiap tepi stiker mendapat garis setengah tebal
+    // di luar tepinya. Garis segaris disambung (lewat celah antar stiker). Tunggal: garis dua tepi yang berhadapan di satu celah (dibulatkan sel
+    // nesting) menjadi satu garis di tengah celah. Ujung garis diteruskan Ext, lalu garis dipotong di stiker yang dilintasinya.
+    static IEnumerable<(double C, double A, double B)> Axis(List<(double Lo, double Hi, double From, double To)> rs)
+    {
+        double half = Mm / 2, join = Mm + 2 * Nest.Cell, face = Kind == 1 ? join : 0.05;
+        var raw = rs.SelectMany(r => new[] { (C: r.Lo - half, r.From, r.To), (C: r.Hi + half, r.From, r.To) }).ToList();
+        var up = Enumerable.Range(0, raw.Count).ToArray();
+        int Root(int i) => up[i] == i ? i : up[i] = Root(up[i]);
+        for (int i = 0; i < raw.Count; i++)
+            for (int j = i + 1; j < raw.Count; j++)
+            {
+                double dc = Math.Abs(raw[i].C - raw[j].C), gap = Math.Max(raw[i].From, raw[j].From) - Math.Min(raw[i].To, raw[j].To); // gap < 0: rentang bertumpuk
+                if (dc <= 0.05 || dc <= face && gap < 0) up[Root(i)] = Root(j);
+            }
+        foreach (var g in Enumerable.Range(0, raw.Count).GroupBy(Root))
+        {
+            double c = (g.Min(i => raw[i].C) + g.Max(i => raw[i].C)) / 2, a = g.Min(i => raw[i].From), b = g.Max(i => raw[i].To), s = a - Ext;
+            // Ruas di antara stiker yang dilintasi garis; ruas yang tidak menyentuh rentang stiker garis ini (sisa perpanjangan) dibuang.
+            foreach (var r in rs.Where(r => r.Lo < c - 1e-6 && r.Hi > c + 1e-6 && r.To > s && r.From < b + Ext).OrderBy(r => r.From))
+            {
+                if (r.From > s && s < b && r.From > a) yield return (c, s, r.From);
+                s = Math.Max(s, r.To);
+            }
+            if (s < b) yield return (c, s, b + Ext);
+        }
     }
 }
 

@@ -56,6 +56,14 @@
                         <MenuItem x:Name="LangId" Header="Indonesia" Tag="id" IsChecked="True" Click="Lang_Click"/>
                         <MenuItem x:Name="LangEn" Header="English" Tag="en" Click="Lang_Click"/>
                     </MenuItem>
+                    <!-- Satuan ukuran (daftar tugas 2026-11-20); px dihitung pada 300 ppi -->
+                    <MenuItem x:Name="UnitMenu" Header="{DynamicResource MUnit}">
+                        <MenuItem Header="mm" Tag="0" IsChecked="True" Click="Unit_Click"/>
+                        <MenuItem Header="cm" Tag="1" Click="Unit_Click"/>
+                        <MenuItem Header="m" Tag="2" Click="Unit_Click"/>
+                        <MenuItem Header="inci (in)" Tag="3" Click="Unit_Click"/>
+                        <MenuItem Header="px (300 ppi)" Tag="4" Click="Unit_Click"/>
+                    </MenuItem>
                 </Menu>
             </DockPanel>
         </Border>
@@ -359,11 +367,11 @@
                                                 
                                                 <TextBlock Text="{DynamicResource SelSize}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
                                                 <TextBox x:Name="SelSizeBox" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelSize_LostFocus" ToolTip="{DynamicResource WidthTip}" Margin="0,0,0,3"/>
-                                                <TextBlock Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="2" Text="{DynamicResource UnitName}" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
                                                 <TextBlock Grid.Row="1" Text="{DynamicResource SelH}" Style="{StaticResource Label}" Margin="0,0,12,3" VerticalAlignment="Center"/>
                                                 <TextBox x:Name="SelHeightBox" Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" LostFocus="SelHeight_LostFocus" ToolTip="{DynamicResource HeightTip}" Margin="0,0,0,3"/>
-                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="mm" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{DynamicResource UnitName}" Style="{StaticResource Small}" Margin="6,0,0,3" VerticalAlignment="Center"/>
 
                                                 <CheckBox x:Name="LockRatio" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" IsChecked="True" Content="{DynamicResource LockRatio}" ToolTip="{DynamicResource LockRatioTip}" Margin="0,0,0,3"/>
 
@@ -550,6 +558,20 @@
                                     <DockPanel Margin="0,6,0,0" ToolTip="{DynamicResource BleedTip}">
                                         <TextBox x:Name="BleedBox" Style="{StaticResource Num}" Text="0" Width="58" DockPanel.Dock="Right"/>
                                         <TextBlock Text="{DynamicResource Bleed}" Style="{StaticResource Label}"/>
+                                    </DockPanel>
+                                    <!-- Garis cross untuk potong manual (daftar tugas 2026-11-20) -->
+                                    <DockPanel Margin="0,10,0,0" ToolTip="{DynamicResource CrossTip}">
+                                        <ComboBox x:Name="CrossBox" Width="110" DockPanel.Dock="Right" SelectedIndex="0" SelectionChanged="Cross_Changed"
+                                                  AutomationProperties.Name="{DynamicResource Cross}">
+                                            <ComboBoxItem Content="{DynamicResource CrossOff}"/>
+                                            <ComboBoxItem Content="{DynamicResource Cross1}"/>
+                                            <ComboBoxItem Content="{DynamicResource Cross2}"/>
+                                        </ComboBox>
+                                        <TextBlock Text="{DynamicResource Cross}" Style="{StaticResource Label}"/>
+                                    </DockPanel>
+                                    <DockPanel Margin="0,6,0,0" ToolTip="{DynamicResource CrossTip}">
+                                        <TextBox x:Name="CrossMmBox" Style="{StaticResource Num}" Text="1" Width="58" DockPanel.Dock="Right" AutomationProperties.Name="{DynamicResource CrossMm}"/>
+                                        <TextBlock Text="{DynamicResource CrossMm}" Style="{StaticResource Label}"/>
                                     </DockPanel>
                                     <TextBlock Text="{DynamicResource CutUnit}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,8,0,0" Opacity="0.8"/>
                                 </StackPanel>

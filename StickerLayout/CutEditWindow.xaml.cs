@@ -152,6 +152,14 @@ public partial class CutEditWindow : Window
         Changed();
     }
 
+    // Esc (Batal) atau X sesudah mengedit: tanya dulu, supaya satu Esc nyasar tidak membuang semua edit titik.
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        if (IsVisible && DialogResult != true && undo.Count > 0
+            && MessageBox.Show(this, Lang.T("DiscardEdits"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) e.Cancel = true;
+        base.OnClosing(e);
+    }
+
     internal void Undo() => Step(undo, redo);
     internal void Redo() => Step(redo, undo);
 

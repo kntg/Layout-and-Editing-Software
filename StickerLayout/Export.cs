@@ -121,17 +121,23 @@ public static class Export
                 {
                     // PDF gagal diimpor PDFsharp: tempel render layar (resolusi lebih rendah, warna RGB)
                     if (!images.TryGetValue(s, out var img)) images[s] = img = XImage.FromStream(new MemoryStream(Loader.Png(s.Preview)));
-                    g.DrawImage(img, s.Off, s.Off, s.ArtW, s.ArtH);
+                    g.DrawImage(img, s.Off, s.OffY, s.ArtW, s.ArtH);
                 }
                 g.Restore(st);
             }
-            foreach (var p in cuts ? sheets[i] : [])
+            foreach (var p in cuts && !Cross.On ? sheets[i] : [])
             {
                 var st = g.Save();
                 Place(g, p);
                 if (p.S.KissGeo is { } k) g.DrawPath(new XPen(KissColor, 0.1), ToPath(k));
                 if (p.S.DieGeo is { } d) g.DrawPath(new XPen(DieColor, 0.1), ToPath(d));
                 g.Restore(st);
+            }
+            // Garis cross dicetak bersama artwork (potong manual), hitam 100%.
+            if (art)
+            {
+                var crossPen = new XPen(XColor.FromCmyk(0, 0, 0, 1), Cross.Mm);
+                foreach (var (a, b) in Cross.Lines(sheets[i])) g.DrawLine(crossPen, a.X, a.Y, b.X, b.Y);
             }
             if (regMarks)
             {
@@ -175,8 +181,7 @@ public static class Export
         for (int i = 0; i < sheets.Count; i++)
         {
             double h = sheetH[i];
-            var file = sheets.Count == 1 ? path
-                : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{numbers?[i] ?? i + 1}{Path.GetExtension(path)}");
+            var file = SheetFile(path, sheets.Count, i, numbers);
             var enc = new JpegBitmapEncoder { QualityLevel = 85 };
             enc.Frames.Add(BitmapFrame.Create(Snapshot(Nest.Sheet(sheets[i], cw, h, margin, null, i, regMarks), cw, h, 2000 / Math.Max(cw, h))));
             using (var fs = File.Create(file)) enc.Save(fs);
@@ -184,6 +189,10 @@ public static class Export
         }
         return files;
     }
+
+    // Nama file per lembar: nama-<nomor lembar asli>.ext. Tanpa nomor (layout satu lembar) dan satu file saja: nama yang dipilih di dialog simpan.
+    internal static string SheetFile(string path, int count, int i, IList<int>? numbers) => count == 1 && numbers == null ? path
+        : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{numbers?[i] ?? i + 1}{Path.GetExtension(path)}");
 
     // Render elemen WPF (satuan mm) ke bitmap; k = pixel per mm.
     public static BitmapSource Snapshot(FrameworkElement el, double w, double h, double k)

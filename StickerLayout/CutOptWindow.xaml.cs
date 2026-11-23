@@ -5,7 +5,7 @@ namespace StickerLayout;
 
 public partial class CutOptWindow : Window
 {
-    public (Cut Kiss, Cut Die)? Result { get; private set; }
+    public (Cut Kiss, Cut Die, bool Pack)? Result { get; private set; }
 
     public CutOptWindow(Sticker st, Cut panelKiss, Cut panelDie)
     {
@@ -21,6 +21,7 @@ public partial class CutOptWindow : Window
             DieOn.IsChecked = st.LoadedDie.On;
             DieOff.Text = MmText.Show(st.LoadedDie.Off);
             DieSm.Text = MmText.Show(st.LoadedDie.Smooth);
+            PackBox.IsChecked = st.Pack;
         }
         else
         {
@@ -65,7 +66,7 @@ public partial class CutOptWindow : Window
         foreach (var box in new[] { KissOff, KissSm, DieOff, DieSm })
             if (MmText.Parse(box.Text) is not >= 0)
             {
-                MessageBox.Show(Lang.T("BadNumber", box.Text, 0), App.Brand);
+                MessageBox.Show(Lang.T("BadNumber", box.Text, MmText.Show(0), MmText.Show(5000), Units.Name), App.Brand);
                 box.Focus();
                 box.SelectAll();
                 return;
@@ -74,14 +75,15 @@ public partial class CutOptWindow : Window
         Cut kiss = new(KissOn.IsChecked == true, D(KissOff, 2, 0), D(KissSm, 0, 0));
         Cut die = new(DieOn.IsChecked == true, D(DieOff, 4, 0), D(DieSm, 0, 0));
 
-        string? err = Cut.Error(kiss, die);
+        bool pack = PackBox.IsChecked == true;
+        string? err = Cut.Error(kiss, die, pack);
         if (err != null)
         {
             MessageBox.Show(Lang.T(err), App.Brand, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        Result = (kiss, die);
+        Result = (kiss, die, pack);
         DialogResult = true;
         Close();
     }

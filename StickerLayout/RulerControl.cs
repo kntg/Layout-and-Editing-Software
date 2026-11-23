@@ -23,7 +23,7 @@ public sealed class RulerControl : FrameworkElement
         double thickness = IsHorizontal ? ActualHeight : ActualWidth;
         if (length <= 0 || thickness <= 0) return;
 
-        double major = MajorStep(52 / Scale);
+        double major = MajorStep(52 / Scale / Units.Mm) * Units.Mm; // langkah bulat dalam satuan tampilan, dihitung balik ke mm
         double minor = major / 10;
         double first = Math.Ceiling(-Origin / (minor * Scale)) * minor;
         var pen = new Pen(TickBrush, 1);
@@ -46,7 +46,7 @@ public sealed class RulerControl : FrameworkElement
                 drawingContext.DrawLine(pen, new Point(thickness, position), new Point(thickness - tickLength, position));
 
             if (!isMajor) continue;
-            string text = value.ToString("0.#", CultureInfo.InvariantCulture);
+            string text = (value / Units.Mm + 0.0).ToString("0.###", CultureInfo.InvariantCulture); // + 0.0: tanpa "-0"
             var label = new FormattedText(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 9, LabelBrush, pixelsPerDip);
             if (IsHorizontal)
                 drawingContext.DrawText(label, new Point(position - label.Width / 2, 2));
