@@ -77,7 +77,8 @@
                 MouseRightButtonDown="View_PanDown" MouseMove="View_PanMove" MouseRightButtonUp="View_PanUp">
             <Rectangle x:Name="ViewBg" Fill="{StaticResource Checker}"/>
             <Image x:Name="View" Stretch="Fill" AutomationProperties.Name="{DynamicResource CleanClick}"/>
-            <Rectangle x:Name="CropRect" Stroke="White" StrokeThickness="2" StrokeDashArray="4 3" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Rectangle x:Name="CropRect" Stroke="{StaticResource Dim}" StrokeThickness="1" StrokeDashArray="4 3" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Path x:Name="CropDots" Fill="{StaticResource Ink0}" Stroke="White" StrokeThickness="1.2" Visibility="Collapsed" IsHitTestVisible="False"/>
         </Canvas>
     </DockPanel>
 </Window>

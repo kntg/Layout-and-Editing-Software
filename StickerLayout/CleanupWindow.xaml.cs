@@ -78,11 +78,22 @@ public partial class CleanupWindow : Window
     {
         bool on = CropBox.IsChecked == true;
         CropRect.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        CropDots.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (!on) return;
         Canvas.SetLeft(CropRect, ox + crop.X * scale);
         Canvas.SetTop(CropRect, oy + crop.Y * scale);
         CropRect.Width = crop.Width * scale;
         CropRect.Height = crop.Height * scale;
+
+        // Titik di empat pojok bingkai crop (sama gaya dengan HandleDots di CutEditWindow).
+        double l = ox + crop.Left * scale, r = ox + crop.Right * scale, t = oy + crop.Top * scale, b = oy + crop.Bottom * scale;
+        const double dot = 3;
+        var dots = new GeometryGroup();
+        dots.Children.Add(new EllipseGeometry(new Point(l, t), dot, dot));
+        dots.Children.Add(new EllipseGeometry(new Point(r, t), dot, dot));
+        dots.Children.Add(new EllipseGeometry(new Point(r, b), dot, dot));
+        dots.Children.Add(new EllipseGeometry(new Point(l, b), dot, dot));
+        CropDots.Data = dots;
     }
 
     // Sisi bingkai di dekat titik layar p; di pojok dua sisi sekaligus.

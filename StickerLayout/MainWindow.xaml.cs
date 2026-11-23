@@ -504,32 +504,6 @@ public partial class MainWindow : Window
         Redraw(Lang.T("CutSaved", it.Name));
     }
 
-    // Pisah item (daftar tugas 2026-11-20): desain dari file yang sudah di-layout diganti item-item di dalamnya (jumlah pcs sama), lalu lembar
-    // disusun ulang dengan Jarak antar stiker, sehingga garis potong tiap item tidak lagi menyatu.
-    void SplitItem(Sticker st)
-    {
-        if (!CutsValid()) return;
-        List<Sticker> parts;
-        Mouse.OverrideCursor = Cursors.Wait;
-        try { var cuts = CutsOf(st); parts = Loader.SplitItems(st, cuts.Kiss, cuts.Die, BleedMm); }
-        catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
-        finally { Mouse.OverrideCursor = null; }
-        if (parts.Count < 2) { Redraw(Lang.T("SplitNone", st.Name)); return; }
-        int idx = items.IndexOf(st);
-        if (idx < 0) return;
-        syncingList = true;
-        items.RemoveAt(idx);
-        for (int i = 0; i < parts.Count; i++)
-        {
-            (parts[i].Copies, parts[i].OwnCut) = (st.Copies, st.OwnCut);
-            items.Insert(idx + i, parts[i]);
-        }
-        syncingList = false;
-        clip = [.. clip.Where(c => c.S != st)];
-        Arrange();
-        Redraw(Lang.T("SplitDone", st.Name, parts.Count));
-    }
-
     // Ganti desain dengan hasil muat ulangnya; jumlah salinan dan nama tetap.
     void Replace(Sticker old, Sticker n)
     {
@@ -1829,7 +1803,6 @@ public partial class MainWindow : Window
         {
             Add("CutEdit", "", () => CutItem(st));
             Add("CutOpt", "", () => CutOptItem(st));
-            Add("SplitItems", "", () => SplitItem(st));
             Add("Clean", "", () => Clean(st), st.CanClean);
             Add("Split", "", () => SplitItem(st), Loader.CanSplit(st));
             m.Items.Add(new Separator());
