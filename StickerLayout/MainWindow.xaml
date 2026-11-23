@@ -307,12 +307,12 @@
                                                                                 </MenuItem.Header>
                                                                             </MenuItem>
 
-                                                                            <!-- Pisah item (daftar tugas 2026-11-20): file yang sudah di-layout menjadi item sendiri-sendiri -->
-                                                                            <MenuItem Tag="Split" AutomationProperties.Name="{DynamicResource SplitItems}">
+                                                                            <!-- Menu Pisah jadi item (Split) -->
+                                                                            <MenuItem Tag="Split" ToolTipService.ShowOnDisabled="True">
                                                                                 <MenuItem.Header>
                                                                                     <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
-                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8C6;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                                                        <TextBlock Text="{DynamicResource SplitItems}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                                                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B9;" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                                        <TextBlock Text="{DynamicResource Split}" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                                                                                     </StackPanel>
                                                                                 </MenuItem.Header>
                                                                             </MenuItem>

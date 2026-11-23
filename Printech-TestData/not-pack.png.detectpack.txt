@@ -1,0 +1,7 @@
+File     : not-pack.png
+IsPack   : False
+Stiker   : 1
+Kartu mm : 66.8 x 66.8
+Alasan   : TooFewIslands
+Kiss path: 0
+Die path : -
