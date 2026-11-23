@@ -787,6 +787,10 @@ public static class SelfCheck
             var t20Big = t20Items.Count == 3 ? Loader.Reload(t20Items[1], kiss, die, 0, 48) : null;
             bool t20Split = t20Items.Count == 3 && t20Items.All(t => Math.Abs(t.ArtW - t20Want) < 0.6 && t.Part != null) && t20Items[0].Name.EndsWith("#1")
                 && t20Big != null && Math.Abs(t20Big.ArtW - 48) < 0.01 && Math.Abs(t20Big.ArtH - 48) < 0.6;
+            // Item hasil pisah bisa dirapikan (temuan 2026-11-23): Rapikan menerima gambar item itu saja, dan hasilnya desain mandiri seukuran item.
+            var t20Part = t20Items.Count == 3 ? Loader.Load("layout.png", 0, t20Items[0].WidthMm, kiss, die, edited: Loader.PartImage(t20Items[0])) : null;
+            t20Split &= t20Part != null && t20Items[0].CanClean && t20Part.Part == null && t20Part.PxW == t20Items[0].PxW
+                && Math.Abs(t20Part.ArtH - t20Items[0].ArtH) < 0.05;
             // A4: garis cross 2 x 2 kotak. Cross 1 (celah 1 mm): 3 garis tegak + 3 mendatar. Cross 2 (celah 4 mm): 4 + 4.
             var t20Rect = Loader.Load("pack.png", 0, 120, new Cut(true, 0, 0), none, edited: packImg);
             var t20Ob = t20Rect.Outer.Bounds;
@@ -795,8 +799,34 @@ public static class SelfCheck
             var t20One = Cross.Lines(T20Grid(1));
             Cross.Kind = 2;
             var t20Two = Cross.Lines(T20Grid(4));
+            // Temuan 2026-11-23 (Hemat + cross): garis tidak boleh menembus stiker, dan tiap sisi stiker tetap punya garis. Grid 2 x 2 ditambah satu
+            // stiker diputar yang melintasi garis baris, dan susunan Hemat sungguhan 80 mm di A3+ (sisa lebar diisi stiker diputar).
+            (int Through, int Bare) CrossFault(List<Placed> ps)
+            {
+                var rs = ps.Select(p => Nest.Xf(p).TransformBounds(p.S.Outer.Bounds)).ToList();
+                var ls = Cross.Lines(ps).Select(l => l.A.X == l.B.X ? (C: l.A.X, A: Math.Min(l.A.Y, l.B.Y), B: Math.Max(l.A.Y, l.B.Y), V: true)
+                    : (C: l.A.Y, A: Math.Min(l.A.X, l.B.X), B: Math.Max(l.A.X, l.B.X), V: false)).ToList();
+                const double e = 0.01;
+                double near = Cross.Mm + 2 * Nest.Cell;
+                int through = ls.Count(l => rs.Any(r => l.V
+                    ? r.Left + e < l.C && l.C < r.Right - e && Math.Max(l.A, r.Top + e) < Math.Min(l.B, r.Bottom - e)
+                    : r.Top + e < l.C && l.C < r.Bottom - e && Math.Max(l.A, r.Left + e) < Math.Min(l.B, r.Right - e)));
+                bool Has(bool v, double c, double mid) => ls.Any(l => l.V == v && Math.Abs(l.C - c) <= near && l.A <= mid && mid <= l.B);
+                int bare = rs.Count(r => !(Has(true, r.Left, (r.Top + r.Bottom) / 2) && Has(true, r.Right, (r.Top + r.Bottom) / 2)
+                    && Has(false, r.Top, (r.Left + r.Right) / 2) && Has(false, r.Bottom, (r.Left + r.Right) / 2)));
+                return (through, bare);
+            }
+            List<Placed> T20Mixed(double gap) => [.. T20Grid(gap), new Placed { S = t20Rect, Rot = 90, X = 15 + 2 * (t20Ob.Width + gap), Y = 50 }];
+            var t20MixTwo = CrossFault(T20Mixed(4));
+            Cross.Kind = 1;
+            var t20MixOne = CrossFault(T20Mixed(1));
+            var t20Mk = Loader.Load("pack.png", 0, 80, new Cut(true, 0, 0), none, edited: packImg);
+            t20Mk.Copies = 40;
+            var t20Hemat = Nest.Run([t20Mk], 320, 480, Margin, 1, out _)[0];
+            var t20HematFault = CrossFault(t20Hemat);
             Cross.Kind = 0;
-            bool t20Cross = t20One.Count == 6 && t20One.Count(l => l.A.X == l.B.X) == 3 && t20Two.Count == 8;
+            bool t20Cross = t20One.Count == 6 && t20One.Count(l => l.A.X == l.B.X) == 3 && t20Two.Count == 8
+                && t20MixOne == (0, 0) && t20MixTwo == (0, 0) && t20HematFault == (0, 0);
             // B: satuan tampilan. 6,25 cm = 62,5 mm dan tampil lagi 6.25; 300 px = 25,4 mm (300 ppi).
             Units.Index = 1;
             bool t20Unit = MmText.Parse("6,25") == 62.5 && MmText.Show(62.5) == "6.25";
@@ -805,7 +835,9 @@ public static class SelfCheck
             Units.Index = 0;
             Check(t20Box && t20Split && t20Cross && t20Unit, $"daftar tugas 2026-11-20: kotak garis manual {t20C1.W}x{t20C1.H} mm {t20Box}; pisah item {t20Items.Count} item "
                 + $"({string.Join(", ", t20Items.Select(t => $"{t.ArtW:F2}"))} mm, harapan {t20Want:F2}), ubah ukuran {t20Big?.ArtW:F2} mm {t20Split}; "
-                + $"cross tunggal {t20One.Count} garis, ganda {t20Two.Count} garis {t20Cross}; satuan {t20Unit}");
+                + $"rapikan item {t20Part?.PxW} px (item {t20Items.FirstOrDefault()?.PxW}); cross tunggal {t20One.Count} garis, ganda {t20Two.Count} garis, "
+                + $"tembus/sisi tanpa garis: campur tunggal {t20MixOne}, ganda {t20MixTwo}, Hemat {t20Hemat.Count} pcs ({t20Hemat.Count(p => p.Rot % 180 != 0)} diputar) "
+                + $"{t20HematFault} {t20Cross}; satuan {t20Unit}");
 
             // P1: CDR tanpa CorelDRAW (lewat proses worker): pesan jelas, aplikasi tidak crash.
             var fakeCdr = Path.Combine(dir, "tidak-ada.cdr");

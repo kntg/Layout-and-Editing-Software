@@ -437,9 +437,9 @@ public partial class MainWindow : Window
 
     void Clean(Sticker it)
     {
-        if (!it.CanClean) { Redraw(Lang.T(it.Part != null ? "CleanPart" : "CleanVector")); return; }
+        if (!it.CanClean) { Redraw(Lang.T("CleanVector")); return; }
         if (!CutsValid()) return;
-        var w = new CleanupWindow(it.Edited ?? it.Raster, it.Name) { Owner = this };
+        var w = new CleanupWindow(Loader.PartImage(it), it.Name) { Owner = this };
 
         var workArea = SystemParameters.WorkArea;
         w.MaxWidth = workArea.Width - 40;
@@ -456,8 +456,9 @@ public partial class MainWindow : Window
         try
         {
             var cuts = CutsOf(it);
+            // Hasil Rapikan sudah berupa gambar item sendiri, jadi item hasil pisah menjadi desain mandiri (tanpa Part).
             Replace(it, Loader.Load(it.Source, it.Page, it.WidthMm, cuts.Kiss, cuts.Die, edited: result, bleed: BleedMm, shape: it.Shape, border: it.Border, dieShape: it.DieShape,
-                stretchY: it.StretchY, pack: it.Pack, part: it.Part));
+                stretchY: it.StretchY, pack: it.Pack));
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, App.Brand); return; }
         Arrange();
@@ -1568,7 +1569,7 @@ public partial class MainWindow : Window
                     if ((string)item.Tag == "Clean" && btn.DataContext is Sticker st)
                     {
                         item.IsEnabled = st.CanClean;
-                        item.ToolTip = Lang.T(st.CanClean ? "CleanTip" : st.Part != null ? "CleanPart" : "CleanVector");
+                        item.ToolTip = Lang.T(st.CanClean ? "CleanTip" : "CleanVector");
                     }
                     // HAPUS dulu event listener yang mungkin menumpuk dari klik sebelumnya
                     item.Click -= MenuAction_Click;

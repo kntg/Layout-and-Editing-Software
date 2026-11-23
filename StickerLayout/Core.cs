@@ -74,7 +74,7 @@ public class Sticker
     // SVG digambar ulang selama filenya masih sama, supaya tetap tajam pada lebar baru; gambar yang ditautkan SVG hanya terbaca dari folder aslinya.
     // null = baca dari sumbernya (PDF lewat salinan saat dimuat).
     public byte[]? Frozen => Edited ?? (Pdf != null || SvgStamp is { } v && v == Loader.Stamp(Source) ? null : Raster);
-    public bool CanClean => Pdf == null && Part == null; // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh; item hasil pisah dirapikan dari file asalnya
+    public bool CanClean => Pdf == null; // vektor (PDF/AI/CDR) tidak dirapikan agar warna CMYK tetap utuh; item hasil pisah dirapikan lewat Loader.PartImage
     // Item hasil Pisah item (2026-11-20): wilayahnya di kotak isi artwork asal (0..1); null = seluruh file. Hanya diisi Loader.Load.
     public Rect? Part;
     // PDF/AI yang tidak bisa ditempel vektor (halaman diputar, tidak terbaca PDFsharp): ditempel sebagai gambar RGB.
@@ -289,6 +289,22 @@ public static partial class Loader
         })];
     }
 
+    // Kotak isi item hasil Pisah item: dicari ulang hanya di wilayah item (pr relatif terhadap kotak isi bb gambar asal).
+    static Int32Rect? PartBox(byte[] px, int fw, int fh, Int32Rect bb, Rect pr) => ContentBox(px, fw, fh,
+        new Int32Rect(bb.X + (int)Math.Floor(pr.X * bb.Width), bb.Y + (int)Math.Floor(pr.Y * bb.Height), (int)Math.Ceiling(pr.Width * bb.Width), (int)Math.Ceiling(pr.Height * bb.Height)));
+
+    // Gambar untuk Rapikan gambar. Item hasil Pisah item (temuan 2026-11-23: Rapikan sempat dikunci): hanya wilayah item itu, bukan seluruh file
+    // asal. Hasil Rapikan lalu menjadi gambar item itu sendiri.
+    public static byte[] PartImage(Sticker s)
+    {
+        var src = s.Edited ?? s.Raster;
+        if (s.Part is not { } pr) return src;
+        BitmapSource full;
+        using (var ms = new MemoryStream(src)) full = BitmapDecoder.Create(ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+        var (px, fw, fh) = Pixels(full);
+        return ContentBox(px, fw, fh) is { } bb && PartBox(px, fw, fh, bb, pr) is { } r ? Png(new CroppedBitmap(full, r)) : src;
+    }
+
     public static Sticker Load(string path, int page, double widthMm, Cut kiss, Cut die, bool multiPage = false, byte[]? edited = null, double bleed = 0,
         string? loadedPdf = null, List<Node[]>? manualKiss = null, List<Node[]>? manualDie = null, CutShape shape = CutShape.Auto, Cmyk? border = null,
         CutShape dieShape = CutShape.Auto, double stretchY = 1, double? heightMm = null, SmartPick? smart = null, bool pack = false,
@@ -341,10 +357,8 @@ public static partial class Loader
         var bb = ContentBox(px, fw, fh) ?? throw new InvalidOperationException(Lang.T("Empty"));
         if (part is { } pr)
         {
-            // Item hasil Pisah item: kotak isi dicari ulang hanya di wilayah item; skala asli dipakai saat item baru dipisah.
-            var within = new Int32Rect(bb.X + (int)Math.Floor(pr.X * bb.Width), bb.Y + (int)Math.Floor(pr.Y * bb.Height),
-                (int)Math.Ceiling(pr.Width * bb.Width), (int)Math.Ceiling(pr.Height * bb.Height));
-            bb = ContentBox(px, fw, fh, within) ?? throw new InvalidOperationException(Lang.T("Empty"));
+            // Item hasil Pisah item: skala asli dipakai saat item baru dipisah.
+            bb = PartBox(px, fw, fh, bb, pr) ?? throw new InvalidOperationException(Lang.T("Empty"));
             if (partMmPerPx > 0) widthMm = bb.Width * partMmPerPx;
         }
         s.Part = part;
@@ -1782,7 +1796,7 @@ public static class Nest
 // Garis cross untuk potong manual (daftar tugas 2026-11-20): garis lurus hitam di antara stiker, dicetak sebagai pemandu potong tangan. Selama
 // cross aktif garis kiss/die tidak digambar dan tidak diexport. Cross 1 (tunggal): satu garis di tengah celah, celah = tebal garis. Cross 2
 // (ganda): garis di luar tiap tepi stiker, dengan celah di antaranya, seperti potong ganda di imposisi cetak.
-// shortcut: garis membentang melintasi semua stiker di lembar, jadi hanya rapi untuk susunan Rapi dengan stiker berukuran sama.
+// Garis mengikuti ukuran dan posisi stiker, tidak membentang selebar lembar, jadi susunan Hemat dengan stiker diputar tetap aman (temuan 2026-11-23).
 public static class Cross
 {
     public static int Kind;          // 0 mati, 1 tunggal, 2 ganda; diisi MainWindow.Arrange
@@ -1794,29 +1808,36 @@ public static class Cross
     public static List<(Point A, Point B)> Lines(IEnumerable<Placed> ps)
     {
         var rs = On ? ps.Select(p => Nest.Xf(p).TransformBounds(p.S.Outer.Bounds)).ToList() : [];
-        if (rs.Count == 0) return [];
-        double top = rs.Min(r => r.Top) - Ext, bottom = rs.Max(r => r.Bottom) + Ext, left = rs.Min(r => r.Left) - Ext, right = rs.Max(r => r.Right) + Ext;
-        return [.. Cuts(rs.Select(r => (r.Left, r.Right))).Select(x => (new Point(x, top), new Point(x, bottom))),
-                .. Cuts(rs.Select(r => (r.Top, r.Bottom))).Select(y => (new Point(left, y), new Point(right, y)))];
+        return [.. Axis([.. rs.Select(r => (r.Left, r.Right, r.Top, r.Bottom))]).Select(l => (new Point(l.C, l.A), new Point(l.C, l.B))),
+                .. Axis([.. rs.Select(r => (r.Top, r.Bottom, r.Left, r.Right))]).Select(l => (new Point(l.A, l.C), new Point(l.B, l.C)))];
     }
 
-    // Posisi garis di satu sumbu. Tepi yang berdekatan (satu celah, dibulatkan sel nesting) dikumpulkan. Tunggal: satu garis di tengah celah, dan
-    // setengah tebal garis di luar tepi terluar. Ganda: garis setengah tebal di luar tiap tepi.
-    static List<double> Cuts(IEnumerable<(double Lo, double Hi)> spans)
+    // Garis satu arah: C = posisi (sumbu Lo-Hi stiker), A-B = rentang sepanjang garis (sumbu From-To). Tiap tepi stiker mendapat garis setengah tebal
+    // di luar tepinya. Garis segaris disambung (lewat celah antar stiker). Tunggal: garis dua tepi yang berhadapan di satu celah (dibulatkan sel
+    // nesting) menjadi satu garis di tengah celah. Ujung garis diteruskan Ext, lalu garis dipotong di stiker yang dilintasinya.
+    static IEnumerable<(double C, double A, double B)> Axis(List<(double Lo, double Hi, double From, double To)> rs)
     {
-        var edges = spans.SelectMany(s => new[] { (At: s.Lo, Lo: true), (At: s.Hi, Lo: false) }).OrderBy(e => e.At).ToList();
-        double half = Mm / 2, join = Mm + 2 * Nest.Cell;
-        var res = new List<double>();
-        for (int i = 0, j; i < edges.Count; i = j + 1)
+        double half = Mm / 2, join = Mm + 2 * Nest.Cell, face = Kind == 1 ? join : 0.05;
+        var raw = rs.SelectMany(r => new[] { (C: r.Lo - half, r.From, r.To), (C: r.Hi + half, r.From, r.To) }).ToList();
+        var up = Enumerable.Range(0, raw.Count).ToArray();
+        int Root(int i) => up[i] == i ? i : up[i] = Root(up[i]);
+        for (int i = 0; i < raw.Count; i++)
+            for (int j = i + 1; j < raw.Count; j++)
+            {
+                double dc = Math.Abs(raw[i].C - raw[j].C), gap = Math.Max(raw[i].From, raw[j].From) - Math.Min(raw[i].To, raw[j].To); // gap < 0: rentang bertumpuk
+                if (dc <= 0.05 || dc <= face && gap < 0) up[Root(i)] = Root(j);
+            }
+        foreach (var g in Enumerable.Range(0, raw.Count).GroupBy(Root))
         {
-            for (j = i; j + 1 < edges.Count && edges[j + 1].At - edges[j].At <= join; j++) { }
-            var g = edges.GetRange(i, j - i + 1);
-            if (Kind == 2) res.AddRange(g.Select(e => e.Lo ? e.At - half : e.At + half));
-            else if (g.Any(e => e.Lo) && g.Any(e => !e.Lo)) res.Add((g.Where(e => !e.Lo).Max(e => e.At) + g.Where(e => e.Lo).Min(e => e.At)) / 2);
-            else res.Add(g[0].Lo ? g.Min(e => e.At) - half : g.Max(e => e.At) + half);
+            double c = (g.Min(i => raw[i].C) + g.Max(i => raw[i].C)) / 2, a = g.Min(i => raw[i].From), b = g.Max(i => raw[i].To), s = a - Ext;
+            // Ruas di antara stiker yang dilintasi garis; ruas yang tidak menyentuh rentang stiker garis ini (sisa perpanjangan) dibuang.
+            foreach (var r in rs.Where(r => r.Lo < c - 1e-6 && r.Hi > c + 1e-6 && r.To > s && r.From < b + Ext).OrderBy(r => r.From))
+            {
+                if (r.From > s && s < b && r.From > a) yield return (c, s, r.From);
+                s = Math.Max(s, r.To);
+            }
+            if (s < b) yield return (c, s, b + Ext);
         }
-        res.Sort();
-        return [.. res.Where((v, k) => k == 0 || v - res[k - 1] > 0.05)]; // stiker sekolom berbagi tepi yang sama
     }
 }
 
