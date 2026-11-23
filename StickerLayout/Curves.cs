@@ -25,11 +25,12 @@ public static class Curves
         .SelectMany(n => new[] { n.P, n.In, n.Out }).Select(q => Math.Max(Math.Max(-q.X, q.X - w), Math.Max(-q.Y, q.Y - h))).DefaultIfEmpty(0).Max());
 
     // Garis (mm relatif artwork) -> path M/L/C/Z di koordinat kotak (artwork digeser off mm). Garis lurus semua
-    // menghasilkan path yang sama dengan polygon M/L/Z sebelumnya.
-    public static string PathOf(List<Node[]> lines, double off)
+    // menghasilkan path yang sama dengan polygon M/L/Z sebelumnya. offY: geser tegak lain (kotak yang dipangkas ke garis manual).
+    public static string PathOf(List<Node[]> lines, double off, double? offY = null)
     {
         var sb = new StringBuilder();
-        void P(Point p) => sb.Append(F(p.X + off)).Append(' ').Append(F(p.Y + off));
+        double oy = offY ?? off;
+        void P(Point p) => sb.Append(F(p.X + off)).Append(' ').Append(F(p.Y + oy));
         foreach (var c in lines)
         {
             sb.Append('M');

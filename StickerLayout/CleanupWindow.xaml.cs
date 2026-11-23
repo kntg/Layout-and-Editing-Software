@@ -61,28 +61,69 @@ public partial class CleanupWindow : Window
     // Nilai slider dibaca di UI thread; hitungannya sendiri jalan di background.
     void Background_Click(object s, RoutedEventArgs e) { int tol = TolValue; Run(() => img.EraseFromBorder(tol)); }
 
-    Point? cropFrom; // titik awal kotak crop di papan (layar)
+    // Crop 4 sisi (daftar tugas 2026-11-20): bingkai mulai seukuran gambar; tiap sisi atau pojok ditarik, lalu Terapkan crop menghapus di luar bingkai.
+    Rect crop;              // bingkai crop dalam piksel gambar
+    int cropEdges;          // sisi yang sedang ditarik: 1 kiri, 2 kanan, 4 atas, 8 bawah (pojok = gabungan dua sisi)
+    const double Grip = 8;  // jarak tangkap sisi bingkai (px layar)
+
+    void Crop_Toggled(object s, RoutedEventArgs e)
+    {
+        crop = new Rect(0, 0, img.W, img.H);
+        CropApply.IsEnabled = false;
+        if (CropBox.IsChecked != true) Board.Cursor = Cursors.Cross;
+        ShowCrop();
+    }
+
+    void ShowCrop()
+    {
+        bool on = CropBox.IsChecked == true;
+        CropRect.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        if (!on) return;
+        Canvas.SetLeft(CropRect, ox + crop.X * scale);
+        Canvas.SetTop(CropRect, oy + crop.Y * scale);
+        CropRect.Width = crop.Width * scale;
+        CropRect.Height = crop.Height * scale;
+    }
+
+    // Sisi bingkai di dekat titik layar p; di pojok dua sisi sekaligus.
+    int EdgesAt(Point p)
+    {
+        double l = ox + crop.Left * scale, r = ox + crop.Right * scale, t = oy + crop.Top * scale, b = oy + crop.Bottom * scale;
+        bool alongY = p.Y > t - Grip && p.Y < b + Grip, alongX = p.X > l - Grip && p.X < r + Grip;
+        int edges = 0;
+        if (alongY && Math.Abs(p.X - l) <= Grip) edges |= 1;
+        else if (alongY && Math.Abs(p.X - r) <= Grip) edges |= 2;
+        if (alongX && Math.Abs(p.Y - t) <= Grip) edges |= 4;
+        else if (alongX && Math.Abs(p.Y - b) <= Grip) edges |= 8;
+        return edges;
+    }
+
+    void CropApply_Click(object s, RoutedEventArgs e)
+    {
+        var r = crop;
+        CropBox.IsChecked = false; // Crop_Toggled menyembunyikan bingkai
+        CropPixels(r);
+    }
 
     void View_Down(object s, MouseButtonEventArgs e)
     {
         var p = e.GetPosition(Board);
-        if (CropBox.IsChecked == true) { cropFrom = p; Board.CaptureMouse(); return; }
+        if (CropBox.IsChecked == true)
+        {
+            cropEdges = EdgesAt(p);
+            if (cropEdges != 0) Board.CaptureMouse();
+            return;
+        }
         int x = (int)((p.X - ox) / scale), y = (int)((p.Y - oy) / scale), tol = TolValue;
         if (x < 0 || y < 0 || x >= img.W || y >= img.H) return; // klik di luar gambar
         Run(() => img.EraseAt(x, y, tol));
     }
 
-    // Kotak crop selesai ditarik: dari layar ke piksel gambar (seperti penghapus klik), lalu bagian di luarnya dihapus. Tarikan di bawah 3 px diabaikan.
     void View_Up(object s, MouseButtonEventArgs e)
     {
-        if (cropFrom is not { } f) return;
-        cropFrom = null;
+        if (cropEdges == 0) return;
+        cropEdges = 0;
         Board.ReleaseMouseCapture();
-        CropRect.Visibility = Visibility.Collapsed;
-        var r = new Rect(f, e.GetPosition(Board));
-        if (r.Width < 3 || r.Height < 3) return;
-        CropBox.IsChecked = false;
-        CropPixels(new Rect((r.X - ox) / scale, (r.Y - oy) / scale, r.Width / scale, r.Height / scale));
     }
 
     internal void CropPixels(Rect px)
@@ -94,6 +135,14 @@ public partial class CleanupWindow : Window
     }
 
     void Undo_Click(object s, RoutedEventArgs e) { if (img.Undo()) Refresh(); }
+
+    // Esc (Batal) atau X sesudah menghapus latar: tanya dulu, supaya satu Esc nyasar tidak membuang hasil Rapikan.
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        if (IsVisible && DialogResult != true && img.Changed
+            && MessageBox.Show(this, Lang.T("DiscardEdits"), App.Brand, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) e.Cancel = true;
+        base.OnClosing(e);
+    }
     void Reset_Click(object s, RoutedEventArgs e) { img.Reset(); Refresh(); }
     void Tol_Changed(object s, RoutedPropertyChangedEventArgs<double> e) { if (TolText != null) TolText.Text = TolValue.ToString(); }
     void Edge_Changed(object s, RoutedPropertyChangedEventArgs<double> e) { if (img != null) Refresh(); }
@@ -122,6 +171,7 @@ public partial class CleanupWindow : Window
         ox = (Board.ActualWidth - img.W * scale) / 2 + panX;
         oy = (Board.ActualHeight - img.H * scale) / 2 + panY;
         Place(ViewBg); Place(View);
+        ShowCrop(); // bingkai crop ikut zoom dan geser
     }
 
     void Place(FrameworkElement e)
@@ -148,12 +198,22 @@ public partial class CleanupWindow : Window
 
     void View_PanMove(object s, MouseEventArgs e)
     {
-        if (cropFrom is { } f)
+        if (CropBox.IsChecked == true && !panning)
         {
-            var r = new Rect(f, e.GetPosition(Board));
-            Canvas.SetLeft(CropRect, r.X);
-            Canvas.SetTop(CropRect, r.Y);
-            (CropRect.Width, CropRect.Height, CropRect.Visibility) = (r.Width, r.Height, Visibility.Visible);
+            var q = e.GetPosition(Board);
+            if (cropEdges != 0 && e.LeftButton != MouseButtonState.Pressed) { cropEdges = 0; Board.ReleaseMouseCapture(); } // tombol dilepas di luar jendela
+            int edges = cropEdges != 0 ? cropEdges : EdgesAt(q);
+            Board.Cursor = edges switch { 1 or 2 => Cursors.SizeWE, 4 or 8 => Cursors.SizeNS, 5 or 10 => Cursors.SizeNWSE, 6 or 9 => Cursors.SizeNESW, _ => Cursors.Arrow };
+            if (cropEdges == 0) return;
+            double x = Math.Clamp((q.X - ox) / scale, 0, img.W), y = Math.Clamp((q.Y - oy) / scale, 0, img.H);
+            double l = crop.Left, r = crop.Right, t = crop.Top, b = crop.Bottom;
+            if ((cropEdges & 1) != 0) l = Math.Min(x, r - 1);
+            if ((cropEdges & 2) != 0) r = Math.Max(x, l + 1);
+            if ((cropEdges & 4) != 0) t = Math.Min(y, b - 1);
+            if ((cropEdges & 8) != 0) b = Math.Max(y, t + 1);
+            crop = new Rect(new Point(l, t), new Point(r, b));
+            CropApply.IsEnabled = crop.Width < img.W || crop.Height < img.H;
+            ShowCrop();
             return;
         }
         if (!panning) return;

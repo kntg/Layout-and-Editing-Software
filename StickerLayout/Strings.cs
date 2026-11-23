@@ -80,10 +80,10 @@ public static class Lang
         ["DenseTip"] = ("Stiker dipadatkan dan boleh diputar: bahan paling hemat.", "Packs stickers tightly and may rotate them: uses the least material."),
         ["Rows"] = ("Rapi", "Neat"),
         ["RowsTip"] = ("Susun per baris dan kolom, desain sama berkumpul: lebih rapi, bahan lebih boros.", "Arrange in rows and columns, same designs together: neater, uses more material."),
-        ["Resized"] = ("{0} diubah menjadi {1} × {2} mm.", "{0} resized to {1} × {2} mm."),
+        ["Resized"] = ("{0} diubah menjadi {1} × {2} {3}.", "{0} resized to {1} × {2} {3}."),
         ["ResizedSplit"] = ("Stiker lain dengan desain sama tidak berubah; ukuran ini menjadi baris baru di daftar desain.", "Other stickers with the same design are unchanged; this size is a new row in the design list."),
         ["ResizedNewSheet"] = ("{0} stiker dipindah ke lembar baru (lembar {1}) supaya tidak menumpuk.", "{0} sticker(s) moved to a new sheet (sheet {1}) so nothing overlaps."),
-        ["ResizedNoRoom"] = ("{0} diubah menjadi {1} × {2} mm, tetapi lebih besar dari area cetak lembar, jadi ditandai merah. Perkecil stikernya atau ganti ukuran kertas.", "{0} resized to {1} × {2} mm, but it is larger than the printable area of the sheet, so it is marked red. Make it smaller or change the paper size."),
+        ["ResizedNoRoom"] = ("{0} diubah menjadi {1} × {2} {3}, tetapi lebih besar dari area cetak lembar, jadi ditandai merah. Perkecil stikernya atau ganti ukuran kertas.", "{0} resized to {1} × {2} {3}, but it is larger than the printable area of the sheet, so it is marked red. Make it smaller or change the paper size."),
         ["NStickers"] = ("{0} stiker", "{0} stickers"),
         ["NSelected"] = ("{0} stiker terpilih", "{0} stickers selected"),
         ["CopiedTo"] = ("{0} disalin ke lembar {1}.", "{0} copied to sheet {1}."),
@@ -155,8 +155,9 @@ public static class Lang
         ["CleanBg"] = ("Hapus latar otomatis", "Remove background"),
         ["CleanBgHint"] = ("Warna latar diambil dari tepi gambar. Lubang di dalam logo tidak ikut terhapus.", "The background color is taken from the image edges. Holes inside the logo are kept."),
         ["CleanClick"] = ("Penghapus klik", "Click eraser"),
-        ["CleanCrop"] = ("Crop kotak", "Crop box"),
-        ["CleanCropHint"] = ("Centang, lalu tarik kotak di gambar: bagian di luar kotak dihapus. Bisa diurungkan.", "Tick it, then drag a box on the image: everything outside the box is removed. Can be undone."),
+        ["CleanCrop"] = ("Crop", "Crop"),
+        ["CleanCropHint"] = ("Centang, tarik sisi atau pojok bingkai, lalu Terapkan crop: bagian di luar bingkai dihapus. Bisa diurungkan.", "Tick it, drag the sides or corners of the frame, then Apply crop: everything outside the frame is removed. Can be undone."),
+        ["CleanCropApply"] = ("Terapkan crop", "Apply crop"),
         ["CleanClickHint"] = ("Klik area pada gambar untuk menghapus bagian bersebelahan yang warnanya mirip: teks, noda, watermark.", "Click an area of the image to remove the connected part with a similar color: text, spots, watermarks."),
         ["Tolerance"] = ("Toleransi warna", "Color tolerance"),
         ["Contract"] = ("Kikis tepi (px)", "Shrink edge (px)"),
@@ -241,6 +242,30 @@ public static class Lang
             "This CDR cannot be read without CorelDRAW (it may be too new, damaged, or locked). Export the CDR to PDF in CorelDRAW, then add the PDF."),
         ["CdrOpen"] = ("Membaca {0}…", "Reading {0}…"),
         ["CorelOpen"] = ("Membuka {0} di CorelDRAW…", "Opening {0} in CorelDRAW…"),
+        ["Cross"] = ("Garis cross (potong manual)", "Cross lines (manual cutting)"),
+        ["CrossOff"] = ("Mati", "Off"),
+        ["Cross1"] = ("Cross 1: tunggal", "Cross 1: single"),
+        ["Cross2"] = ("Cross 2: ganda", "Cross 2: double"),
+        ["CrossMm"] = ("Tebal garis cross (mm)", "Cross line width (mm)"),
+        ["CrossTip"] = ("Garis lurus hitam di antara stiker untuk dipotong manual; garis kiss/die tidak dicetak. Cross 1: satu garis di tengah celah, celah = tebal garis. Cross 2: garis di tiap tepi stiker dengan Jarak antar stiker di antaranya. Paling rapi dengan susunan Rapi dan stiker berukuran sama.",
+            "Straight black lines between stickers for manual cutting; kiss/die lines are not printed. Cross 1: one line in the middle of the gap, gap = line width. Cross 2: a line at each sticker edge with the sticker gap between them. Works best with Tidy layout and stickers of the same size."),
+        ["SplitItems"] =("Pisah item", "Split items"),
+        ["SplitNone"] = ("{0}: tidak ditemukan dua item terpisah atau lebih. Untuk gambar tanpa transparansi, hapus latar dulu lewat Rapikan gambar.",
+            "{0}: fewer than two separate items were found. For an image without transparency, remove the background first with Clean up image."),
+        ["SplitDone"] = ("{0} dipisah menjadi {1} item; lembar disusun ulang dengan Jarak antar stiker.", "{0} was split into {1} items; the sheets were rearranged with the sticker gap."),
+        ["CleanPart"] = ("Item hasil Pisah item tidak bisa dirapikan: rapikan file asalnya, lalu pisah item lagi.", "An item from Split items cannot be cleaned up: clean up the original file, then split it again."),
+        ["CutTooBig"] =("Offset + Halus kiss atau die, dan bleed, paling besar 50 mm. Periksa angka yang salah ketik.", "Kiss or die offset + smoothing, and bleed, can be at most 50 mm. Check for a mistyped number."),
+        ["TooBigMm"] = ("Desain {0} × {1} mm terlalu besar: sisi artwork paling besar 2000 mm. Periksa lebar atau tinggi yang salah ketik.",
+            "The design is {0} × {1} mm, which is too large: an artwork side can be at most 2000 mm. Check for a mistyped width or height."),
+        ["DiscardEdits"] = ("Perubahan belum disimpan. Tutup dan buang perubahan ini?", "The changes are not saved. Close and discard them?"),
+        ["FilesExist"] = ("File ini sudah ada dan akan ditimpa: {0}. Lanjutkan export?", "These files already exist and will be overwritten: {0}. Continue the export?"),
+        ["PackOpt"] =("Stickerpack: die di tepi latar, kiss tiap stiker di dalamnya", "Sticker pack: die on the background edge, kiss around each sticker inside"),
+        ["PackTip"] = ("Untuk file pack yang sudah di-layout: banyak stiker di atas satu latar. Offset die diukur dari tepi latar, offset kiss dari tepi tiap stiker.",
+            "For a laid-out pack file: many stickers on one background. The die offset is measured from the background edge, the kiss offset from each sticker's edge."),
+        ["CutPack"] = ("pack", "pack"),
+        ["PackNeedDie"] = ("Stickerpack butuh garis die-cut di tepi latar. Aktifkan die-cut.", "A sticker pack needs a die-cut line on the background edge. Turn on die-cut."),
+        ["PackNoObjects"] = ("Tidak ada stiker yang terpisah dari latar pack. Latar harus satu warna rata; pakai smart select atau edit titik di editor garis potong.",
+            "No stickers stand out from the pack background. The background must be one flat colour; use smart select or edit the nodes in the cut-line editor."),
         ["CorelTimeout"] = ("CorelDRAW tidak merespons dalam {0} detik. Cek jendela CorelDRAW (mungkin ada dialog terbuka), atau export CDR ke PDF manual.", "CorelDRAW did not respond within {0} seconds. Check the CorelDRAW window (a dialog may be open), or export the CDR to PDF manually."),
         ["CorelFail"] = ("CorelDRAW gagal membuat PDF. {0}", "CorelDRAW could not create the PDF. {0}"),
         ["Empty"] = ("Gambar kosong (tidak ada artwork).", "Image is empty (no artwork)."),
@@ -258,7 +283,8 @@ public static class Lang
         ["Overlap"] = ("{0} tumpang tindih/terlalu dekat/keluar margin", "{0} overlapping/too close/outside margin"),
         ["Saved"] = ("Tersimpan: {0}", "Saved: {0}"),
         ["SaveFail"] = ("File tidak bisa disimpan. Tutup file itu bila sedang dibuka di program lain, periksa ruang disk dan izin folder, lalu coba lagi.", "The file could not be saved. Close it if it is open in another program, check the disk space and folder permissions, then try again."),
-        ["BadNumber"] = ("\"{0}\" tidak bisa dipakai. Isi angka minimal {1}.", "\"{0}\" cannot be used. Enter a number of at least {1}."),
+        ["BadNumber"] = ("\"{0}\" tidak bisa dipakai. Isi angka dari {1} sampai {2} {3}.", "\"{0}\" cannot be used. Enter a number from {1} to {2} {3}."),
+        ["MUnit"] = ("Satuan", "Units"),
         ["ExportBad"] = ("Ada stiker tumpang tindih/terlalu dekat/keluar margin. Tetap export?", "Some stickers overlap, are too close, or exceed the margin. Export anyway?"),
         ["PdfRaster"] = ("{0}: PDF ditempel sebagai gambar, bukan vektor ({1}).", "{0}: PDF placed as an image, not vector ({1})."),
 
@@ -276,10 +302,18 @@ public static class Lang
         ["HomeSupported"] = ("File yang didukung: *.pdf, *.cdr, *.ai, *.svg, *.png, *.jpg", "Supported Files: *.pdf, *.cdr, *.ai, *.svg, *.png, *.jpg"),
     };
 
+    // Label kotak isian ikut satuan tampilan (Units). Hanya label tanpa angka, supaya "1 mm" di teks penjelasan tidak menjadi "1 cm".
+    static readonly HashSet<string> UnitLabels = ["Gap", "Bleed", "MarginLbl", "PaperW", "PaperH", "DefWidth", "CutUnit", "CrossMm", "WidthTip", "HeightTip"];
+
     public static void Apply(string code)
     {
         Code = code;
-        foreach (var (k, v) in S) Application.Current.Resources[k] = code == "en" ? v.En : v.Id;
+        foreach (var (k, v) in S)
+        {
+            var text = code == "en" ? v.En : v.Id;
+            Application.Current.Resources[k] = UnitLabels.Contains(k) ? System.Text.RegularExpressions.Regex.Replace(text, @"\bmm\b", Units.Name) : text;
+        }
+        Application.Current.Resources["UnitName"] = Units.Name;
     }
 
     public static string T(string key, params object[] args)

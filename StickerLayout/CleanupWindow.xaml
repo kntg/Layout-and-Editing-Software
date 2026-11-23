@@ -33,9 +33,12 @@
                 </StackPanel>
                 <TextBlock Text="{DynamicResource CleanClickHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
-                <!-- Crop kotak (daftar tugas leader 2026-11-08): centang, lalu tarik kotak di gambar -->
-                <CheckBox x:Name="CropBox" Content="{DynamicResource CleanCrop}" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource CleanCrop}"/>
+                <!-- Crop 4 sisi (daftar tugas 2026-11-20): centang, tarik sisi atau pojok bingkai, lalu Terapkan crop -->
+                <CheckBox x:Name="CropBox" Content="{DynamicResource CleanCrop}" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource CleanCrop}"
+                          Checked="Crop_Toggled" Unchecked="Crop_Toggled"/>
                 <TextBlock Text="{DynamicResource CleanCropHint}" Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <Button x:Name="CropApply" Content="{DynamicResource CleanCropApply}" Click="CropApply_Click" IsEnabled="False" HorizontalAlignment="Left"
+                        Margin="0,8,0,0" AutomationProperties.Name="{DynamicResource CleanCropApply}"/>
 
                 <DockPanel Margin="0,20,0,0">
                     <TextBlock x:Name="TolText" DockPanel.Dock="Right" Width="30" TextAlignment="Right" Typography.NumeralAlignment="Tabular"/>
@@ -74,7 +77,7 @@
                 MouseRightButtonDown="View_PanDown" MouseMove="View_PanMove" MouseRightButtonUp="View_PanUp">
             <Rectangle x:Name="ViewBg" Fill="{StaticResource Checker}"/>
             <Image x:Name="View" Stretch="Fill" AutomationProperties.Name="{DynamicResource CleanClick}"/>
-            <Rectangle x:Name="CropRect" Stroke="White" StrokeThickness="1" StrokeDashArray="4 3" Fill="#33FFFFFF" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Rectangle x:Name="CropRect" Stroke="White" StrokeThickness="2" StrokeDashArray="4 3" Visibility="Collapsed" IsHitTestVisible="False"/>
         </Canvas>
     </DockPanel>
 </Window>

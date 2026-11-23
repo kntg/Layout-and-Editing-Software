@@ -17,9 +17,7 @@ public static class ExportSvg
         var files = new List<string>();
         for (int i = 0; i < sheets.Count; i++)
         {
-            var file = sheets.Count == 1
-                ? path
-                : Path.Combine(Path.GetDirectoryName(path)!, $"{Path.GetFileNameWithoutExtension(path)}-{numbers?[i] ?? i + 1}.svg");
+            var file = Export.SheetFile(path, sheets.Count, i, numbers);
             File.WriteAllText(file, Sheet(sheets[i], cw, sheetH[i], margin, regMarks, art, cuts), Encoding.UTF8);
             files.Add(file);
         }
@@ -46,7 +44,15 @@ public static class ExportSvg
             sb.AppendLine("  </g>");
         }
 
-        if (cuts)
+        // Garis cross (potong manual) ikut artwork: dicetak, bukan garis potong mesin.
+        if (art && Cross.On)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"""  <g id="cross" inkscape:label="Cross" inkscape:groupmode="layer" fill="none" stroke="#000000" stroke-width="{F(Cross.Mm)}">""");
+            foreach (var (a, b) in Cross.Lines(ps)) sb.AppendLine(CultureInfo.InvariantCulture, $"""    <path d="M {F(a.X)},{F(a.Y)} L {F(b.X)},{F(b.Y)}"/>""");
+            sb.AppendLine("  </g>");
+        }
+
+        if (cuts && !Cross.On)
         {
             // Layer 2: Kiss Cut
             sb.AppendLine("""  <g id="kiss-cut" inkscape:label="Kiss Cut" inkscape:groupmode="layer" fill="none" stroke="#EC008C" stroke-width="0.1">""");
@@ -89,7 +95,7 @@ public static class ExportSvg
         // ponytail: render layar paling besar 1600 px dan RGB; render ulang halaman PDF ±300 dpi bila SVG kurang tajam.
         var (bytes, r) = s.BleedPng != null ? (s.BleedPng, s.BleedRect)
             : s.Pdf == null ? (s.Raster, s.Full)
-            : (Loader.Png(s.Preview), new Rect(s.Off, s.Off, s.ArtW, s.ArtH));
+            : (Loader.Png(s.Preview), new Rect(s.Off, s.OffY, s.ArtW, s.ArtH));
         var mime = bytes is [0xFF, 0xD8, ..] ? "image/jpeg" : "image/png"; // JPG asli ditempel apa adanya
         var href = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
 

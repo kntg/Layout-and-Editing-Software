@@ -59,6 +59,14 @@ Skrip di bawah membuka Printech lalu mengoperasikannya sendiri, seperti operator
   - smart select dengan klik di kanvas, pada gambar uji yang dibuat oleh skrip ini. Ukuran lubang donatnya dihitung dari lebar dan offset kiss di aplikasi; pilihan `-Offset <mm>` mencoba offset kiss lain.
 
   Titik dicari dari tangkapan layar. Uji berhenti sendiri bila jendela editor tidak aktif atau mouse disentuh, supaya klik tidak masuk ke aplikasi lain dan hasil tidak tercampur gerakan pengguna. Pilihan `-Shots` menyimpan tangkapan layar.
+- **Uji daftar tugas 20 November** (`ui-tugas-20nov.ps1`): memakai mouse dan keyboard sungguhan. Yang diuji:
+  - satuan mm, cm, dan px: angka di panel berubah dan kembali sama, dan Susun tetap jalan dalam cm;
+  - garis cross 1 dan 2: jumlah garis di file SVG, tanpa layer kiss;
+  - crop 4 sisi di Rapikan gambar, dan kotak stiker yang mengikuti garis smart select;
+  - stickerpack (`-Pack <gambar>`): jumlah garis kiss dan die di file SVG;
+  - Pisah item (`-Layout <gambar>`): langsung, dan sesudah latar dihapus.
+
+  File pack dan layout biasanya file customer, jadi simpan di `01-input/customer`. Hasil ada di `hasil.txt` di folder `-Out`. Pilihan `-Only A2,A4` menjalankan sebagian uji saja.
 
 ## Membuat ulang file uji
 

@@ -29,6 +29,8 @@ Isi README ini:
    - Tombol **+** di judul panel dan tombol **Tambah file…** di bawah daftar untuk menambah file langsung dari panel.
    - Tombol **Kembalikan** mengembalikan jumlah ke 1 dan menyusun ulang.
    - **Lainnya** (ikon titik tiga) berisi Rapikan gambar, Edit garis potong, dan **Opsi garis potong…** untuk memberi satu desain garis kiss/die, offset, dan Halus sendiri (tidak mengikuti panel Garis potong). Opsi garis potong juga ada di klik kanan stiker. Simpan langsung menyusun ulang lembar, dan baris desainnya diberi tanda "potong sendiri". Garis sendiri tetap dipakai saat Susun otomatis, ubah ukuran, Edit garis potong, dan Rapikan gambar.
+   - **Pisah item** (di Lainnya dan klik kanan stiker): file yang sudah di-layout (banyak stiker dalam satu file) dipecah menjadi satu desain per item, dengan ukuran aslinya dan jumlah pcs yang sama. Tiap item mendapat garis potongnya sendiri, dan lembar disusun ulang dengan Jarak antar stiker, jadi offset tidak lagi menyatu. Item dikenali dari latar transparan atau latar satu warna. Gambar tanpa transparansi: hapus latarnya dulu lewat Rapikan gambar. Item hasil pisah tidak bisa dirapikan lagi.
+   - Garis potong yang dibuat di editor atau smart select hanya di sebagian gambar: kotak stiker (bingkai pilihan, titik pojok, area klik, dan tempatnya di lembar) mengikuti garis itu, bukan seluruh gambar aslinya.
    - PDF/AI/CDR memakai ukuran aslinya. PNG/JPG/SVG memakai "Lebar awal" (bawaan 50 mm).
    - Angka dpi merah berarti resolusinya di bawah 150 dpi, dan hasil cetaknya akan pecah.
 3. **Pilih kertas** di panel **Kertas**.
@@ -38,6 +40,7 @@ Isi README ini:
    - Kiss-cut: bawaan aktif, offset 2 mm, Halus 1 mm.
    - Die-cut: bawaan mati, offset 4 mm, Halus 2 mm.
    - Jarak antar stiker: 2 mm. Bleed gambar PNG/JPG: 0 = mati.
+   - **Garis cross (potong manual):** Mati, Cross 1, atau Cross 2, dengan tebal garis (bawaan 1 mm). Saat aktif, garis kiss/die tidak dicetak; yang dicetak garis lurus hitam di antara stiker untuk dipotong tangan, juga di export PDF/SVG dan JPG. Cross 1 (tunggal): satu garis di tengah celah, dan celahnya sama dengan tebal garis. Cross 2 (ganda): garis di tiap tepi stiker dengan Jarak antar stiker di antaranya. Garis membentang melintasi semua stiker di lembar, jadi pakai susunan Rapi dengan stiker berukuran sama.
    - Perubahan lebar, jumlah, dan garis potong baru diterapkan setelah klik **Susun otomatis** (Ctrl+L). Mengganti atau memutar kertas langsung menyusun ulang. Lebar boleh memakai koma atau titik (62,5 atau 62.5).
 5. **Periksa layout.**
    - **Seret stiker:** tahan Shift supaya stiker hanya bergeser mendatar atau tegak. Stiker pindah ke posisi kosong terdekat, di lembar lain bila dilepas di atasnya. Bila tidak ada tempat, stiker kembali ke posisi awal. Beberapa stiker yang terpilih bergerak bersama; bila satu saja tidak punya tempat, semuanya kembali. Tahan Alt saat melepas untuk menyalin: stiker asal tetap di tempatnya, dan salinannya ditaruh di titik lepas. Esc membatalkan tarikan. R memutar 90°, Delete menghapus, panah menggeser 1 mm (dengan Shift: 10 mm).
@@ -72,6 +75,12 @@ Isi README ini:
 - **Garis yang mengikuti objek:** buang latar dulu lewat Rapikan gambar, atau pakai smart select di editor garis potong.
 - **Lubang:** lubang asli artwork yang masih terbuka setelah offset (misalnya stiker donat) mendapat garis dalam.
 - **Kiss dan die:** garis die-cut selalu membungkus garis kiss-cut.
+- **Stickerpack (file pack yang sudah di-layout):** di **Opsi garis potong**, lepas centang Ikuti panel lalu centang **Stickerpack**.
+  - Die mengikuti tepi latar pack, dan kiss mengelilingi tiap stiker yang warnanya beda dari latar. Latar harus satu warna rata.
+  - Offset die diukur dari tepi latar dan offset kiss dari tepi tiap stiker, jadi die boleh lebih kecil dari kiss. Die wajib aktif.
+  - Garis kiss dua stiker yang berdekatan berhenti di tengah celah di antara keduanya, jadi tidak menyatu dan tidak bersilangan. Offset kiss lebih dari setengah jarak antar stiker membuat dua garis berjalan rapat di tengah celah; pilih offset yang lebih kecil. Stiker yang saling menempel di file dianggap satu stiker.
+  - Contoh untuk stiker yang sudah berbingkai putih: die 0 mm, kiss 0–1 mm. Angka yang pas ditentukan dari uji potong.
+  - Latar file ikut tercetak. Bila latar tidak rata, muncul pesan: pakai smart select atau edit titik di editor garis potong.
 
 ### Editor garis potong
 
@@ -109,8 +118,8 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 
 - **Untuk:** desain berupa gambar, yaitu PNG, JPG, SVG, dan PDF yang ditempel sebagai gambar.
 - **Cara membuka:** **Lainnya** (ikon titik tiga) di baris desain, lalu **Rapikan gambar**; atau klik dua kali gambar kecil desainnya.
-- **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, crop kotak (centang, lalu tarik kotak: di luar kotak terhapus), toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**. Zoom dengan Ctrl + roda mouse.
-- **Catatan:** file vektor (PDF/AI, dan CDR yang dibuka lewat CorelDRAW) dirapikan di CorelDRAW supaya warnanya tetap utuh. Selain crop kotak dan zoom (2026-11-08), fitur ini tidak dikembangkan lagi.
+- **Isi:** hapus latar otomatis (warna latar diambil dari tepi gambar), penghapus klik, crop 4 sisi (centang **Crop**, tarik sisi atau pojok bingkai, lalu **Terapkan crop**: di luar bingkai terhapus), toleransi warna, kikis tepi 0–3 piksel, lalu **Pakai**. Zoom dengan Ctrl + roda mouse.
+- **Catatan:** file vektor (PDF/AI, dan CDR yang dibuka lewat CorelDRAW) dirapikan di CorelDRAW supaya warnanya tetap utuh. Selain crop dan zoom, fitur ini tidak dikembangkan lagi.
 
 ### Tampilan dan bahasa
 
@@ -119,6 +128,7 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 - **Alat Zoom (Z):** klik untuk memperbesar, Alt+klik untuk memperkecil.
 - **Penggaris (mm):** tampil di atas dan kiri lembar. Bisa disembunyikan lewat tombol penggaris di batang alat kiri.
 - **Bahasa:** menu **Bahasa**, pilih Indonesia atau English.
+- **Satuan:** menu **Satuan**, pilih mm (bawaan), cm, m, inci, atau px (dihitung pada 300 ppi). Kotak angka, daftar desain, panel Pilihan, judul lembar, dan penggaris ikut satuan itu. Pesan peringatan, Print Ticket, dan editor garis potong tetap dalam mm.
 - **Tanda registrasi:** tombol siku di batang alat kiri (di bawah penggaris), atau menu **Tampilan**, centang **Tanda registrasi** (bawaan: mati).
   - Pilihan itu menggambar siku L hitam di 4 pojok lembar di layar. Ke file export, siku hanya ikut bila **Tanda registrasi** dicentang di dialog Export.
   - Stiker tidak ditaruh dalam 6 mm dari tanda (area pindai menurut manual Graphtec). Stiker yang masuk area itu ditandai merah; klik Susun otomatis untuk memindahkannya.
@@ -158,7 +168,9 @@ Buka lewat **Lainnya** (ikon titik tiga) di baris desain, lalu **Edit garis poto
 | --- | --- |
 | "… lebih besar dari kertas" | Desain tidak muat di area cetak. Perkecil lebarnya, atau pilih kertas yang lebih besar. |
 | "Tidak ada tempat di kanan atau bawah stiker ini…" | Salinan stiker tidak muat di lembar ini. Hapus stiker lain, atau pakai Duplikat di judul lembar untuk lembar baru. |
-| "… tidak bisa dipakai. Isi angka minimal …" | Ada kotak angka yang salah ketik atau di bawah batasnya. Betulkan angkanya; kursor sudah ada di kotak itu. |
+| "… tidak bisa dipakai. Isi angka dari … sampai …" | Ada kotak angka yang salah ketik, di bawah batasnya, atau terlalu besar. Betulkan angkanya; kursor sudah ada di kotak itu. |
+| "Offset + Halus kiss atau die, dan bleed, paling besar 50 mm…" | Kemungkinan salah ketik (200 untuk 2,0). Betulkan angkanya. |
+| "… tidak ditemukan dua item terpisah atau lebih…" | Pisah item tidak menemukan item. Untuk gambar tanpa transparansi, hapus latar dulu lewat Rapikan gambar. |
 | "File tidak bisa disimpan…" | File tujuan sedang dibuka di program lain, disk penuh, atau folder tidak boleh ditulis. Tutup filenya atau pilih tempat lain, lalu coba lagi. |
 | "… desain resolusi rendah" | Di bawah 150 dpi pada lebar itu. Minta file asli ke customer, atau perkecil desainnya. |
 | "… PDF ditempel sebagai gambar (halaman diputar atau tidak terbaca)" | PDF dicetak sebagai gambar, bukan vektor. Periksa ketajaman dan warnanya sebelum cetak. |
